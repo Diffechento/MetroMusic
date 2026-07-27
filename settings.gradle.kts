@@ -14,9 +14,10 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // MangoTile is consumed from the local Maven repo. Publish it with
+        // MangoTile comes from mavenCentral() below, so a plain clone builds. mavenLocal() is
+        // kept ahead of it only so that working on the framework takes effect here: publish it with
         //   gradlew :metro:publishToMavenLocal
-        // in the MangoTile project after every change to the framework.
+        // in the MangoTile project and this build resolves that copy instead.
         mavenLocal()
         google()
         mavenCentral()
