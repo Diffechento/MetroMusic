@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- What the icon artwork itself is drawn on, so the margin a squircle mask leaves around the
+         circle is the same paper as inside the picture rather than a second colour behind it. -->
+    <color name="ic_launcher_paper">#FDFDFE</color>
+    <!-- WP8 cyan, the framework's default accent. -->
+    <color name="ic_launcher_background">#1BA1E2</color>
+    <!-- The darker half of the icon's diagonal. Same hue, about 15% down in value. -->
+    <color name="ic_launcher_background_shade">#1587BD</color>
+</resources>

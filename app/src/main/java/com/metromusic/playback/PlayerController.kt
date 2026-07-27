@@ -1,0 +1,351 @@
+package com.metromusic.playback
+
+import android.content.ComponentName
+import android.content.ContentUris
+import android.content.Context
+import android.net.Uri
+import androidx.concurrent.futures.await
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.metromusic.data.model.Track
+import com.metromusic.data.store.StatsStore
+import com.metromusic.widget.NowPlayingWidget
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+
+/**
+ * The app's handle on playback.
+ *
+ * All the UI ever sees is a [PlayerState] flow and a set of commands; the actual player lives
+ * in [PlaybackService] and is reached through a [MediaController]. That indirection is what
+ * lets playback survive the activity and keeps the notification, lock screen and headset
+ * buttons working for free.
+ *
+ * A [MediaController] is bound to the looper it was built on, so every call here hops to the
+ * main thread.
+ */
+class PlayerController(
+    private val context: Context,
+    private val scope: CoroutineScope,
+    private val stats: StatsStore
+) {
+    private var controller: MediaController? = null
+    private val connectMutex = Mutex()
+
+    private val _state = MutableStateFlow(PlayerState.Empty)
+    val state: StateFlow<PlayerState> = _state.asStateFlow()
+
+    /** Ids of the current queue, so we can map a media item back to a track. */
+    private var queueAlbumIds: Map<Long, Long> = emptyMap()
+
+    private val _queued = MutableSharedFlow<QueueNotice>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    /**
+     * Something was added to the queue — what the shell puts a banner up for.
+     *
+     * There is no queue screen, so without this "play next" is a menu item that visibly does nothing:
+     * the album you are looking at stays on screen, the song that is playing keeps playing, and
+     * whether the tap registered is a mystery until three minutes later. Queueing several albums in a
+     * row without any feedback is not something anyone would trust twice.
+     */
+    val queued: SharedFlow<QueueNotice> = _queued.asSharedFlow()
+
+    private var noticeCount = 0L
+
+    /**
+     * Where the next "play next" block goes, as the media id it must land behind.
+     *
+     * An index would be wrong within one track: everything shifts as items are added and the user is
+     * free to skip in the middle of it. Held as an id and looked up each time, so a cursor that no
+     * longer makes sense — its track played and gone, the queue replaced — simply isn't found and the
+     * insert falls back to "right after what is playing".
+     *
+     * This is what makes "queue up three albums" mean what it says. Inserting each one directly after
+     * the current track puts the *last* album you picked first and leaves the others behind it in
+     * reverse, which reads as the feature being broken rather than as a policy.
+     */
+    private var queueTailId: String? = null
+
+    private val listener = object : Player.Listener {
+        override fun onEvents(player: Player, events: Player.Events) = publish(player)
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // REPEAT means the same track came round again; that still counts as a play.
+            val trackId = mediaItem?.mediaId?.toLongOrNull() ?: return
+            stats.recordPlay(trackId, queueAlbumIds[trackId] ?: -1L)
+        }
+    }
+
+    /** Connects to the session if it isn't connected already. Safe to call from anywhere. */
+    suspend fun connect(): MediaController? = connectMutex.withLock {
+        controller?.let { return it }
+        withContext(Dispatchers.Main) {
+            val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+            val newController = MediaController.Builder(context, token).buildAsync().await()
+            newController.addListener(listener)
+            controller = newController
+            publish(newController)
+            newController
+        }
+    }
+
+    /**
+     * Replaces the queue with [tracks] and starts at [startIndex]. This is what every "play"
+     * affordance in the app funnels into — a track row, an album, a playlist, shuffle-all.
+     */
+    fun play(tracks: List<Track>, startIndex: Int = 0) {
+        if (tracks.isEmpty()) return
+        queueAlbumIds = tracks.associate { it.id to it.albumId }
+        queueTailId = null
+        command { player ->
+            player.setMediaItems(tracks.map { it.toMediaItem() }, startIndex, 0L)
+            player.prepare()
+            player.play()
+            // onMediaItemTransition doesn't fire for the very first item of a new queue.
+            val first = tracks.getOrNull(startIndex)
+            if (first != null) stats.recordPlay(first.id, first.albumId)
+        }
+    }
+
+    /**
+     * Slots one track in right after whatever is playing, without disturbing it.
+     *
+     * The queue operation a player like this actually needs: you hear something, you want it next,
+     * and you do not want the album you are in the middle of thrown away to get it. With nothing
+     * playing there is no "next", so it just plays.
+     */
+    fun playNext(track: Track) = playNext(listOf(track), track.title)
+
+    /**
+     * The same for a whole album, artist or genre: everything lands after the current track, in
+     * order — and behind anything queued just before it, so several albums queued one after another
+     * play in the order they were picked.
+     *
+     * [label] is what the confirmation banner names; the album's title where there is one, since "14
+     * songs" on its own does not say which fourteen.
+     */
+    fun playNext(tracks: List<Track>, label: String? = null) = command { player ->
+        if (tracks.isEmpty()) return@command
+        queueAlbumIds = queueAlbumIds + tracks.associate { it.id to it.albumId }
+        val items = tracks.map { it.toMediaItem() }
+        if (player.mediaItemCount == 0) {
+            player.setMediaItems(items, 0, 0L)
+            player.prepare()
+            player.play()
+            tracks.first().let { stats.recordPlay(it.id, it.albumId) }
+        } else {
+            player.addMediaItems(insertionPoint(player), items)
+        }
+        queueTailId = tracks.last().id.toString()
+        notify(label ?: tracks.first().title, tracks.size)
+    }
+
+    /**
+     * The index the next queued block goes at: behind the last one if it is still ahead of us,
+     * otherwise directly after the current track.
+     *
+     * Only positions at or after the current one count. A cursor left behind by a block that has
+     * already played would insert *into the past* of the queue, where the tracks would never be
+     * reached — which is indistinguishable from the tap having done nothing at all.
+     */
+    private fun insertionPoint(player: MediaController): Int {
+        val current = player.currentMediaItemIndex
+        val tail = queueTailId
+        if (tail != null) {
+            for (i in current until player.mediaItemCount) {
+                if (player.getMediaItemAt(i).mediaId == tail) return i + 1
+            }
+        }
+        return (current + 1).coerceIn(0, player.mediaItemCount)
+    }
+
+    private fun notify(label: String, count: Int) {
+        noticeCount++
+        _queued.tryEmit(QueueNotice(label = label, count = count, sequence = noticeCount))
+    }
+
+    fun togglePlayPause() = command { player ->
+        if (player.isPlaying) player.pause() else player.play()
+    }
+
+    fun next() = command { it.seekToNextMediaItem() }
+
+    /**
+     * WP8 behaviour: the back button restarts the current track unless you press it early on,
+     * in which case it goes to the previous one.
+     */
+    fun previous() = command { player ->
+        if (player.currentPosition > RestartThresholdMs && player.isCurrentMediaItemSeekable) {
+            player.seekTo(0)
+        } else {
+            player.seekToPreviousMediaItem()
+        }
+    }
+
+    fun seekToFraction(fraction: Float) = command { player ->
+        val duration = player.duration
+        if (duration > 0) player.seekTo((duration * fraction.coerceIn(0f, 1f)).toLong())
+    }
+
+    fun toggleShuffle() = command { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+
+    fun cycleRepeat() = command { player ->
+        player.repeatMode = when (player.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        }
+    }
+
+    fun stop() = command { player ->
+        player.stop()
+        player.clearMediaItems()
+        queueTailId = null
+    }
+
+    // ---- sleep timer ----
+
+    private var sleepJob: Job? = null
+    private val _sleepRemainingMs = MutableStateFlow(0L)
+
+    /** Milliseconds left on the sleep timer, or 0 when it isn't running. */
+    val sleepRemainingMs: StateFlow<Long> = _sleepRemainingMs.asStateFlow()
+
+    /** Pass 0 to cancel. Playback fades out over a few seconds rather than cutting off. */
+    fun setSleepTimer(minutes: Int) {
+        sleepJob?.cancel()
+        if (minutes <= 0) {
+            _sleepRemainingMs.value = 0L
+            return
+        }
+        sleepJob = scope.launch {
+            var remaining = minutes * 60_000L
+            while (remaining > 0) {
+                _sleepRemainingMs.value = remaining
+                delay(1_000L)
+                remaining -= 1_000L
+            }
+            _sleepRemainingMs.value = 0L
+            fadeOutAndPause()
+        }
+    }
+
+    private suspend fun fadeOutAndPause() = withContext(Dispatchers.Main) {
+        val player = controller ?: return@withContext
+        val steps = 20
+        repeat(steps) { step ->
+            player.volume = 1f - (step + 1) / steps.toFloat()
+            delay(FadeMs / steps)
+        }
+        player.pause()
+        // Restore the volume so the next play isn't silent.
+        player.volume = 1f
+        publish(player)
+    }
+
+    /**
+     * Playback position, emitted only while collected. Nothing ticks when no screen is
+     * showing a progress bar, which is the whole reason position isn't part of [PlayerState].
+     */
+    fun positionFlow(intervalMs: Long = 500L): Flow<Long> = flow {
+        while (true) {
+            emit(controller?.currentPosition ?: 0L)
+            delay(intervalMs)
+        }
+    }.flowOn(Dispatchers.Main)
+
+    fun release() {
+        controller?.let {
+            it.removeListener(listener)
+            it.release()
+        }
+        controller = null
+    }
+
+    /** Runs [block] against a connected controller on the main thread, connecting if needed. */
+    private fun command(block: (MediaController) -> Unit) {
+        scope.launch {
+            val player = controller ?: connect() ?: return@launch
+            withContext(Dispatchers.Main) {
+                block(player)
+                publish(player)
+            }
+        }
+    }
+
+    private fun publish(player: Player) {
+        val item = player.currentMediaItem
+        val metadata = player.mediaMetadata
+        NowPlayingWidget.publish(
+            context = context,
+            title = metadata.title?.toString().orEmpty(),
+            artist = metadata.artist?.toString().orEmpty()
+        )
+        _state.value = PlayerState(
+            trackId = item?.mediaId?.toLongOrNull(),
+            title = metadata.title?.toString().orEmpty(),
+            artist = metadata.artist?.toString().orEmpty(),
+            album = metadata.albumTitle?.toString().orEmpty(),
+            albumId = item?.mediaId?.toLongOrNull()?.let { queueAlbumIds[it] } ?: -1L,
+            isPlaying = player.isPlaying,
+            isBuffering = player.playbackState == Player.STATE_BUFFERING,
+            durationMs = player.duration.coerceAtLeast(0L),
+            shuffle = player.shuffleModeEnabled,
+            repeatMode = player.repeatMode,
+            hasNext = player.hasNextMediaItem(),
+            hasPrevious = player.hasPreviousMediaItem(),
+            queueSize = player.mediaItemCount
+        )
+    }
+
+    private fun Track.toMediaItem(): MediaItem = MediaItem.Builder()
+        .setMediaId(id.toString())
+        .setUri(uri)
+        .setMediaMetadata(
+            MediaMetadata.Builder()
+                .setTitle(title)
+                .setArtist(artist)
+                .setAlbumTitle(album)
+                .setArtworkUri(albumArtUri(albumId))
+                .setIsBrowsable(false)
+                .setIsPlayable(true)
+                .build()
+        )
+        .build()
+
+    private companion object {
+        val AlbumArtBase: Uri = Uri.parse("content://media/external/audio/albumart")
+
+        fun albumArtUri(albumId: Long): Uri? =
+            if (albumId > 0) ContentUris.withAppendedId(AlbumArtBase, albumId) else null
+
+        /** Press "previous" after this much and you get the track restarted instead. */
+        const val RestartThresholdMs = 3_000L
+
+        /** How long the sleep timer takes to fade playback out. */
+        const val FadeMs = 5_000L
+    }
+}

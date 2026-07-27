@@ -1,0 +1,34 @@
+# Build output
+build/
+.gradle/
+.kotlin/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+local.jar
+
+# Machine-specific, and the place the secrets live.
+#
+# local.properties carries sdk.dir *and* the Last.fm application credentials
+# (LASTFM_API_KEY / LASTFM_API_SECRET) that app/build.gradle.kts reads into BuildConfig.
+# See local.properties.example. Never commit the real one.
+local.properties
+
+# Release signing. keystore.properties names the keystore and holds both passwords.
+keystore.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Logs and profiling output
+*.log
+*.hprof

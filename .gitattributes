@@ -1,0 +1,24 @@
+# Normalise text on the way in, and let each checkout use its own line endings.
+* text=auto
+
+# The wrapper script is run by /bin/sh. With CRLF it fails on Linux and macOS with a
+# "bad interpreter" error, so it must stay LF whatever the checkout platform does.
+gradlew text eol=lf
+*.sh    text eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Never touched.
+*.ttf   binary
+*.otf   binary
+*.jar   binary
+*.png   binary
+*.jpg   binary
+*.webp  binary
+*.mp3   binary
+*.m4a   binary
+*.aar   binary
+*.keystore binary
+*.jks   binary

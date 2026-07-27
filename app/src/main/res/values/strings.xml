@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Every word the app says, in one place.
+
+    Lower case throughout, on purpose: WP8 set page titles, headers and list rows in lower case and
+    that is part of the look, not a typo. A translation should keep it wherever the target language's
+    orthography allows.
+
+    Adding a language means one folder — values-ru/strings.xml and so on — and nothing else; there is
+    no user-visible literal left in the Kotlin. Counts go through <plurals> rather than through
+    "%d songs", because "2 песни" and "5 песен" are different forms and a format string cannot know
+    that.
+-->
+<resources>
+    <string name="app_name">MetroMusic</string>
+    <!-- Name of the notification channel the playback notification lives in; the user sees it
+         in the system's per-app notification settings. -->
+    <string name="playback_channel">Now playing</string>
+
+    <!-- ==== chrome shared by several pages ==== -->
+    <string name="overline_app">METROMUSIC</string>
+    <string name="overline_settings">SETTINGS</string>
+    <string name="overline_artist">ARTIST</string>
+    <string name="overline_genre">GENRE</string>
+    <string name="overline_playlist">PLAYLIST</string>
+    <string name="overline_lyrics">LYRICS</string>
+    <string name="action_play">play</string>
+    <string name="action_shuffle">shuffle</string>
+    <string name="action_pause">pause</string>
+    <string name="action_previous">previous</string>
+    <string name="action_next">next</string>
+    <string name="action_play_next">play next</string>
+    <string name="action_artist">artist</string>
+    <string name="action_delete">delete</string>
+    <string name="action_rename">rename</string>
+    <string name="action_new">new</string>
+    <string name="action_done">done</string>
+    <string name="action_save">save</string>
+    <string name="label_name">name</string>
+    <string name="unknown">unknown</string>
+
+    <!-- ==== home panorama ==== -->
+    <string name="collection_title">collection</string>
+    <string name="section_artists">artists</string>
+    <string name="section_albums">albums</string>
+    <string name="section_songs">songs</string>
+    <string name="section_genres">genres</string>
+    <string name="section_more">more</string>
+    <string name="section_history">history</string>
+    <string name="section_settings">settings</string>
+    <string name="row_playlists">playlists</string>
+    <string name="row_rescan">rescan</string>
+    <string name="row_rescan_hint">look for new music</string>
+    <string name="empty_no_artists">no artists yet</string>
+    <string name="empty_no_albums">no albums yet</string>
+    <string name="empty_no_songs">no songs found on this device</string>
+    <string name="empty_no_genres">no genre tags in this library</string>
+    <string name="empty_history">nothing played yet</string>
+    <string name="empty_history_loading">reading your library…</string>
+
+    <!-- ==== settings index ==== -->
+    <string name="settings_theme">theme</string>
+    <string name="settings_theme_hint">accent, background, artwork</string>
+    <string name="settings_interface">interface</string>
+    <string name="settings_interface_hint">order of the sections here</string>
+    <string name="settings_equalizer">equalizer</string>
+    <string name="settings_equalizer_hint">bands, presets, bass</string>
+    <string name="settings_lastfm">last.fm</string>
+    <string name="settings_lastfm_hint">scrobble what you play</string>
+    <string name="settings_playback">playback</string>
+    <string name="settings_playback_hint">sleep timer</string>
+    <string name="settings_library">library</string>
+    <string name="settings_library_hint">what counts as music</string>
+    <string name="settings_hidden">hidden</string>
+    <string name="settings_hidden_hint">artists and albums you took out</string>
+    <string name="hidden_empty">nothing is hidden.</string>
+    <string name="hidden_explainer">hidden artists and albums are left out of every list in the app.
+        tap one to bring it back.</string>
+    <string name="hidden_tap_to_show">tap to show again</string>
+    <string name="hidden_show_all">show everything</string>
+    <string name="settings_credit">MetroMusic — built on MangoTile</string>
+
+    <!-- ==== theme page ==== -->
+    <string name="theme_accent">accent</string>
+    <string name="theme_background">background</string>
+    <string name="theme_background_default">use the theme\'s own background</string>
+    <string name="theme_background_default_in_use">in use</string>
+    <string name="theme_background_default_hint">tap to go back to it</string>
+    <string name="theme_follow_device">follow the device theme</string>
+    <string name="theme_dark">dark</string>
+    <string name="theme_light">light</string>
+    <string name="theme_tap_to_switch">tap to switch</string>
+    <string name="theme_artwork_background">album art behind the panorama</string>
+    <string name="theme_explainer">the accent colours every tile, header and toggle in the app;
+        the background is what the panorama and every page sit on.</string>
+
+    <!-- ==== interface page ==== -->
+    <string name="interface_sections">sections</string>
+    <string name="interface_sections_explainer">the order they come in when you swipe. the panorama
+        wraps, so the last one is also one swipe to the left of the first.</string>
+    <string name="interface_move_up">▲</string>
+    <string name="interface_move_down">▼</string>
+    <string name="interface_strip">now playing strip</string>
+    <string name="interface_strip_artwork">show the album art</string>
+    <string name="interface_strip_explainer">swipe the strip sideways to change track either
+        way.</string>
+    <string name="library_scan_report">the system knows about %1$d audio files here; %2$d are marked
+        as something other than music and %3$d are shorter than the minimum above.</string>
+    <string name="interface_lists">lists</string>
+    <string name="interface_letter_tiles">accent square behind group letters</string>
+    <string name="library_split_artists">split artists in a credit</string>
+    <string name="library_split_artists_explainer">a track tagged “artist feat. guest” or
+        “artist, other” is listed under each of them, instead of making a section of its own. turn
+        this off if it splits a band whose name has a comma or an ampersand in it.</string>
+    <string name="artwork_heading">album art</string>
+    <string name="artwork_online">look up missing covers</string>
+    <string name="artwork_online_explainer">for albums with no cover in their files, ask last.fm for
+        one and keep it on this device. nothing is sent but the artist and album name, and an album
+        is asked about once.</string>
+
+    <!-- ==== equalizer page ==== -->
+    <string name="equalizer_none">this device has no equalizer to offer.</string>
+    <string name="equalizer_preset">preset</string>
+    <string name="equalizer_preset_custom">custom</string>
+    <string name="equalizer_bands">bands</string>
+    <string name="equalizer_flat">flat</string>
+    <string name="equalizer_bass">bass boost</string>
+    <!-- A frequency in hertz, e.g. "60 Hz". -->
+    <string name="equalizer_hz">%1$d Hz</string>
+    <!-- A frequency in kilohertz, e.g. "3.6 kHz". -->
+    <string name="equalizer_khz">%1$s kHz</string>
+    <!-- A gain, always signed: "+3.0 dB", "-1.5 dB". -->
+    <string name="equalizer_db">%1$s dB</string>
+    <string name="percent">%1$d%%</string>
+
+    <!-- ==== last.fm page ==== -->
+    <string name="lastfm_scrobble">scrobble</string>
+    <string name="lastfm_signed_out">not signed in</string>
+    <!-- %1$s is the last.fm username. -->
+    <string name="lastfm_signed_in_as">signed in as %1$s</string>
+    <string name="lastfm_login">login</string>
+    <string name="lastfm_logout">log out</string>
+    <string name="lastfm_needs_key">needs an api key first</string>
+    <string name="lastfm_tap_sign_out">tap to sign out</string>
+    <string name="lastfm_tap_sign_in">tap to sign in</string>
+    <string name="lastfm_queue_hint">saved on this phone, sent when there is internet — tap to try
+        now</string>
+    <string name="lastfm_api_key">api key</string>
+    <string name="lastfm_api_secret">shared secret</string>
+    <string name="lastfm_key_explainer">an api key identifies this app, not you. create one at
+        last.fm/api/account/create and paste it here, or put LASTFM_API_KEY and LASTFM_API_SECRET in
+        local.properties before building.</string>
+    <string name="lastfm_asking">asking last.fm for a token…</string>
+    <string name="lastfm_no_answer">last.fm did not answer. check the api key and the
+        network.</string>
+    <string name="lastfm_authorize">sign in and allow access</string>
+    <string name="lastfm_gave_up">gave up waiting. close this and try again.</string>
+
+    <!-- ==== playback and library pages ==== -->
+    <string name="sleep_timer">sleep timer</string>
+    <string name="sleep_off">off</string>
+    <!-- Time left on the sleep timer, e.g. "12:30 left". -->
+    <string name="sleep_left">%1$s left</string>
+    <string name="sleep_restart">start the timer again</string>
+    <string name="sleep_15">15 minutes</string>
+    <string name="sleep_30">30 minutes</string>
+    <string name="sleep_45">45 minutes</string>
+    <string name="sleep_60">1 hour</string>
+    <string name="sleep_120">2 hours</string>
+    <!-- Length of the timer in the "start again" row, e.g. "30 minutes". -->
+    <string name="minutes">%1$d minutes</string>
+    <string name="library_min_length">ignore clips shorter than</string>
+    <!-- Duration in whole seconds, e.g. "30 seconds". -->
+    <string name="seconds">%1$d seconds</string>
+    <string name="library_scanning">scanning…</string>
+    <string name="lyrics_heading">lyrics</string>
+    <string name="lyrics_lookup">look up lyrics</string>
+    <string name="lyrics_explainer">lyrics come from genius. whether a song has any is checked once,
+        in the background, and remembered — that is what greys out “show lyrics” for the ones that
+        have none.</string>
+
+    <!-- The banner that confirms something was queued; the title of what was added follows it. -->
+    <string name="queued_heading">ADDED TO QUEUE</string>
+
+    <!-- ==== track menu ==== -->
+    <string name="menu_play_next">play next</string>
+    <string name="menu_favorite_add">add to favorites</string>
+    <string name="menu_favorite_remove">remove from favorites</string>
+    <string name="menu_add_to_playlist">add to playlist</string>
+    <string name="menu_show_lyrics">show lyrics</string>
+    <string name="menu_remove_from_playlist">remove from playlist</string>
+    <string name="menu_hide">hide</string>
+    <string name="menu_edit">edit</string>
+    <string name="menu_merge_genre">merge into…</string>
+    <string name="search_placeholder">search</string>
+    <string name="press_back_again">press back again to close</string>
+    <string name="action_cancel">cancel</string>
+
+    <!-- ==== album metadata ==== -->
+    <string name="album_edit">edit album</string>
+    <string name="album_edit_title">album</string>
+    <string name="album_edit_artist">artist</string>
+    <string name="album_edit_year">year</string>
+    <string name="album_edit_genre">genre</string>
+    <string name="album_edit_saving">saving…</string>
+    <string name="album_edit_explainer">this writes the tags inside the files themselves, so every app
+        sees the change and a rescan keeps it. android asks for your permission once before an app may
+        touch music it did not put there.</string>
+    <string name="album_edit_no_consent">android did not allow writing to these files.</string>
+
+    <!-- ==== gestures ==== -->
+    <string name="settings_gestures">gestures</string>
+    <string name="settings_gestures_hint">what a swipe does, and where</string>
+    <string name="gesture_strip_swipe">swipe sideways to change track</string>
+    <string name="gesture_strip_up">swipe up to open the player</string>
+    <string name="gesture_player">player</string>
+    <string name="gesture_player_swipe">swipe sideways to change track</string>
+    <string name="gesture_player_down">swipe down to collapse</string>
+    <string name="gesture_explainer">tapping always works and is not listed here. turn a gesture off
+        if it fires when you did not mean it to.</string>
+
+    <!-- ==== genres ==== -->
+    <string name="library_fix_genres">fix genres doubling</string>
+    <string name="library_fix_genres_explainer">treats “Electro”, “electro” and “electro.” as one
+        genre, keeping the spelling most of your files use. hold a genre to merge it into another by
+        hand.</string>
+    <string name="menu_favorite">favorite</string>
+    <string name="menu_unfavorite">unfavorite</string>
+    <string name="playlist_new_option">new playlist…</string>
+    <string name="playlist_new_title">new playlist</string>
+
+    <!-- ==== player ==== -->
+    <string name="player_nothing">nothing is playing</string>
+    <string name="player_shuffle_on">shuffle on</string>
+    <string name="player_repeat_off">repeat off</string>
+    <string name="player_repeat_all">repeat all</string>
+    <string name="player_repeat_one">repeat one</string>
+    <string name="volume">volume</string>
+
+    <!-- ==== lyrics page ==== -->
+    <string name="lyrics_none">no lyrics found for this one.</string>
+    <string name="lyrics_source">lyrics from genius</string>
+
+    <!-- ==== detail pages ==== -->
+    <string name="album_title">album</string>
+    <string name="album_gone">this album is no longer on the device</string>
+    <string name="album_unknown_year">unknown year</string>
+    <string name="artist_title">artist</string>
+    <string name="artist_gone">this artist is no longer on the device</string>
+    <string name="genre_gone">nothing tagged with this genre any more</string>
+    <string name="playlist_not_found">not found</string>
+    <string name="playlist_gone">this playlist was deleted</string>
+    <string name="playlist_empty">nothing here yet — hold a song anywhere and choose “add to
+        playlist”</string>
+    <string name="playlists_empty">no playlists yet — tap + to make one</string>
+    <string name="playlists_favorites">favorites</string>
+    <string name="playlist_rename_title">rename playlist</string>
+    <string name="playlist_delete_title">delete playlist?</string>
+    <!-- %1$s is the playlist's name. -->
+    <string name="playlist_delete_message">“%1$s” will be removed. The songs themselves stay on your
+        device.</string>
+    <string name="playlist_reorder">≡</string>
+
+    <!-- ==== permission gate ==== -->
+    <string name="permission_title">no access</string>
+    <string name="permission_body">MetroMusic plays the music already on this device, so it needs
+        permission to read your audio files. Nothing is uploaded anywhere.</string>
+    <string name="permission_button">allow access</string>
+    <string name="permission_manual">If the prompt no longer appears, grant it in Settings → Apps →
+        MetroMusic → Permissions.</string>
+
+    <!-- ==== home-screen tile ==== -->
+    <string name="tile_label">metromusic</string>
+
+    <!-- ==== counts ==== -->
+    <plurals name="songs">
+        <item quantity="one">%1$d song</item>
+        <item quantity="other">%1$d songs</item>
+    </plurals>
+    <plurals name="albums">
+        <item quantity="one">%1$d album</item>
+        <item quantity="other">%1$d albums</item>
+    </plurals>
+    <plurals name="artists">
+        <item quantity="one">%1$d artist</item>
+        <item quantity="other">%1$d artists</item>
+    </plurals>
+    <plurals name="scrobbles_waiting">
+        <item quantity="one">%1$d waiting to go up</item>
+        <item quantity="other">%1$d waiting to go up</item>
+    </plurals>
+</resources>

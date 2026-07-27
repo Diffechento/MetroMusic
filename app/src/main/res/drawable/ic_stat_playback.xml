@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status-bar icon for the playback notification.
+
+     Status-bar icons are drawn as a mask: only the alpha channel survives, the platform
+     picks the colour, so this is one solid white quaver on transparency with no second
+     tone to lose. Same shape as the launcher icon, redrawn at 24dp so the stem stays a
+     crisp two pixels instead of being a scaled-down 108dp path. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3 L19,5.6 L19,9 L14.5,7.3 L14.5,15.5 L12,15.5 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9,15.5 m-4.2,0 a4.2,3.4 0 1,0 8.4,0 a4.2,3.4 0 1,0 -8.4,0" />
+</vector>

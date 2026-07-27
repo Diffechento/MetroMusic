@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon: the owner's drawing, traced to vector — see ic_launcher_foreground.
+
+     The background is only ever a hair of paper at the very rim: the artwork is placed to cover the
+     whole of the region any mask can show, and it is the artwork's own off-white so a launcher that
+     does reach past it shows the same colour the picture is drawn on.
+
+     minSdk is 26, so there is no pre-adaptive PNG to keep in step: this file is the icon. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_paper" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <!-- Android 13+ themed icons: the train alone, for the launcher to recolour. -->
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>
