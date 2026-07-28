@@ -52,6 +52,7 @@ import com.metromusic.ui.screens.PlaylistDetailScreen
 import com.metromusic.ui.screens.PlaylistsScreen
 import com.metromusic.ui.screens.SettingsDetailScreen
 import com.metromusic.ui.screens.SettingsScreen
+import kotlinx.coroutines.flow.first
 
 /**
  * The app's shell: a back stack, the turnstile between destinations, the mini player pinned
@@ -86,6 +87,14 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
         // Scrobbling watches the same state flow the UI does rather than polling the player.
         services.scrobbler.attach(services.player.state)
         services.scrobbler.flush()
+    }
+
+    // The queue from the last time the app was open. It waits for the library rather than for the
+    // scan flag: the queue is stored as track ids and there is nothing to resolve them against
+    // until tracks exist, and a library that never fills has nothing to restore anyway.
+    LaunchedEffect(Unit) {
+        val scanned = services.library.library.first { it.tracks.isNotEmpty() }
+        services.player.restoreLastSession(scanned)
     }
 
     // Which songs have lyrics is settled in the background, once per library, so the context menu

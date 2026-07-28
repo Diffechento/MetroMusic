@@ -14,9 +14,18 @@ Bluetooth, audio focus, and playback that survives the activity. Mini player as 
 player as an overlay that rises out of it. Sleep timer with a fade-out. Equalizer and bass boost
 over the device's own bands.
 
+**Apple Lossless, decoded in the app** — Android ships no ALAC decoder, and where there is none
+Media3 raises no error: it marks the track unsupported, plays nothing and runs the position against
+the clock, which looks like a player playing an album in silence. A software decoder (BSD, vendored)
+sits behind a renderer added after the platform's own, so a device that does have one keeps using it.
+16- and 24-bit, hi-res not cut down to 16 on the way through. The **length** of a file whose
+`duration` MediaStore leaves empty — the same ALAC files, on the same devices — is measured from the
+container instead of shown as blank.
+
 **The queue** — `play next` on albums, artists, genres and tracks, inserting after the last block
 queued rather than always next, so several albums play in the order they were picked. A top
-banner confirms it, since nothing else on screen changes.
+banner confirms it, since nothing else on screen changes. The queue and the current track survive
+being closed: they come back paused, at the start of the track, resolved from the library by id.
 
 **Names that real files spell badly** — one credit string split into several artists
 (`feat.`, `&`, `,`, `vs.`) and filed under every one of them, with the display credit left

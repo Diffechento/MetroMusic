@@ -10,6 +10,7 @@ import com.metromusic.data.media.MediaStoreScanner
 import com.metromusic.data.media.OnlineArtwork
 import com.metromusic.data.store.GenreStore
 import com.metromusic.data.store.HiddenStore
+import com.metromusic.data.store.PlaybackStateStore
 import com.metromusic.data.store.PlaylistStore
 import com.metromusic.data.store.SettingsStore
 import com.metromusic.data.store.StatsStore
@@ -71,7 +72,12 @@ class Services(context: Context) {
         )
     }
 
-    val player: PlayerController by lazy { PlayerController(appContext, scope, stats) }
+    /** The queue as it was left, so a launch resumes where the last one stopped. */
+    val playbackState: PlaybackStateStore by lazy { PlaybackStateStore(appContext, scope) }
+
+    val player: PlayerController by lazy {
+        PlayerController(appContext, scope, stats, playbackState)
+    }
 
     /**
      * The equalizer, and the audio session the player is told to use. Built eagerly enough that

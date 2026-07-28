@@ -113,8 +113,13 @@ class MediaStoreScanner(private val context: Context) {
                     notMusic++
                     continue
                 }
-                // Zero or missing means "the store does not know", not "an empty file".
-                val duration = if (c.isNull(durationCol)) 0L else c.getLong(durationCol)
+                val id = c.getLong(idCol)
+                // Zero or missing means "the store does not know", not "an empty file" — and where it
+                // does not know, the container does: see [TrackDuration]. Without this an ALAC album
+                // is a list of rows with a blank where every other row has a number, and it adds up
+                // to less than it is. Only ever reached for the rows the store left empty.
+                var duration = if (c.isNull(durationCol)) 0L else c.getLong(durationCol)
+                if (duration <= 0L) duration = TrackDuration.measure(context, id)
                 if (duration > 0L && duration < minDurationMs) {
                     tooShort++
                     continue
@@ -127,7 +132,7 @@ class MediaStoreScanner(private val context: Context) {
                 val artistNames = (if (splitCredits) splitArtists(credit) else listOf(credit))
                     .ifEmpty { listOf(credit) }
                 result += Track(
-                    id = c.getLong(idCol),
+                    id = id,
                     title = c.getString(titleCol) ?: UnknownTitle,
                     artist = credit,
                     artistId = artistIdOf(artistNames.first()),

@@ -15,6 +15,31 @@ with GPLv3; the notes say why, because two of these are the reason the version i
 | `org.jetbrains.kotlinx:*` | Apache-2.0 | JetBrains s.r.o. and contributors |
 | `net.jthink:jaudiotagger` | LGPL-2.1 | Paul Taylor and contributors |
 
+## Vendored source
+
+| Files | Licence | Copyright |
+| --- | --- | --- |
+| `app/src/main/java/com/beatofthedrum/alacdecoder/` | BSD-3-Clause | Peter McQuillan; ALAC decoder Copyright 2005 David Hammerton |
+
+### The ALAC decoder
+
+Android has no Apple Lossless decoder. AOSP ships none, some vendors used to and no longer do, and
+where there is none media3 reports the track as unsupported, selects nothing, and plays the file as
+silence with the position running against the clock. So the decoding is done in the app, by Peter
+McQuillan's Java implementation of David Hammerton's decoder — copied in rather than depended on,
+because it is not published to any repository.
+
+`AlacDecodeUtils.java`, `AlacFile.java`, `LeadingZeros.java` and `Defines.java` are upstream's,
+**unmodified**, with their notices intact and the licence beside them in `LICENSE.txt`.
+`AlacFrameDecoder.java` in the same folder is this project's: it lives there to reach the
+package-private decoder state, and it is the only file in that package MetroMusic wrote. The media3
+side — `AlacDecoder`, `AlacAudioRenderer`, `MetroRenderersFactory` — is under `playback/`.
+
+Three-clause BSD is permissive and combines into a GPLv3 work without friction; what it asks for is
+that the copyright notice, the conditions and the disclaimer travel with the source and with
+binaries, which is what this section and `LICENSE.txt` are for. Upstream:
+<https://github.com/soiaf/Java-Apple-Lossless-decoder>
+
 ### Apache-2.0, and why this is GPLv3
 
 Most of the stack — AndroidX, Compose, Media3, kotlinx — is Apache-2.0. Apache-2.0 is **compatible

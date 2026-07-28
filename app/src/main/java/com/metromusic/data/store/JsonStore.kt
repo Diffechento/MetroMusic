@@ -1,6 +1,7 @@
 package com.metromusic.data.store
 
 import android.util.Log
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,11 +52,30 @@ class JsonStore<T : Any>(
     @Volatile
     private var touched = false
 
+    private val firstRead = CompletableDeferred<Unit>()
+
     init {
         scope.launch {
-            val restored = read()
-            if (restored != null && !touched) _state.value = restored
+            try {
+                val restored = read()
+                if (restored != null && !touched) _state.value = restored
+            } finally {
+                firstRead.complete(Unit)
+            }
         }
+    }
+
+    /**
+     * The stored value, once the file has actually been read.
+     *
+     * [state] answers with the default until the initial read lands, which is fine for a screen —
+     * it recomposes — and wrong for a one-shot decision taken at startup. Restoring the queue is
+     * exactly that: reading "nothing was playing" a few milliseconds early is indistinguishable
+     * from there being nothing to restore, and the moment is gone.
+     */
+    suspend fun awaitLoaded(): T {
+        firstRead.await()
+        return _state.value
     }
 
     fun update(transform: (T) -> T) {

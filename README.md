@@ -41,6 +41,19 @@ queueing three albums plays them in the order you picked them instead of in reve
 on screen changes when you do it, so a banner drops from the top to say what went in and how much
 of it.
 
+**And it is still there next time.** Closing the app is not the same as stopping: the queue and the
+track you were on come back when you open it again — paused, and at the *start* of the track rather
+than dropping you into the middle of a song. Only track ids are kept, so anything deleted since is
+simply absent from the queue instead of failing when it is reached.
+
+**Apple Lossless plays, because the app decodes it itself.** Android has no ALAC decoder — AOSP ships
+none, and some vendors that had one no longer do. Where there is none, Media3 does not report an
+error: it marks the track unsupported, plays nothing, and runs the position against the clock, which
+looks exactly like a player playing your album in silence. So there is a software decoder inside
+(BSD, [vendored](THIRD-PARTY-NOTICES.md)), added *after* the platform's own renderer, so a device with
+a real ALAC decoder keeps using it. 16- and 24-bit both work, hi-res is not cut down to 16 on the way
+through, and a length MediaStore refuses to work out is measured from the file's own container.
+
 **Playlists and favourites.** Create, rename, delete, reorder by dragging the grip. Favourites are
 a permanent pseudo-playlist. Both are a few kilobytes of JSON in `filesDir`.
 
@@ -219,6 +232,10 @@ cold flow that only ticks while something is collecting it.
   openings.
 - **Files tagged by ffmpeg show "unknown year"**, because MediaStore does not map the `date` tag it
   writes. Whether real-world files behave the same is unconfirmed.
+- **20- and 32-bit ALAC are not decoded.** They are in the format and not in the decoder; both are
+  reported unsupported rather than played as silence. 16 and 24 — everything a CD rip or a hi-res
+  download actually is — work. And the length of a file whose duration MediaStore left empty is read
+  out of `moov`, which means mp4 only; another container in that state would still show no length.
 - The album, artist, playlist and genre pages still show captions under their app-bar buttons, and
   the artists and songs sections still have accent letter tiles. Both were raised once and never
   decided.

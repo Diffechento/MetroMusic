@@ -10,12 +10,15 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.metromusic.BuildConfig
 import com.metromusic.MainActivity
 import com.metromusic.MetroMusicApp
 import com.metromusic.R
+import kotlinx.coroutines.launch
 
 /**
  * Holds the one and only player for the process and publishes it as a media session.
@@ -31,7 +34,7 @@ class PlaybackService : MediaSessionService() {
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
-        val player = ExoPlayer.Builder(this)
+        val player = ExoPlayer.Builder(this, MetroRenderersFactory(this))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -48,6 +51,10 @@ class PlaybackService : MediaSessionService() {
         // settings screen can ask it what its bands are.
         val services = (application as MetroMusicApp).services
         player.setAudioSessionId(services.effects.sessionId)
+
+        // Which decoder was picked, what format it was handed and why it stopped — the only way to
+        // tell "playing silence" from "not playing" without ears on the device. Debug builds only.
+        if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger())
 
         // The one thing the session can't guess: which icon is ours. Left alone it uses media3's
         // own generic glyph, so the notification in the shade is not recognisably this app.
@@ -124,6 +131,12 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        // Swiping the app away is the one teardown this app is actually told about, and the queue's
+        // own writes are debounced — so put it on disk now rather than hope the process lives out
+        // the delay. Best effort: if the system kills us first, the last debounced write stands.
+        val services = (application as MetroMusicApp).services
+        services.scope.launch { services.playbackState.flush() }
+
         // Swiping the app away while paused should not leave a dead notification behind.
         val player = session?.player
         if (player == null || !player.playWhenReady || player.mediaItemCount == 0) {

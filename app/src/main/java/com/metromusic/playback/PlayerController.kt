@@ -10,7 +10,10 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.metromusic.data.model.Library
 import com.metromusic.data.model.Track
+import com.metromusic.data.store.PlaybackStateStore
+import com.metromusic.data.store.SavedQueue
 import com.metromusic.data.store.StatsStore
 import com.metromusic.widget.NowPlayingWidget
 import kotlinx.coroutines.CoroutineScope
@@ -47,7 +50,8 @@ import kotlinx.coroutines.withContext
 class PlayerController(
     private val context: Context,
     private val scope: CoroutineScope,
-    private val stats: StatsStore
+    private val stats: StatsStore,
+    private val savedQueue: PlaybackStateStore
 ) {
     private var controller: MediaController? = null
     private val connectMutex = Mutex()
@@ -93,6 +97,11 @@ class PlayerController(
         override fun onEvents(player: Player, events: Player.Events) = publish(player)
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // A new queue is not a play. [play] and [playNext] record their own first track, since
+            // this doesn't reliably fire for the first item of a queue that was just set — and a
+            // queue restored at startup must not count as having played anything at all, or every
+            // launch inflates the play counts and the history of whatever you last listened to.
+            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) return
             // REPEAT means the same track came round again; that still counts as a play.
             val trackId = mediaItem?.mediaId?.toLongOrNull() ?: return
             stats.recordPlay(trackId, queueAlbumIds[trackId] ?: -1L)
@@ -110,6 +119,76 @@ class PlayerController(
             publish(newController)
             newController
         }
+    }
+
+    // ---- remembering the queue ----
+
+    private var restoreAttempted = false
+
+    /**
+     * Puts back the queue the app had when it was last closed, paused and at the start of the track
+     * it was on. Called once at startup, after the library scan — the queue is stored as ids and
+     * there is nothing to resolve them against until then.
+     *
+     * Does nothing if there is already something loaded: the playback service outlives the activity,
+     * so coming back to a still-running player must not throw its queue away and replace it with a
+     * snapshot of itself, and neither must a track the user managed to tap while the scan finished.
+     */
+    suspend fun restoreLastSession(library: Library) {
+        if (restoreAttempted) return
+        restoreAttempted = true
+        val saved = savedQueue.awaitLoaded()
+        if (saved.isEmpty) return
+
+        val tracks = library.resolve(saved.trackIds)
+        if (tracks.isEmpty()) return
+        // Match on the id rather than the index: tracks that have since gone shift everything after
+        // them, and coming back on the wrong song is worse than coming back on the first one.
+        val currentId = saved.trackIds.getOrNull(saved.index)
+        val startIndex = tracks.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
+
+        command { player ->
+            if (player.mediaItemCount > 0) return@command
+            queueAlbumIds = tracks.associate { it.id to it.albumId }
+            queueTailId = saved.queueTailId?.toString()
+            // From the top of the track, not from where it was cut off: nobody wants a song
+            // handed back to them from the middle.
+            player.setMediaItems(tracks.map { it.toMediaItem() }, startIndex, 0L)
+            player.shuffleModeEnabled = saved.shuffle
+            player.repeatMode = saved.repeatMode
+            // prepare() and *not* play(): buffered, seekable and on the strip, but silent until
+            // something is pressed.
+            player.prepare()
+        }
+    }
+
+    /**
+     * Snapshots the queue into [PlaybackStateStore]. Main thread, like every other player read.
+     *
+     * Called from [publish], which is enough precisely because the position isn't kept: everything
+     * that changes what would be restored — a new queue, a skip, shuffle, repeat — is an event, and
+     * a track that is merely playing changes none of it.
+     */
+    private fun remember(player: Player) {
+        val count = player.mediaItemCount
+        // An empty player is the state at startup, before the restore has run — saving it there
+        // would erase the queue we are about to put back. Emptying the queue on purpose ([stop])
+        // clears the store itself.
+        if (count == 0) return
+        val ids = ArrayList<Long>(count)
+        for (i in 0 until count) {
+            ids.add(player.getMediaItemAt(i).mediaId.toLongOrNull() ?: continue)
+        }
+        if (ids.isEmpty()) return
+        savedQueue.save(
+            SavedQueue(
+                trackIds = ids,
+                index = player.currentMediaItemIndex.coerceIn(0, ids.lastIndex),
+                shuffle = player.shuffleModeEnabled,
+                repeatMode = player.repeatMode,
+                queueTailId = queueTailId?.toLongOrNull()
+            )
+        )
     }
 
     /**
@@ -224,6 +303,8 @@ class PlayerController(
         player.stop()
         player.clearMediaItems()
         queueTailId = null
+        // Emptying the queue on purpose is the one thing that must not come back next launch.
+        savedQueue.clear()
     }
 
     // ---- sleep timer ----
@@ -299,6 +380,7 @@ class PlayerController(
     private fun publish(player: Player) {
         val item = player.currentMediaItem
         val metadata = player.mediaMetadata
+        remember(player)
         NowPlayingWidget.publish(
             context = context,
             title = metadata.title?.toString().orEmpty(),
