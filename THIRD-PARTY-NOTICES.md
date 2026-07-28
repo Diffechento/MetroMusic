@@ -37,7 +37,9 @@ side — `AlacDecoder`, `AlacAudioRenderer`, `MetroRenderersFactory` — is unde
 
 Three-clause BSD is permissive and combines into a GPLv3 work without friction; what it asks for is
 that the copyright notice, the conditions and the disclaimer travel with the source and with
-binaries, which is what this section and `LICENSE.txt` are for. Upstream:
+binaries, which is what this section and `LICENSE.txt` are for. **A binary is where that is easy to
+get wrong**: an APK reaches someone with no file next to it, so the notice is also inside the app, on
+settings → about, along with the rest of this list and where to get the source. Upstream:
 <https://github.com/soiaf/Java-Apple-Lossless-decoder>
 
 ### Apache-2.0, and why this is GPLv3

@@ -48,6 +48,11 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        // The date this version was released, shown on the about page. A literal beside the version
+        // rather than the moment of the build: `Date()` here would change on every configure, so no
+        // two builds of the same source would agree and Gradle could never call the task up to date.
+        buildConfigField("String", "RELEASE_DATE", "\"28 july 2026\"")
+
         buildConfigField(
             "String",
             "LASTFM_API_KEY",

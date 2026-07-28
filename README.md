@@ -105,6 +105,15 @@ when credentials appear, from a backing-off timer for what the system does not r
 settings page, where the waiting count is a row you can tap. Signing in is Last.fm's own web page
 in a `WebView`, so nothing here ever sees a password.
 
+**Favourites against Last.fm's loved tracks**, if you switch it on (settings → last.fm). Both
+directions: a heart added here is loved there, a love removed on the website stops being a favourite
+here. It is a three-way merge against what the two sides agreed on at the last run rather than a
+copy of one over the other — that is the only way to tell a track *added here* from one *removed
+there* — and the first run keeps everything from both sides. Only music that is actually on the
+device is compared, so a phone with forty tracks cannot un-love a profile with seven hundred, and
+deleting a file never removes a love. Tracks are matched by artist and title, which is also the
+limit of it: a file whose tags disagree with your profile is a different track.
+
 **Missing album art**, for albums whose files carry no cover: asked about once, remembered, and
 kept as a file so two albums with the same cover share one. "No cover" and "could not ask" are
 different answers and only the first is remembered — one morning behind a captive portal must not
@@ -193,10 +202,9 @@ Extending it is deliberately mechanical, and the compiler points at the spot:
   title/subtitle pair. It then appears in both places that list the pages.
 - **A singleton** — one `by lazy` line in `Services`, read through `LocalServices`.
 
-`CLAUDE.md` in this repository is the long version: the traps behind each of these, why the
-player is an overlay rather than a destination, what the continuum keys must not collide with, and
-how to test the parts that only misbehave on a real phone. It is written for whoever picks the
-project up next, human or otherwise.
+The reasoning behind each of them — why the player is an overlay rather than a destination, what a
+continuum key must not collide with, why hiding is applied in exactly one place — is in the comments
+beside the code, written for whoever picks the project up next.
 
 ## Keeping it small
 

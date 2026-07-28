@@ -40,6 +40,24 @@ class StatsStore(context: Context, scope: CoroutineScope) {
         )
     }
 
+    /**
+     * Sets a favourite to a known value, rather than flipping whatever is there.
+     *
+     * For the Last.fm loves sync, which knows what the answer should be: a toggle applied to a state
+     * that has changed since it was read does the opposite of what was intended, and the two ends of a
+     * sync would then chase each other.
+     */
+    fun setFavorite(trackId: Long, favorite: Boolean) = store.update { stats ->
+        val favorites = stats.favorites
+        if (favorite == trackId in favorites) {
+            stats
+        } else {
+            stats.copy(
+                favorites = if (favorite) favorites + trackId else favorites - trackId
+            )
+        }
+    }
+
     /** Called when a track actually starts playing, not when it is merely queued. */
     fun recordPlay(trackId: Long, albumId: Long) = store.update { stats ->
         stats.copy(

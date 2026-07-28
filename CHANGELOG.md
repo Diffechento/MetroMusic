@@ -47,10 +47,17 @@ records the second a track *started* and flushes when a validated network appear
 underground turns up in the right order; missing album art fetched from Last.fm, with "no cover"
 and "could not ask" kept apart; lyrics read from Genius with no API token.
 
+**Favourites and Last.fm's loved tracks, kept the same** — opt-in, and in both directions: a heart
+added here is loved there, a love removed on the website stops being a favourite here. It is a
+three-way merge against what the two sides agreed on last time, not a copy, so neither end has to
+lose anything to the other; the first run is a union. Only music that is on the device is ever
+compared, which is what keeps a library of forty tracks from un-loving a profile of seven hundred.
+
 **Look** — all twenty WP8 accents, light and dark, an optional custom background or the playing
 cover as wallpaper, one backdrop behind every page. Volume banner in place of the system panel.
 Switchable gestures. Home-screen live tile. All user-visible text in `strings.xml`, counts through
-`<plurals>`.
+`<plurals>`. An about page with the version, the date, the licence — and six tiles that each carry a
+real number out of your own library and turn over when you poke them.
 
 **Release builds** — `assembleRelease` signs with the debug key unless a `keystore.properties`
 exists, because an unsigned APK is one no device will install. R8 on.

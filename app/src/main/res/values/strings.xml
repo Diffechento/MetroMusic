@@ -78,7 +78,61 @@
         tap one to bring it back.</string>
     <string name="hidden_tap_to_show">tap to show again</string>
     <string name="hidden_show_all">show everything</string>
+    <string name="settings_about">about</string>
     <string name="settings_credit">MetroMusic — built on MangoTile</string>
+
+    <!-- ==== last.fm loves ==== -->
+    <string name="lastfm_loves">loved tracks</string>
+    <string name="lastfm_sync_loves">sync with favourites</string>
+    <string name="lastfm_loves_queue_hint">tap to send them now</string>
+    <string name="lastfm_loves_sync_now">sync now</string>
+    <string name="lastfm_loves_never">not synced yet</string>
+    <string name="lastfm_loves_last">last synced %1$s</string>
+    <string name="lastfm_loves_scratch">sync from scratch</string>
+    <string name="lastfm_loves_scratch_hint">forget what was matched and merge both sides again</string>
+    <string name="lastfm_loves_explainer">favourites here and loved tracks on last.fm are kept the
+        same in both directions: a heart added here is loved there, and one removed on the website
+        stops being a favourite here. tracks are matched by artist and title, so a file whose tags
+        differ from your profile is a different track. the first sync keeps everything from both
+        sides.</string>
+    <plurals name="loves_waiting">
+        <item quantity="one">%1$d love waiting to go up</item>
+        <item quantity="other">%1$d loves waiting to go up</item>
+    </plurals>
+
+    <!-- ==== about page ==== -->
+    <string name="about_version">version %1$s (build %2$d)</string>
+    <string name="about_copyright">© 2026 Diffechento</string>
+    <string name="about_licence">GNU General Public License v3 · built on MangoTile (MIT)</string>
+    <string name="about_tiles">tiles</string>
+    <string name="about_pokes_none">tap one.</string>
+    <plurals name="about_pokes">
+        <item quantity="one">%1$d poke</item>
+        <item quantity="other">%1$d pokes</item>
+    </plurals>
+    <string name="about_pokes_few">they don\'t mind.</string>
+    <string name="about_pokes_some">the phone would approve.</string>
+    <string name="about_pokes_many">you have found the pointless part of the app.</string>
+    <string name="about_pokes_plenty">this is the most attention any tile has ever had.</string>
+    <string name="about_tile_songs">songs</string>
+    <string name="about_tile_albums">albums</string>
+    <string name="about_tile_artists">artists</string>
+    <string name="about_tile_favourites">favourites</string>
+    <string name="about_tile_plays">plays</string>
+    <string name="about_tile_playlists">playlists</string>
+    <string name="about_explainer">each tile carries a real number from your own library, the way a
+        live tile did. tap one to turn it over.</string>
+    <string name="about_notices">notices</string>
+    <string name="about_notices_body">Apple Lossless decoding: Copyright © Peter McQuillan; ALAC
+        decoder Copyright © 2005 David Hammerton. BSD 3-clause — redistributed in source and binary
+        form with its copyright notice, conditions and disclaimer, which are in LICENSE.txt beside
+        the decoder\'s source.\n\nMangoTile (MIT) © Diffechento, bundling the Selawik typeface
+        © 2015 Microsoft Corporation under the SIL Open Font License 1.1. jaudiotagger (LGPL-2.1)
+        © Paul Taylor. AndroidX, Compose, Media3 and kotlinx (Apache-2.0) © The Android Open Source
+        Project and JetBrains.\n\nNot affiliated with Microsoft, Last.fm or Genius.</string>
+    <string name="about_source">this app is free software under the GNU General Public License v3.
+        the complete source, and the full text of every licence above, are at
+        github.com/Diffechento/MetroMusic</string>
 
     <!-- ==== theme page ==== -->
     <string name="theme_accent">accent</string>

@@ -53,6 +53,7 @@ import com.metromusic.ui.formatAlbumCount
 import com.metromusic.ui.formatArtistCount
 import com.metromusic.ui.formatDuration
 import com.metromusic.ui.formatTrackCount
+import com.metromusic.ui.formatWhen
 import com.metromusic.ui.nav.SettingsPage
 import java.util.Locale
 
@@ -74,6 +75,7 @@ fun SettingsDetailScreen(page: SettingsPage) {
         SettingsPage.Library -> LibrarySettings()
         SettingsPage.Gestures -> GestureSettings()
         SettingsPage.Hidden -> HiddenSettings()
+        SettingsPage.About -> AboutSettings()
     }
 }
 
@@ -499,6 +501,7 @@ private fun LastFmSettings() {
     val colors = MetroTheme.colors
     val settings by services.settings.settings.collectAsStateWithLifecycle()
     val queue by services.scrobbler.pending.collectAsStateWithLifecycle()
+    val loves by services.loves.state.collectAsStateWithLifecycle()
 
     var signingIn by remember { mutableStateOf(false) }
     var key by remember(settings.lastfmApiKey) { mutableStateOf(settings.lastfmApiKey.orEmpty()) }
@@ -554,6 +557,56 @@ private fun LastFmSettings() {
                 ),
                 secondary = stringResource(R.string.lastfm_queue_hint),
                 onClick = { services.scrobbler.flush() }
+            )
+        }
+
+        // Only offered to an account, because there is nothing to reconcile against without one — and
+        // switching it on is what starts the first reconciliation, which is a union of both sides.
+        if (signedIn) {
+            Spacer(Modifier.height(14.dp))
+            SettingsHeader(stringResource(R.string.lastfm_loves))
+            SettingRow(
+                title = stringResource(R.string.lastfm_sync_loves),
+                checked = settings.syncLoves,
+                onChange = { services.settings.setSyncLoves(it) }
+            )
+            if (settings.syncLoves) {
+                if (loves.pending.isNotEmpty()) {
+                    ListRow(
+                        primary = pluralStringResource(
+                            R.plurals.loves_waiting,
+                            loves.pending.size,
+                            loves.pending.size
+                        ),
+                        secondary = stringResource(R.string.lastfm_loves_queue_hint),
+                        onClick = { services.loves.sync(pull = true) }
+                    )
+                } else {
+                    ListRow(
+                        primary = stringResource(R.string.lastfm_loves_sync_now),
+                        secondary = if (loves.isFresh) {
+                            stringResource(R.string.lastfm_loves_never)
+                        } else {
+                            stringResource(
+                                R.string.lastfm_loves_last,
+                                formatWhen(loves.lastSyncedAtMs)
+                            )
+                        },
+                        onClick = { services.loves.sync(pull = true) }
+                    )
+                }
+                ListRow(
+                    primary = stringResource(R.string.lastfm_loves_scratch),
+                    secondary = stringResource(R.string.lastfm_loves_scratch_hint),
+                    onClick = { services.loves.forgetBaseline() }
+                )
+            }
+            Text(
+                text = stringResource(R.string.lastfm_loves_explainer),
+                color = colors.dim,
+                fontFamily = MetroRegular,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
         }
 
@@ -752,7 +805,7 @@ private fun LibrarySettings() {
 // ---- shared bits ----
 
 @Composable
-private fun SettingsPageFrame(title: String, content: @Composable () -> Unit) {
+internal fun SettingsPageFrame(title: String, content: @Composable () -> Unit) {
     MetroPage("SETTINGS", title) {
         Column(
             Modifier
@@ -766,7 +819,7 @@ private fun SettingsPageFrame(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SettingsHeader(text: String) {
+internal fun SettingsHeader(text: String) {
     Text(
         text = text,
         color = MetroTheme.colors.subtle,

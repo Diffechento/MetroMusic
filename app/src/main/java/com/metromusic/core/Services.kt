@@ -2,6 +2,7 @@ package com.metromusic.core
 
 import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.metromusic.data.lastfm.LovesSync
 import com.metromusic.data.lastfm.Scrobbler
 import com.metromusic.data.library.LibraryRepository
 import com.metromusic.data.lyrics.LyricsRepository
@@ -90,6 +91,11 @@ class Services(context: Context) {
     val lyrics: LyricsRepository by lazy { LyricsRepository(appContext, scope, settings) }
 
     val scrobbler: Scrobbler by lazy { Scrobbler(appContext, scope, settings, connectivity) }
+
+    /** Favourites and Last.fm's loved tracks, kept the same when the user asks for it. */
+    val loves: LovesSync by lazy {
+        LovesSync(appContext, scope, settings, stats, library, connectivity)
+    }
 }
 
 /**

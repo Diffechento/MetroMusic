@@ -43,7 +43,7 @@ fun SettingsScreen(onNavigate: (Screen) -> Unit) {
             SettingsPage.entries.forEach { page ->
                 ListRow(
                     primary = stringResource(titleOf(page)),
-                    secondary = stringResource(subtitleOf(page)),
+                    secondary = subtitleOf(page)?.let { stringResource(it) },
                     onClick = { onNavigate(Screen.SettingsDetail(page)) }
                 )
             }
@@ -76,10 +76,15 @@ internal fun titleOf(page: SettingsPage): Int = when (page) {
     SettingsPage.Playback -> R.string.settings_playback
     SettingsPage.Library -> R.string.settings_library
     SettingsPage.Hidden -> R.string.settings_hidden
+    SettingsPage.About -> R.string.settings_about
 }
 
+/**
+ * Null where a row has nothing worth saying under its name — `about` is the one page whose contents
+ * a caption can only restate, and `ListRow` then draws the name on its own.
+ */
 @StringRes
-internal fun subtitleOf(page: SettingsPage): Int = when (page) {
+internal fun subtitleOf(page: SettingsPage): Int? = when (page) {
     SettingsPage.Theme -> R.string.settings_theme_hint
     SettingsPage.Interface -> R.string.settings_interface_hint
     SettingsPage.Gestures -> R.string.settings_gestures_hint
@@ -88,4 +93,5 @@ internal fun subtitleOf(page: SettingsPage): Int = when (page) {
     SettingsPage.Playback -> R.string.settings_playback_hint
     SettingsPage.Library -> R.string.settings_library_hint
     SettingsPage.Hidden -> R.string.settings_hidden_hint
+    SettingsPage.About -> null
 }

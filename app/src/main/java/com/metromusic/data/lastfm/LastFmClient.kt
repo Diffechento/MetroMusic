@@ -114,6 +114,90 @@ class LastFmClient(private val apiKey: String?, private val apiSecret: String?) 
         }
     }
 
+    /**
+     * Loves or un-loves one track, and answers in the same four shapes a scrobble does — for the same
+     * reason: the queue behind this has to know whether to keep the item, drop it, or stop and ask the
+     * user to sign in again. [Submission.Refused] covers a track Last.fm does not have, which is a
+     * permanent no and is why "no such track" is not retried forever.
+     */
+    fun love(sessionKey: String, artist: String, title: String, loved: Boolean): Submission {
+        val answer = call(
+            parameters = mapOf(
+                "method" to if (loved) "track.love" else "track.unlove",
+                "artist" to artist,
+                "track" to title,
+                "sk" to sessionKey
+            ),
+            signed = true,
+            post = true
+        )
+        return when (answer) {
+            is Answer.Body -> Submission.Sent
+            Answer.Absent -> Submission.Refused
+            is Answer.Failed -> when {
+                answer.transient -> Submission.Retry
+                answer.unauthorised -> Submission.Unauthorised
+                else -> Submission.Refused
+            }
+        }
+    }
+
+    /**
+     * Every track [user] has loved, as artist-and-title pairs.
+     *
+     * An unsigned read like the cover lookup — a profile's loved tracks are public — so this works
+     * with the api key alone and does not need the session. Null means the question could not be
+     * asked, and the caller must treat that as "no information" rather than "nothing is loved":
+     * reading an empty list out of a failed request would un-favourite the user's whole library.
+     *
+     * Paged, because a long-standing account has thousands. [LovePageLimit] pages is the ceiling —
+     * 200 at a time, so 10 000 loves — and hitting it means the tail is not seen this round rather
+     * than the sync failing.
+     */
+    fun lovedTracks(user: String): List<Loved>? {
+        val all = ArrayList<Loved>()
+        var page = 1
+        while (page <= LovePageLimit) {
+            val body = when (
+                val answer = call(
+                    parameters = mapOf(
+                        "method" to "user.getLovedTracks",
+                        "user" to user,
+                        "limit" to LovePageSize.toString(),
+                        "page" to page.toString()
+                    ),
+                    signed = false,
+                    post = false
+                )
+            ) {
+                is Answer.Body -> answer.text
+                // No such user, or the account has nothing loved: an answer, and an empty one.
+                Answer.Absent -> return all
+                is Answer.Failed -> return null
+            }
+            val root = runCatching {
+                Json.parseToJsonElement(body).jsonObject["lovedtracks"]?.jsonObject
+            }.getOrNull() ?: return all
+            val tracks = runCatching { root["track"]?.jsonArray }.getOrNull().orEmpty()
+            tracks.forEach { element ->
+                val track = element.jsonObject
+                val title = track["name"]?.jsonPrimitive?.content
+                val artist = track["artist"]?.jsonObject?.get("name")?.jsonPrimitive?.content
+                if (!title.isNullOrBlank() && !artist.isNullOrBlank()) all += Loved(artist, title)
+            }
+            val total = runCatching {
+                root["@attr"]?.jsonObject?.get("totalPages")?.jsonPrimitive?.content?.toInt()
+            }.getOrNull() ?: 1
+            if (page >= total || tracks.isEmpty()) return all
+            page++
+        }
+        Log.d(Tag, "stopped reading loved tracks at page $LovePageLimit")
+        return all
+    }
+
+    /** One loved track as Last.fm spells it. */
+    data class Loved(val artist: String, val title: String)
+
     /** What became of a batch of plays; see [scrobble]. */
     enum class Submission {
         /** Last.fm has them. */
@@ -280,6 +364,10 @@ class LastFmClient(private val apiKey: String?, private val apiSecret: String?) 
         const val Endpoint = "https://ws.audioscrobbler.com/2.0/"
         const val TimeoutMs = 12_000
         const val BatchLimit = 50
+
+        /** `user.getLovedTracks` paging: 200 at a time, and 10 000 loves is where reading stops. */
+        const val LovePageSize = 200
+        const val LovePageLimit = 50
 
         /** Error codes that mean "there is no such thing", as opposed to "not right now". */
         val NotFound = setOf(6, 7)

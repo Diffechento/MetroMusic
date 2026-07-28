@@ -1,8 +1,10 @@
 package com.metromusic.ui
 
+import android.text.format.DateUtils
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import com.metromusic.R
+import java.text.DateFormat
 import java.util.Locale
 
 /** `4:08`, or `1:02:33` once it passes an hour. */
@@ -18,6 +20,20 @@ fun formatDuration(ms: Long): String {
         String.format(Locale.US, "%d:%02d", minutes, seconds)
     }
 }
+
+/**
+ * A past moment as the phone would write it: the time for today, the date for anything older.
+ *
+ * `DateUtils` rather than a pattern of our own, so it answers in the user's locale and in their 12- or
+ * 24-hour preference — a settings page that says "17:20" to someone whose clock says "5:20 PM" reads
+ * as another app's.
+ */
+fun formatWhen(epochMs: Long): String = DateUtils.formatSameDayTime(
+    epochMs,
+    System.currentTimeMillis(),
+    DateFormat.MEDIUM,
+    DateFormat.SHORT
+).toString()
 
 /**
  * "1 song" / "12 songs" — used under album and artist titles.

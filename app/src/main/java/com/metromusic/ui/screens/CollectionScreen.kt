@@ -266,7 +266,7 @@ private fun SettingsSection(modifier: Modifier, onNavigate: (Screen) -> Unit) {
 private fun SettingsIndexRow(page: SettingsPage, onNavigate: (Screen) -> Unit) {
     ListRow(
         primary = stringResource(titleOf(page)),
-        secondary = stringResource(subtitleOf(page)),
+        secondary = subtitleOf(page)?.let { stringResource(it) },
         onClick = { onNavigate(Screen.SettingsDetail(page)) }
     )
 }

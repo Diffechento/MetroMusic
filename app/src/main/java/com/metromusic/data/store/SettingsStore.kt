@@ -109,6 +109,15 @@ data class Settings(
     val lastfmSessionKey: String? = null,
     val scrobbleEnabled: Boolean = true,
     /**
+     * Whether favourites and Last.fm's loved tracks are kept the same, in both directions.
+     *
+     * Off by default and deliberately not implied by signing in: scrobbling only ever *adds* to a
+     * profile, while this can un-love a track on the website because it was removed from favourites
+     * here. Someone with years of loves on Last.fm and an empty favourites list has to be the one who
+     * asks for the two to be reconciled.
+     */
+    val syncLoves: Boolean = false,
+    /**
      * Last.fm API credentials. The app ships without them — they identify *an app*, not a user, and
      * cannot be checked into a public repo — so they are either baked in through `local.properties`
      * at build time or pasted in here by whoever runs the build.
@@ -212,6 +221,8 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
         store.update { it.copy(lastfmUser = user, lastfmSessionKey = sessionKey) }
 
     fun setScrobbleEnabled(on: Boolean) = store.update { it.copy(scrobbleEnabled = on) }
+
+    fun setSyncLoves(on: Boolean) = store.update { it.copy(syncLoves = on) }
 
     fun setLastfmCredentials(key: String?, secret: String?) = store.update {
         it.copy(

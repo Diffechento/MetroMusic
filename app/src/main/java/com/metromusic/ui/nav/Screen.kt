@@ -8,7 +8,7 @@ package com.metromusic.ui.nav
  * section is the index of them.
  */
 enum class SettingsPage {
-    Theme, Interface, Gestures, Equalizer, LastFm, Playback, Library, Hidden
+    Theme, Interface, Gestures, Equalizer, LastFm, Playback, Library, Hidden, About
 }
 
 /**

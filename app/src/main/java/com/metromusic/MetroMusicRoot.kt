@@ -87,6 +87,9 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
         // Scrobbling watches the same state flow the UI does rather than polling the player.
         services.scrobbler.attach(services.player.state)
         services.scrobbler.flush()
+        // Favourites against Last.fm's loves, if that is switched on. It waits for the library itself
+        // and does nothing at all while the switch is off, so attaching unconditionally is right.
+        services.loves.attach()
     }
 
     // The queue from the last time the app was open. It waits for the library rather than for the

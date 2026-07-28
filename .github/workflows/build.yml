@@ -1,0 +1,152 @@
+# Builds the app on GitHub's own runners, and attaches the artefacts to a release when a `v*` tag
+# is pushed.
+#
+# Everything the build needs is in the repository: the Gradle wrapper is committed, and MangoTile
+# resolves from Maven Central, so a clean checkout builds with nothing installed by hand.
+# `mavenLocal()` comes first in `settings.gradle.kts` and is simply empty here, which is what lets
+# the same file serve a machine with a local framework checkout and a runner without one.
+#
+# The secrets are all optional, and what they change is stated where they are read. Without any of
+# them this still produces a working APK — it is just signed with the debug key, which the release
+# job then refuses to publish.
+
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      signed: ${{ steps.keystore.outputs.signed }}
+      version: ${{ steps.version.outputs.name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # AGP 8.10 needs JDK 17 to *run*. The module's own `jvmTarget = "11"` is about the bytecode it
+      # emits and is unrelated — mixing the two up is the usual way this file gets written wrong.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # compileSdk 36 is newer than what the runner image ships, and the build fails at configuration
+      # time without it rather than downloading it itself.
+      - name: Install the compile SDK platform
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$sdkmanager" "platforms;android-36"
+
+      # Optional: LASTFM_API_KEY / LASTFM_API_SECRET. They identify the application, not a listener.
+      # Absent, scrobbling and the online cover lookup behave as if switched off and the app asks for
+      # a key on its Last.fm page instead — so a fork's build is not broken by not having them.
+      - name: Last.fm credentials
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
+        run: |
+          if [ -n "$LASTFM_API_KEY" ]; then
+            printf 'LASTFM_API_KEY=%s\nLASTFM_API_SECRET=%s\n' "$LASTFM_API_KEY" "$LASTFM_API_SECRET" \
+              > local.properties
+            echo "Last.fm credentials supplied."
+          else
+            echo "No Last.fm credentials; building without them."
+          fi
+
+      # Optional: the release keystore, as four secrets. KEYSTORE_BASE64 is the .jks itself —
+      #   base64 -w0 metromusic.jks        (certutil -encode on Windows, minus the header lines)
+      # Secrets are not exposed to workflows triggered by a fork's pull request, so this step simply
+      # finds nothing there and the build falls back to the debug key.
+      - name: Release keystore
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > metromusic.jks
+            {
+              echo "storeFile=metromusic.jks"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > keystore.properties
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "Signing with the release key."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "No keystore secret; the release variant will be signed with the debug key."
+          fi
+
+      # The minified variant is the one worth building: R8 is on for release, and the serialization
+      # rules in proguard-rules.pro are the part that a debug build cannot check.
+      - name: Assemble
+        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+
+      - name: Version name
+        id: version
+        run: |
+          name=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "versionName $name"
+
+      - name: Name the artefacts after the version
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk \
+             "out/MetroMusic-${{ steps.version.outputs.name }}.apk"
+          cp app/build/outputs/bundle/release/app-release.aab \
+             "out/MetroMusic-${{ steps.version.outputs.name }}.aab"
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: metromusic-${{ steps.version.outputs.name }}
+          path: out/*
+          if-no-files-found: error
+
+  # Only for a pushed tag, and only for a build that was really signed — otherwise this job is
+  # *skipped*, not failed: a debug-key APK is installable, which is why it is built at all, but
+  # published as a release it would become the signature every later update has to match, and the
+  # debug key is not one anybody can keep. Add the four secrets and re-run the tag to fill a release
+  # in; a tag built without them still goes green with its artefacts on the run itself.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build.outputs.signed == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: metromusic-${{ needs.build.outputs.version }}
+          path: out
+
+      # The release may already exist — it is written by hand for anything worth describing, and
+      # this only hangs the binaries on it.
+      - name: Attach the artefacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          gh release view "$tag" > /dev/null 2>&1 \
+            || gh release create "$tag" --verify-tag \
+                 --title "MetroMusic ${{ needs.build.outputs.version }}" --generate-notes
+          gh release upload "$tag" out/* --clobber
