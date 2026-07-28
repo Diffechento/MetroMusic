@@ -1,269 +1,84 @@
-# MetroMusic
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/banner-dark.png">
+    <img src="docs/banner-light.png" alt="MetroMusic" width="820">
+  </picture>
+</h1>
 
-A music player for Android in the Windows Phone 8 style, built on
-[MangoTile](https://github.com/Diffechento/MangoTile).
+A music player for Android that looks and moves like Windows Phone 8's Music + Videos hub.
 
-It plays the music already on your phone. It groups it by album, artist and genre, it looks and
-moves like the Music + Videos hub did, and it has no account, no feed, no video and nothing to
-subscribe to. Everything that talks to the network is optional and switchable off, and none of it
-is needed to play a file.
+It plays what is already on the phone. No account, no feed, no recommendations — the library on your
+device, arranged the way that hub arranged it, and everything that touches the network is optional and
+switchable off.
 
-minSdk 26 · compileSdk 36 · one `:app` module · Kotlin and Compose throughout.
+`minSdk 26` · `compileSdk 36` · Kotlin and Compose · GPLv3
+
+| collection | now playing | jump grid |
+|:---:|:---:|:---:|
+| ![The albums section of the panorama, covers beside their titles, the next section's header leaning in from the right](docs/screen-collection.png) | ![The player: artwork over a blurred backdrop of itself, a hairline progress line and ringed transport buttons](docs/screen-player.png) | ![The jump grid open over the whole screen, a tile per letter in both the Latin and Cyrillic alphabets](docs/screen-jump.png) |
 
 ## What it does
 
-**The library is the start screen.** There is no "library" page you tap into: the panorama you
-land on *is* it. Its sections are artists, albums, songs, genres, `more`, history and settings, so
-anything is one sideways swipe from launch. The panorama is circular, which is what lets settings
-sit at the far end — one swipe to the *left* of where you start — without giving them a place among
-the things you actually came for. The order of the sections is yours, from settings → interface.
+**The collection is the start screen.** The panorama you land on *is* the library — artists, albums,
+songs, genres, playlists, history and settings, in whatever order you put them. It is circular, so
+settings sit one swipe to the *left* of where you start and nothing is more than a swipe away.
 
-**Long lists behave like the phone's.** `MetroLongList` groups alphabetically and opens the WP8
-jump grid: tap a letter, the alphabet zooms out over the whole screen, pick another, and you land
-there. It buckets Cyrillic as well as Latin and shows whichever alphabets your library actually
-uses.
+**Getting around a big library.** Long lists group alphabetically and open the WP8 jump grid over both
+Latin and Cyrillic. Tapping a section header searches inside that section. A long press on any album,
+artist or genre plays it, queues it after what you already queued, or hides it — and hiding takes
+effect in every list at once. Album metadata is edited into the tags inside the files, which is the
+only level where a change sticks. Playlists, favourites, play counts and history are yours and local.
 
-**Search is the section header.** Tap the header of artists, albums or songs and a box opens
-inside that section. The query belongs to that list — swipe to the next section and you do not
-carry a stale filter along; tap the header again and it is gone.
+**Playing.** Media3 in a media session: notification, lock screen, headset and Bluetooth, and playback
+that outlives the screen. The queue and the current track come back after the app is closed. Apple
+Lossless is decoded in the app, because Android ships no ALAC decoder and silently plays such files as
+silence. Equalizer over the device's own bands, sleep timer, and a WP8 volume banner in place of the
+system panel.
 
-**Album, artist, genre and playlist pages.** Cover, the numbers, the track listing in disc and
-track order. The cover *flows* out of the list into the page and on into the player rather than
-cross-fading (continuum). An artist's page lists their albums and then everything of theirs.
+**Last.fm.** Scrobbling is local-first: a play is written to disk with the second it started and sent
+when a *validated* network appears, so an hour underground turns up in the right order rather than as
+a burst on reconnection. Favourites can be kept the same as your loved tracks, in both directions, as
+a merge against what the two sides last agreed on. Albums whose files have no cover are asked about
+once. Lyrics come from Genius with no API token.
 
-**Now playing** is full-screen artwork with parallax, rising out of the mini player rather than
-arriving as a new page. Drag sideways past a quarter of the width to change track; push it down to
-send it away. The scrubber seeks on release, not on every pixel. Lyrics are one tap from it.
+`CHANGELOG.md` is the full list; the reasoning behind the awkward parts is in the comments beside them.
 
-**The queue remembers where it put the last one.** `play next` on an album, artist, genre or track
-inserts after the block you queued *before*, not always directly after the current track — so
-queueing three albums plays them in the order you picked them instead of in reverse. Nothing else
-on screen changes when you do it, so a banner drops from the top to say what went in and how much
-of it.
+## Built on MangoTile
 
-**And it is still there next time.** Closing the app is not the same as stopping: the queue and the
-track you were on come back when you open it again — paused, and at the *start* of the track rather
-than dropping you into the middle of a song. Only track ids are kept, so anything deleted since is
-simply absent from the queue instead of failing when it is reached.
-
-**Apple Lossless plays, because the app decodes it itself.** Android has no ALAC decoder — AOSP ships
-none, and some vendors that had one no longer do. Where there is none, Media3 does not report an
-error: it marks the track unsupported, plays nothing, and runs the position against the clock, which
-looks exactly like a player playing your album in silence. So there is a software decoder inside
-(BSD, [vendored](THIRD-PARTY-NOTICES.md)), added *after* the platform's own renderer, so a device with
-a real ALAC decoder keeps using it. 16- and 24-bit both work, hi-res is not cut down to 16 on the way
-through, and a length MediaStore refuses to work out is measured from the file's own container.
-
-**Playlists and favourites.** Create, rename, delete, reorder by dragging the grip. Favourites are
-a permanent pseudo-playlist. Both are a few kilobytes of JSON in `filesDir`.
-
-**Hiding.** Long-press an artist or an album and hide it. It leaves every list, every search
-result and everything a playlist resolves to at once, because hiding happens in one place — the
-tracks are filtered and the indices rebuilt upward from them. Two rules then fall out for free:
-hiding an artist hides their albums and songs, and an artist whose albums you hid one by one
-disappears too. Settings → hidden lists what is hidden; a tap puts it back.
-
-**Editing metadata** writes the tags *inside the files*, for every track of the album, asking for
-the platform's write consent once. MediaStore's own metadata columns look writable and are not:
-from Android 10 the store treats them as derived from the file and drops the update with no error
-and no rows-affected of zero. Tags are the only level where "save" means anything.
-
-**Names that real files spell badly.** A tag saying `Daft Punk feat. Todd Edwards` is two artists,
-and filed under the string as it stands it is neither of them. One credit is split on commas,
-semicolons, ampersands and the feature words, and the track is filed under *every* name — while
-the credit you see stays exactly as the file spells it. Genre tags that differ only in case or
-edge punctuation are folded onto the spelling the most tracks use, and you can merge the rest by
-hand from a genre's long-press menu. Both are switchable, because the separators are also
-punctuation inside real band names.
-
-**Playback** runs on Media3 in a `MediaSessionService`, so the notification, lock screen, headset
-buttons, Bluetooth controls and audio focus all work like any other player and playback survives
-the activity. There is an equalizer and bass boost over the device's own bands, a sleep timer that
-fades out, and a minimum clip length that keeps ringtones out of the library.
-
-**Volume** gets a WP8 banner instead of Android's panel, inside the app — the activity takes the
-key events before the framework's default handling. From the lock screen you get Android's, and
-that is the honest limit of it.
-
-**Looks.** All twenty WP8 accents, light and dark, optionally following the system. One backdrop
-behind every page — your own colour, the gradient, or the playing album's cover — so navigating
-does not change the wallpaper. Every gesture the app adds on top of tapping has a switch, because
-a gesture that fires by accident is worse than no gesture. There is a home-screen live tile.
-
-**Text.** All of it is in `strings.xml`, counts go through `<plurals>`, and adding a language is
-one `values-xx/` folder and nothing else. See the caveat at the bottom.
-
-### Optional, network, and all failing soft
-
-**Scrobbling to Last.fm.** Every play is written to disk *first*, carrying the wall-clock second
-the track started, and only then is a send attempted — so offline is not a special case, it is the
-ordinary path with the request failing. That timestamp is the point: Last.fm files a scrobble at
-the time it says, so an hour underground turns up in the right order and at the right hour once
-the phone surfaces, instead of as a burst at the moment of reconnection. The queue flushes when a
-*validated* network appears (joining a wifi is not the same as that wifi reaching the internet),
-when credentials appear, from a backing-off timer for what the system does not report, or from the
-settings page, where the waiting count is a row you can tap. Signing in is Last.fm's own web page
-in a `WebView`, so nothing here ever sees a password.
-
-**Favourites against Last.fm's loved tracks**, if you switch it on (settings → last.fm). Both
-directions: a heart added here is loved there, a love removed on the website stops being a favourite
-here. It is a three-way merge against what the two sides agreed on at the last run rather than a
-copy of one over the other — that is the only way to tell a track *added here* from one *removed
-there* — and the first run keeps everything from both sides. Only music that is actually on the
-device is compared, so a phone with forty tracks cannot un-love a profile with seven hundred, and
-deleting a file never removes a love. Tracks are matched by artist and title, which is also the
-limit of it: a file whose tags disagree with your profile is a different track.
-
-**Missing album art**, for albums whose files carry no cover: asked about once, remembered, and
-kept as a file so two albums with the same cover share one. "No cover" and "could not ask" are
-different answers and only the first is remembered — one morning behind a captive portal must not
-write a permanent "no artwork" across a library.
-
-**Lyrics** come from Genius with no API token, read out of the page. A token identifies an
-application, cannot be committed, and would make the feature dead on arrival for anyone building
-this from source. Reading HTML is fragile by nature, so every step distinguishes *"no lyrics"*
-from *"could not ask"*.
+The whole interface is [MangoTile](https://github.com/Diffechento/MangoTile), a Compose UI kit for
+building apps in the WP8 idiom — the panorama and its parallax, the long list and its jump grid, the
+tiles, the flat typography, the transitions. MetroMusic is its first real application, and every gap
+this app hit became a feature over there rather than a workaround here.
 
 ## Building
 
-The framework comes from Maven Central like any other dependency, so a clone builds as it stands:
+The framework comes from Maven Central, so a clone builds as it stands:
 
 ```
 ./gradlew :app:assembleDebug
 ```
 
-You only need MangoTile checked out if you are *changing* it. Then publish it locally and make
-sure `mavenLocal()` comes first in `dependencyResolutionManagement.repositories`:
+**Last.fm credentials are optional.** Copy `local.properties.example` to `local.properties` and fill
+in `LASTFM_API_KEY` / `LASTFM_API_SECRET` if you want scrobbling and cover lookup; without them the app
+builds and runs and asks for a key on its own Last.fm page. Get a pair at
+<https://www.last.fm/api/account/create>. Nothing else needs a key.
 
-```
-cd ../MangoTile
-./gradlew :metro:publishToMavenLocal      # -> io.github.diffechento:metro:1.0.0
-```
-
-Republish after every change to the framework — a fixed version has no snapshot magic, so a change
-over there is invisible here until you do.
-
-**Last.fm credentials** are optional. Copy `local.properties.example` over `local.properties`, or
-add the two lines to the one Android Studio wrote for you:
-
-```
-LASTFM_API_KEY=…
-LASTFM_API_SECRET=…
-```
-
-They reach the code through `BuildConfig`, and a key typed into the settings page wins over them.
-Without them the app builds and runs; scrobbling and the art lookup behave as if switched off, and
-the Last.fm page asks for a key. Get a pair at <https://www.last.fm/api/account/create>. Nothing
-else needs a key: lyrics use no token, and everything about playing a file works with no network
-at all.
-
-**Release builds** are signed with the debug key unless you put a `keystore.properties` in the
-project root:
-
-```
-storeFile=metromusic.jks
-storePassword=…
-keyAlias=metromusic
-keyPassword=…
-```
-
-A debug-signed release installs fine for sideloading; publishing needs a real keystore, and
-switching to one means uninstalling first, since the signature changes. R8 is on.
-
-## Layout
-
-```
-app/src/main/java/com/metromusic/
-├── core/          Services — the composition root; no DI framework, just lazy singletons
-│                  Connectivity — is there a *validated* network
-├── data/
-│   ├── model/     Track, Album, Artist, Library; the artist-splitting rules; hiding
-│   ├── media/     MediaStore scanning, artwork decoding + cache, tag writing, online art
-│   ├── library/   LibraryRepository: StateFlow<Library> + ContentObserver
-│   ├── lastfm/    the API client and the local-first scrobble queue
-│   ├── lyrics/    the Genius client and the have-they-got-any index
-│   └── store/     playlists, stats, genres, hidden and settings — JSON in filesDir
-├── playback/      MediaSessionService, MediaController wrapper, PlayerState, effects, volume
-├── ui/
-│   ├── nav/       Screen (sealed) — every destination, typed
-│   ├── screens/   one file per screen; LibrarySections.kt holds the panorama's sections
-│   └── components/shared rows, tiles, artwork, mini player, the long-press menus
-└── widget/        the home-screen live tile
-```
-
-Extending it is deliberately mechanical, and the compiler points at the spot:
-
-- **A screen** — a `Screen` entry and a branch in the `when` in `MetroMusicRoot`. The `when` is
-  exhaustive. If it must survive process death, extend `Screen.encode`/`decode` too.
-- **A library section** — a `LibrarySection` entry, a branch in `CollectionScreen`, a title in
-  `sectionTitleOf`, and the body in `LibrarySections.kt`. It lands at the end of everyone's saved
-  order.
-- **A settings page** — a `SettingsPage` entry, a branch in `SettingsDetailScreen`, and a
-  title/subtitle pair. It then appears in both places that list the pages.
-- **A singleton** — one `by lazy` line in `Services`, read through `LocalServices`.
-
-The reasoning behind each of them — why the player is an overlay rather than a destination, what a
-continuum key must not collide with, why hiding is applied in exactly one place — is in the comments
-beside the code, written for whoever picks the project up next.
-
-## Keeping it small
-
-The release APK is around 2 MB and idles near 90 MB PSS.
-
-The library is read from MediaStore and never cached to disk, so the only thing persisted is a few
-kilobytes of playlists, settings and indices. The one real memory risk is album art — a full-size
-cover is about a megabyte — so `ArtworkLoader` decodes no larger than the view that asked for it
-and caps its cache by allocated bytes (heap/8, at most 12 MB) rather than by entry count. Lists
-stay lazy with stable keys, pivot pages compose one at a time, and playback position is a separate
-cold flow that only ticks while something is collecting it.
-
-## Honest caveats
-
-- **No tests.** There is no test source set at all. The best first candidates are
-  `MediaStoreScanner` (grouping into albums and artists) and `PlaylistStore` (JSON round-trip).
-- **Strings are extracted but not translated.** There is no `values-ru/` yet, and the effect on a
-  Russian phone is worse than plain English: the *text* falls back to English while the *plural
-  rule* stays the locale's, so 21 tracks reads "21 song". Only a translation fixes it.
-- **Genres need API 30+.** `MediaStore.Audio.Media.GENRE` does not exist below that, and the
-  section says so instead of hiding, because the circular panorama numbers its pages modulo the
-  section count and a section that appears later would renumber every other one.
-- **A scrobble Last.fm actually accepts is unproven.** Everything around it is verified on a
-  device — a play recorded offline with the right second, an old one pruned, a retry scheduled, the
-  queue flushing six seconds after wifi returned and the signed request reaching Last.fm — but the
-  last mile needs a real account, and nobody has signed in with one. The cover lookup, which uses
-  the same key, *is* proven against the live API.
-- **The equalizer was only checked against the emulator's five bands.** A device with ten, or with
-  no equalizer at all, takes a branch nobody has watched. Every `audiofx` call is wrapped, so the
-  intended failure is "no equalizer" rather than a crash.
-- **Opening the player costs one long frame** (~60ms in a debug build on the emulator) for its
-  first composition. Closing it is clean. Fixing it would mean keeping the page composed between
-  openings.
-- **Files tagged by ffmpeg show "unknown year"**, because MediaStore does not map the `date` tag it
-  writes. Whether real-world files behave the same is unconfirmed.
-- **20- and 32-bit ALAC are not decoded.** They are in the format and not in the decoder; both are
-  reported unsupported rather than played as silence. 16 and 24 — everything a CD rip or a hi-res
-  download actually is — work. And the length of a file whose duration MediaStore left empty is read
-  out of `moov`, which means mp4 only; another container in that state would still show no length.
-- The album, artist, playlist and genre pages still show captions under their app-bar buttons, and
-  the artists and songs sections still have accent letter tiles. Both were raised once and never
-  decided.
+**Release builds** are signed with the debug key unless a `keystore.properties` sits in the project
+root (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`) — installable for sideloading either
+way, but publishing needs a keystore of your own. R8 is on. GitHub Actions builds the release APK and
+AAB on every push, and attaches them to a release when a `v*` tag is signed.
 
 ## Licence
 
 Copyright (C) 2026 Diffechento.
 
 **GNU General Public License, version 3** — see [LICENSE](LICENSE). Fork it, sell it, put it in a
-store; ship it to anyone and they get the source and these same freedoms.
+store; ship it to anyone and they get the source and these same freedoms. It has to be v3 rather than
+v2: almost the whole stack under this app is Apache-2.0, which is incompatible with GPLv2 and
+compatible with GPLv3.
 
-It has to be v3 rather than v2, and not by preference: almost the whole stack under this app —
-AndroidX, Compose, Media3, kotlinx — is Apache-2.0, which is *incompatible* with GPLv2 and
-compatible with GPLv3. A GPLv2 build of this could not be distributed at all.
+MangoTile itself is MIT; the copyleft here is a decision about this application only. Third-party
+notices are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and in the app, on settings → about.
 
-The framework it is built on, [MangoTile](https://github.com/Diffechento/MangoTile), is MIT.
-Copyleft here is a decision about this application, not about that library.
-
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) covers the dependencies, the Selawik fonts that
-arrive with the framework under the SIL Open Font License, and the two web services.
-
-MetroMusic is not affiliated with Microsoft, Last.fm or Genius. "Windows Phone" and "Metro" are
-Microsoft's; this is an homage to a design language, built from scratch.
+Not affiliated with Microsoft, Last.fm or Genius. "Windows Phone" and "Metro" are Microsoft's; this is
+an homage to a design language, written from scratch.
