@@ -13,9 +13,9 @@ switchable off.
 
 `minSdk 26` · `compileSdk 36` · Kotlin and Compose · GPLv3
 
-| collection | now playing | jump grid |
+| start | now playing | panorama ∞ |
 |:---:|:---:|:---:|
-| ![The albums section of the panorama, covers beside their titles, the next section's header leaning in from the right](docs/screen-collection.png) | ![The player: artwork over a blurred backdrop of itself, a hairline progress line and ringed transport buttons](docs/screen-player.png) | ![The jump grid open over the whole screen, a tile per letter in both the Latin and Cyrillic alphabets](docs/screen-jump.png) |
+| ![The start screen: a large lowercase title over the artists section, alphabetical with a tile per letter, Latin and Cyrillic together](docs/screen-start.png) | ![The player: cover art over a backdrop of itself, a hairline progress line, and ringed transport buttons at the bottom](docs/screen-player.png) | ![The albums section mid-swipe, covers beside their titles, the panorama's title wrapping round to its own beginning](docs/screen-albums.png) |
 
 ## What it does
 
