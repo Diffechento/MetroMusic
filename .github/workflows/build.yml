@@ -139,14 +139,24 @@ jobs:
           name: metromusic-${{ needs.build.outputs.version }}
           path: out
 
-      # The release may already exist — it is written by hand for anything worth describing, and
-      # this only hangs the binaries on it.
-      - name: Attach the artefacts
+      # Notes are written by hand, in the repository, at `.github/release-notes/<tag>.md` — a
+      # generated list of commit subjects is not what someone deciding whether to install this wants
+      # to read. Without a file for the tag, GitHub's own generated notes are the fallback rather than
+      # a failure. An existing release is left alone and only has the binaries hung on it.
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${GITHUB_REF_NAME}"
-          gh release view "$tag" > /dev/null 2>&1 \
-            || gh release create "$tag" --verify-tag \
-                 --title "MetroMusic ${{ needs.build.outputs.version }}" --generate-notes
+          notes=".github/release-notes/${tag}.md"
+          if ! gh release view "$tag" > /dev/null 2>&1; then
+            if [ -f "$notes" ]; then
+              gh release create "$tag" --verify-tag \
+                --title "MetroMusic ${{ needs.build.outputs.version }}" --notes-file "$notes"
+            else
+              echo "::warning::No $notes; falling back to generated notes."
+              gh release create "$tag" --verify-tag \
+                --title "MetroMusic ${{ needs.build.outputs.version }}" --generate-notes
+            fi
+          fi
           gh release upload "$tag" out/* --clobber
