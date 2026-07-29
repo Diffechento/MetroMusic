@@ -22,6 +22,15 @@ val releaseKeystore = Properties().apply {
     if (file.exists()) file.inputStream().use(::load)
 }
 
+// Which signing config the release variant uses, resolved *here* so that the line that reads it is
+// one word after the `=`. F-Droid's builder edits this file before building — it deletes the whole
+// `signingConfigs { … }` block and every line matching `signingConfig = <no spaces>`, because it
+// signs with its own key and wants an unsigned APK. Written the obvious way, as
+// `findByName("release") ?: getByName("debug")` over two lines, only the first line matched: what was
+// left was a dangling `?: signingConfigs.getByName("debug")` inside `release { }`, and their build
+// died in the Kotlin compiler. Keep the assignment below a single token.
+val releaseSigningConfigName = if (releaseKeystore.isNotEmpty()) "release" else "debug"
+
 // Last.fm credentials, read from the untracked `local.properties`:
 //
 //   LASTFM_API_KEY=...
@@ -45,13 +54,13 @@ android {
         applicationId = "com.metromusic"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         // The date this version was released, shown on the about page. A literal beside the version
         // rather than the moment of the build: `Date()` here would change on every configure, so no
         // two builds of the same source would agree and Gradle could never call the task up to date.
-        buildConfigField("String", "RELEASE_DATE", "\"28 july 2026\"")
+        buildConfigField("String", "RELEASE_DATE", "\"29 july 2026\"")
 
         buildConfigField(
             "String",
@@ -78,8 +87,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.findByName("release")
-                ?: signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(releaseSigningConfigName)
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

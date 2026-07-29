@@ -1,0 +1,15 @@
+MetroMusic looks and moves like the Music + Videos hub of Windows Phone 8, and it plays what is already on the phone. No account, no feed, no recommendations.
+
+The collection is the start screen. The panorama you land on is the library — artists, albums, songs, genres, playlists, history and settings, in whatever order you put them. It is circular, so settings sit one swipe to the left of where you start and nothing is more than a swipe away.
+
+Getting around a big library. Long lists group alphabetically and open the WP8 jump grid over both Latin and Cyrillic. Tapping a section header searches inside that section. A long press on an album, artist or genre plays it, queues it after what you queued before, or hides it — and hiding takes effect in every list at once. Album metadata is written into the tags inside the files, which is the only level where an edit sticks. Playlists, favourites, play counts and history stay on the device.
+
+Playing. Media3 in a media session: notification, lock screen, headset and Bluetooth, and playback that outlives the screen. The queue and the current track come back after the app is closed, paused and at the start of the track. Apple Lossless is decoded inside the app, because Android ships no ALAC decoder and such files otherwise play as silence with nothing on screen to say so. Equalizer over the device's own bands, sleep timer, and a WP8 volume banner in place of the system panel.
+
+Last.fm, if you want it. A play is written to disk with the second it started and sent when a validated network appears, so an hour underground turns up in the right order rather than as a burst on reconnection. Favourites can be kept the same as your loved tracks, in both directions. Albums whose files carry no artwork can be asked about once, and lyrics come from Genius. All of that is optional, switchable off, and none of it is needed to play the music on the device.
+
+Twenty accent colours, light and dark, gestures that can each be turned off, and every string in strings.xml so a translation is one folder.
+
+The whole interface is MangoTile, a Compose UI kit for building in the WP8 idiom: https://github.com/Diffechento/MangoTile
+
+Not affiliated with Microsoft, Last.fm or Genius. "Windows Phone" and "Metro" are Microsoft's; this is an homage to a design language, written from scratch.

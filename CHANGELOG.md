@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.1
+
+Packaging, so the app can be built from source by F-Droid rather than distributed as a binary. The
+application itself is unchanged from 1.0.
+
+**The release variant no longer insists on signing itself.** F-Droid's builder edits the Gradle file
+before building — it deletes the whole `signingConfigs { }` block and every line matching
+`signingConfig = <one token>`, then signs the result with its own key. The signing config was chosen
+over two lines (`findByName("release") ?: getByName("debug")`), of which only the first matched, and
+what was left behind was a dangling `?:` that fails to compile. The choice is now made in a `val`
+above, so the line they delete is one token and what remains is a build with no signature — which is
+exactly what they want. A local `assembleRelease` still signs with `keystore.properties`, or with the
+debug key when there is none.
+
+**The app's page lives in the repository** — `fastlane/metadata/android/en-US`: title, descriptions,
+the icon rendered from the vector the app itself uses, five screenshots, and a changelog per version
+code. It is read from the same commit as the build, so the page and the binary cannot drift apart.
+
 ## 1.0
 
 First release. Built on `io.github.diffechento:metro:1.0.0`.

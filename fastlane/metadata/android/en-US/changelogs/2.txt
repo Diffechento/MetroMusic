@@ -1,0 +1,5 @@
+Packaging only; the application itself is unchanged from 1.0.
+
+The release build's signing config is now written so that F-Droid's builder can strip it out and sign with its own key, which is what lets the app be built from source there rather than shipped as a binary.
+
+The description, the icon and the screenshots for the app's page now live in the repository, so they come from the same commit as the build.

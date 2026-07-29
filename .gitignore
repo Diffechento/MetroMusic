@@ -29,6 +29,11 @@ keystore.properties
 release.bat
 release.ps1
 
+# One-off generators for things that are committed in their rendered form: the launcher icon traced to
+# vector, the README banner, the 512px icon for the app stores, F-Droid's signing-config stripper run
+# locally. CLAUDE.md points at them by name; they are tools for this machine, not part of the app.
+scratchpad/
+
 # The working notes kept beside the project — how to build, test and extend it, written for whoever
 # picks it up next. Deliberately not published: it is a log of local traps, device names and paths,
 # not documentation of the app. README.md and CHANGELOG.md are what the repository says.
