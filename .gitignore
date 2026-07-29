@@ -20,6 +20,14 @@ local.properties
 keystore.properties
 *.jks
 *.keystore
+# The keystore again, in the form GitHub Actions takes it: base64 in a text file is still the key.
+*.jks.base64.txt
+
+# The owner's own release helper: it makes the signing key, writes keystore.properties, uploads the
+# four Actions secrets and re-runs the tag. Specific to this machine, and it deletes and re-pushes
+# tags, which is not something a stranger's clone should find sitting in its root.
+release.bat
+release.ps1
 
 # The working notes kept beside the project — how to build, test and extend it, written for whoever
 # picks it up next. Deliberately not published: it is a log of local traps, device names and paths,
