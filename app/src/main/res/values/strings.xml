@@ -250,6 +250,24 @@
     <string name="press_back_again">press back again to close</string>
     <string name="action_cancel">cancel</string>
 
+    <!-- ==== how the songs section is arranged: the picker a group header opens on a hold ==== -->
+    <string name="sort_title">sort by</string>
+    <string name="sort_name">name</string>
+    <string name="sort_date_added">date added</string>
+    <string name="sort_duration">length</string>
+    <string name="sort_plays">times played</string>
+    <!-- Group headings. Short on purpose: a heading sits in an accent block the width of the words
+         inside it, in a panorama section about 320dp wide. -->
+    <string name="sort_group_added_unknown">date unknown</string>
+    <string name="sort_group_under_2min">under 2 min</string>
+    <string name="sort_group_2_to_5min">2–5 min</string>
+    <string name="sort_group_5_to_10min">5–10 min</string>
+    <string name="sort_group_over_10min">over 10 min</string>
+    <string name="sort_group_plays_never">never played</string>
+    <string name="sort_group_plays_few">1–4 plays</string>
+    <string name="sort_group_plays_some">5–9 plays</string>
+    <string name="sort_group_plays_many">10+ plays</string>
+
     <!-- ==== album metadata ==== -->
     <string name="album_edit">edit album</string>
     <string name="album_edit_title">album</string>

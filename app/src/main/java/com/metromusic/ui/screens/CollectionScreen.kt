@@ -144,13 +144,12 @@ fun CollectionScreen(onNavigate: (Screen) -> Unit) {
                             modifier = modifier,
                             currentTrackId = playerState.trackId,
                             actions = actions,
-                            onPlay = { track ->
-                                // Index resolved on tap, not during composition — an indexOf per
-                                // visible row would be O(n) per frame on a large library.
-                                services.player.play(
-                                    library.tracks,
-                                    library.tracks.indexOf(track)
-                                )
+                            // The queue is the list the way the section is showing it — sorted the way
+                            // the user asked and filtered by whatever is in the search box — and the
+                            // index into it comes with it. Both are resolved on the tap, not during
+                            // composition: an indexOf per visible row is O(n) per frame.
+                            onPlay = { queue, index ->
+                                services.player.play(queue, index)
                                 searchIn = null
                                 query = ""
                             },

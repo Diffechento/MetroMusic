@@ -31,8 +31,10 @@ import com.metromusic.ui.components.rememberCollectionActions
 import com.metromusic.ui.components.TrackActions
 import com.metromusic.ui.components.TrackRowWithActions
 import com.metromusic.ui.components.WideTile
+import com.metromusic.data.store.SongSort
 import com.metromusic.ui.formatAlbumCount
 import com.metromusic.ui.formatTrackCount
+import com.metromusic.ui.rememberSongSorts
 import com.metromusic.ui.nav.Screen
 
 /**
@@ -179,13 +181,26 @@ fun AlbumsSection(
     }
 }
 
+/**
+ * Songs, arranged whichever way the user last asked for — the one section where that is offered.
+ *
+ * The handle is the group header itself: hold it and the four arrangements come up in a WP8 list
+ * picker (the framework's, on `MetroListSort`), with the one in force in accent. Holding the heading
+ * rather than putting a control in the app bar is what keeps the section a list and not a screen with
+ * a toolbar, and the heading is already the thing you press to zoom out to the alphabet.
+ *
+ * [onPlay] is handed the whole list *as it is arranged*, not just the track: tapping a song plays
+ * from there onwards, and "from there" has to mean what is on screen — sorting by play count and
+ * tapping the top song would otherwise carry on alphabetically from wherever that song happens to sit
+ * in the library.
+ */
 @Composable
 fun SongsSection(
     library: Library,
     modifier: Modifier,
     currentTrackId: Long?,
     actions: TrackActions,
-    onPlay: (Track) -> Unit,
+    onPlay: (List<Track>, Int) -> Unit,
     search: String? = null,
     onSearchChange: (String) -> Unit = {}
 ) {
@@ -195,22 +210,35 @@ fun SongsSection(
     }
     val services = LocalServices.current
     val settings by services.settings.settings.collectAsStateWithLifecycle()
+    val stats by services.stats.stats.collectAsStateWithLifecycle()
     val shown = remember(library.tracks, search) {
         library.tracks.filter { matches(it.title, search) || matches(it.artist, search) }
     }
+
+    val sorts = rememberSongSorts(stats.playCounts)
+    val sort = sorts[settings.songSort.ordinal]
 
     SearchableSection(modifier, search, onSearchChange) { listModifier ->
         MetroLongList(
             items = shown,
             key = { it.id },
-            group = { metroGroupChar(it.title) },
+            sort = sort,
             modifier = listModifier,
-            filledGroupHeaders = settings.letterTiles
+            filledGroupHeaders = settings.letterTiles,
+            sorts = sorts,
+            sortTitle = stringResource(R.string.sort_title),
+            onSortSelected = { index -> services.settings.setSongSort(SongSort.entries[index]) }
         ) { track ->
             TrackRowWithActions(
                 track = track,
                 actions = actions,
-                onPlay = { onPlay(track) },
+                // Ordered on the tap rather than per frame: the arranged list is the framework's,
+                // and re-deriving it here for every visible row would sort the library each time one
+                // scrolled past.
+                onPlay = {
+                    val queue = shown.sortedWith(sort.comparator)
+                    onPlay(queue, queue.indexOf(track))
+                },
                 isCurrent = track.id == currentTrackId
             )
         }

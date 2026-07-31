@@ -23,6 +23,21 @@ enum class LibrarySection {
 }
 
 /**
+ * How the songs section is arranged — picked by holding a group header, and remembered.
+ *
+ * Remembered because it is a way of *reading* the library rather than a one-off filter: someone who
+ * sorts by play count is asking the app what they listen to, and being handed the alphabet again on
+ * the next launch answers a question they did not ask. The search box is the opposite case and is
+ * deliberately dropped when you leave.
+ *
+ * Persisted by name, for the reason [LibrarySection] is: adding an arrangement must not silently
+ * change what an older settings file meant.
+ */
+enum class SongSort {
+    Name, DateAdded, Duration, PlayCount
+}
+
+/**
  * User preferences. [accentArgb], [dark] and [backgroundArgb] feed straight into the framework's
  * `MetroTheme`, so changing them re-themes the whole app on the next frame.
  *
@@ -72,6 +87,8 @@ data class Settings(
     val letterTiles: Boolean = true,
     /** Home panorama section order; missing names are appended in their declared order. */
     val sectionOrder: List<String> = emptyList(),
+    /** How the songs section is arranged, as a [SongSort] name; anything unknown reads as the default. */
+    val songSortName: String = SongSort.Name.name,
     /**
      * Fetch a cover from Last.fm for albums that have none in their files.
      *
@@ -137,6 +154,13 @@ data class Settings(
             return saved + LibrarySection.entries.filterNot { it in saved }
         }
 
+    /**
+     * The songs arrangement as the enum. An unknown name — a file written by a later build, or one
+     * that has been edited by hand — reads as the alphabet rather than throwing the settings away.
+     */
+    val songSort: SongSort
+        get() = SongSort.entries.firstOrNull { it.name == songSortName } ?: SongSort.Name
+
     companion object {
         /** WP8 cyan — the framework's own default accent. */
         const val DefaultAccent: Int = 0xFF1BA1E2.toInt()
@@ -181,6 +205,8 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setGesturePlayerSwipe(on: Boolean) = store.update { it.copy(gesturePlayerSwipe = on) }
 
     fun setGesturePlayerDown(on: Boolean) = store.update { it.copy(gesturePlayerDown = on) }
+
+    fun setSongSort(sort: SongSort) = store.update { it.copy(songSortName = sort.name) }
 
     fun setSectionOrder(order: List<LibrarySection>) =
         store.update { it.copy(sectionOrder = order.map(LibrarySection::name)) }

@@ -5,7 +5,7 @@ coreKtx = "1.15.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.12.01"
-metrocompose = "1.0.0"
+metrocompose = "1.0.1"
 media3 = "1.5.1"
 serialization = "1.7.3"
 coroutines = "1.9.0"
@@ -15,8 +15,10 @@ concurrentFutures = "1.2.0"
 jaudiotagger = "3.0.1"
 
 [libraries]
-# The framework, from Maven Central. Publish locally with :metro:publishToMavenLocal only when
-# working on MangoTile itself; mavenLocal() is first in settings.gradle.kts so it wins.
+# The framework. 1.0.0 is on Maven Central; **1.0.1 is not published yet** and resolves from
+# mavenLocal only — `cd ../MetroDemo && ./gradlew :metro:publishToMavenLocal` (mavenLocal() is first
+# in settings.gradle.kts, so it wins). Until 1.0.1 is on Central this branch does not build on a
+# machine that has never published it, F-Droid's builder included.
 metrocompose = { group = "io.github.diffechento", name = "metro", version.ref = "metrocompose" }
 
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
