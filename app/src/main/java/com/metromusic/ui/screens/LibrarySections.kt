@@ -20,7 +20,6 @@ import com.metrocompose.MetroContextMenu
 import com.metrocompose.MetroListBox
 import com.metrocompose.MetroLongList
 import com.metrocompose.MetroTextBox
-import com.metrocompose.metroGroupChar
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.model.Library
@@ -31,9 +30,13 @@ import com.metromusic.ui.components.rememberCollectionActions
 import com.metromusic.ui.components.TrackActions
 import com.metromusic.ui.components.TrackRowWithActions
 import com.metromusic.ui.components.WideTile
+import com.metromusic.data.store.AlbumSort
+import com.metromusic.data.store.ArtistSort
 import com.metromusic.data.store.SongSort
 import com.metromusic.ui.formatAlbumCount
 import com.metromusic.ui.formatTrackCount
+import com.metromusic.ui.rememberAlbumSorts
+import com.metromusic.ui.rememberArtistSorts
 import com.metromusic.ui.rememberSongSorts
 import com.metromusic.ui.nav.Screen
 
@@ -96,18 +99,22 @@ fun ArtistsSection(
     }
     val services = LocalServices.current
     val settings by services.settings.settings.collectAsStateWithLifecycle()
+    val stats by services.stats.stats.collectAsStateWithLifecycle()
     val actions = rememberCollectionActions()
     val shown = remember(library.artists, search) {
         library.artists.filter { matches(it.name, search) }
     }
+    val sorts = rememberArtistSorts(library, stats.playCounts)
 
     SearchableSection(modifier, search, onSearchChange) { listModifier ->
     MetroLongList(
         items = shown,
         key = { it.id },
-        group = { metroGroupChar(it.name) },
+        sort = sorts[settings.artistSort.ordinal],
         modifier = listModifier,
-        filledGroupHeaders = settings.letterTiles
+        filledGroupHeaders = settings.letterTiles,
+        sorts = sorts,
+        onSortSelected = { index -> services.settings.setArtistSort(ArtistSort.entries[index]) }
     ) { artist ->
         CollectionRowWithActions(
             key = artist.id,
@@ -148,16 +155,19 @@ fun AlbumsSection(
     val shown = remember(library.albums, search) {
         library.albums.filter { matches(it.title, search) || matches(it.artist, search) }
     }
+    val sorts = rememberAlbumSorts()
 
     SearchableSection(modifier, search, onSearchChange) { listModifier ->
     MetroLongList(
         items = shown,
         key = { it.id },
-        group = { metroGroupChar(it.title) },
+        sort = sorts[settings.albumSort.ordinal],
         modifier = listModifier,
         // The same answer as every other list, from settings: two sections disagreeing about their
         // own group letters is what made this section look like a different app.
-        filledGroupHeaders = settings.letterTiles
+        filledGroupHeaders = settings.letterTiles,
+        sorts = sorts,
+        onSortSelected = { index -> services.settings.setAlbumSort(AlbumSort.entries[index]) }
     ) { album ->
         CollectionRowWithActions(
             key = album.id,
@@ -226,7 +236,6 @@ fun SongsSection(
             modifier = listModifier,
             filledGroupHeaders = settings.letterTiles,
             sorts = sorts,
-            sortTitle = stringResource(R.string.sort_title),
             onSortSelected = { index -> services.settings.setSongSort(SongSort.entries[index]) }
         ) { track ->
             TrackRowWithActions(

@@ -250,12 +250,15 @@
     <string name="press_back_again">press back again to close</string>
     <string name="action_cancel">cancel</string>
 
-    <!-- ==== how the songs section is arranged: the picker a group header opens on a hold ==== -->
-    <string name="sort_title">sort by</string>
+    <!-- ==== how a section is arranged: the picker a group header opens on a hold ==== -->
     <string name="sort_name">name</string>
     <string name="sort_date_added">date added</string>
     <string name="sort_duration">length</string>
     <string name="sort_plays">times played</string>
+    <string name="sort_artist">artist</string>
+    <string name="sort_year">year</string>
+    <string name="sort_song_count">songs</string>
+    <string name="sort_album_count">albums</string>
     <!-- Group headings. Short on purpose: a heading sits in an accent block the width of the words
          inside it, in a panorama section about 320dp wide. -->
     <string name="sort_group_added_unknown">date unknown</string>
@@ -267,6 +270,19 @@
     <string name="sort_group_plays_few">1–4 plays</string>
     <string name="sort_group_plays_some">5–9 plays</string>
     <string name="sort_group_plays_many">10+ plays</string>
+    <string name="sort_group_year_unknown">year unknown</string>
+    <string name="sort_group_songs_handful">1–4 songs</string>
+    <string name="sort_group_songs_few">5–9 songs</string>
+    <string name="sort_group_songs_some">10–19 songs</string>
+    <string name="sort_group_songs_many">20+ songs</string>
+    <string name="sort_group_albums_one">1 album</string>
+    <string name="sort_group_albums_few">2–3 albums</string>
+    <string name="sort_group_albums_some">4–9 albums</string>
+    <string name="sort_group_albums_many">10+ albums</string>
+    <!-- An artist's plays are the plays of all their songs, so these bands are wider than a song's. -->
+    <string name="sort_group_artist_plays_few">1–9 plays</string>
+    <string name="sort_group_artist_plays_some">10–49 plays</string>
+    <string name="sort_group_artist_plays_many">50+ plays</string>
 
     <!-- ==== album metadata ==== -->
     <string name="album_edit">edit album</string>

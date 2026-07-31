@@ -23,18 +23,33 @@ enum class LibrarySection {
 }
 
 /**
- * How the songs section is arranged — picked by holding a group header, and remembered.
+ * How each of the three searchable sections is arranged — picked by holding a group header, and
+ * remembered.
  *
  * Remembered because it is a way of *reading* the library rather than a one-off filter: someone who
  * sorts by play count is asking the app what they listen to, and being handed the alphabet again on
  * the next launch answers a question they did not ask. The search box is the opposite case and is
  * deliberately dropped when you leave.
  *
+ * One setting per section rather than one for all three: they are different questions. "What did I add
+ * last" is asked of songs and of albums; "who do I listen to most" only of artists, and an artist has
+ * no length to sort by at all.
+ *
  * Persisted by name, for the reason [LibrarySection] is: adding an arrangement must not silently
  * change what an older settings file meant.
  */
 enum class SongSort {
     Name, DateAdded, Duration, PlayCount
+}
+
+/** How the albums section is arranged; see [SongSort]. */
+enum class AlbumSort {
+    Name, Artist, DateAdded, Year
+}
+
+/** How the artists section is arranged; see [SongSort]. */
+enum class ArtistSort {
+    Name, Songs, Albums, PlayCount
 }
 
 /**
@@ -87,8 +102,10 @@ data class Settings(
     val letterTiles: Boolean = true,
     /** Home panorama section order; missing names are appended in their declared order. */
     val sectionOrder: List<String> = emptyList(),
-    /** How the songs section is arranged, as a [SongSort] name; anything unknown reads as the default. */
+    /** How each section is arranged, as an enum name; anything unknown reads as the default. */
     val songSortName: String = SongSort.Name.name,
+    val albumSortName: String = AlbumSort.Name.name,
+    val artistSortName: String = ArtistSort.Name.name,
     /**
      * Fetch a cover from Last.fm for albums that have none in their files.
      *
@@ -155,11 +172,17 @@ data class Settings(
         }
 
     /**
-     * The songs arrangement as the enum. An unknown name — a file written by a later build, or one
-     * that has been edited by hand — reads as the alphabet rather than throwing the settings away.
+     * Each arrangement as its enum. An unknown name — a file written by a later build, or one that has
+     * been edited by hand — reads as the alphabet rather than throwing the settings away.
      */
     val songSort: SongSort
         get() = SongSort.entries.firstOrNull { it.name == songSortName } ?: SongSort.Name
+
+    val albumSort: AlbumSort
+        get() = AlbumSort.entries.firstOrNull { it.name == albumSortName } ?: AlbumSort.Name
+
+    val artistSort: ArtistSort
+        get() = ArtistSort.entries.firstOrNull { it.name == artistSortName } ?: ArtistSort.Name
 
     companion object {
         /** WP8 cyan — the framework's own default accent. */
@@ -207,6 +230,10 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setGesturePlayerDown(on: Boolean) = store.update { it.copy(gesturePlayerDown = on) }
 
     fun setSongSort(sort: SongSort) = store.update { it.copy(songSortName = sort.name) }
+
+    fun setAlbumSort(sort: AlbumSort) = store.update { it.copy(albumSortName = sort.name) }
+
+    fun setArtistSort(sort: ArtistSort) = store.update { it.copy(artistSortName = sort.name) }
 
     fun setSectionOrder(order: List<LibrarySection>) =
         store.update { it.copy(sectionOrder = order.map(LibrarySection::name)) }
