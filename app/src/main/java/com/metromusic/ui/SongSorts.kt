@@ -91,7 +91,12 @@ fun rememberSongSorts(playCounts: Map<Long, Int>): List<MetroListSort<Track>> {
                             minutes < 10 -> to10
                             else -> over10
                         }
-                    }
+                    },
+                    // Four bands, always all four: zoomed out, a library with nothing over ten minutes
+                    // in it should say so with a dimmed block, the way the alphabet dims a letter you
+                    // own no artists under. Months cannot do this — there is no set of all months —
+                    // so that arrangement zooms out over what it has.
+                    jumpDomain = { listOf(under2, to5, to10, over10) }
                 )
 
                 // Most played first. The bands are wide at the bottom on purpose: the interesting end
@@ -108,7 +113,8 @@ fun rememberSongSorts(playCounts: Map<Long, Int>): List<MetroListSort<Track>> {
                             in 5..9 -> some
                             else -> many
                         }
-                    }
+                    },
+                    jumpDomain = { listOf(many, some, few, never) }
                 )
             }
         }
