@@ -359,6 +359,18 @@ private fun InterfaceSettings() {
             checked = settings.letterTiles,
             onChange = { services.settings.setLetterTiles(it) }
         )
+        SettingRow(
+            title = stringResource(R.string.interface_collapse_title),
+            checked = settings.collapseTitle,
+            onChange = { services.settings.setCollapseTitle(it) }
+        )
+        Text(
+            text = stringResource(R.string.interface_collapse_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
 
     }
 }

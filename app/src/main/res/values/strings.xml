@@ -161,6 +161,10 @@
     <string name="library_scan_report">the system knows about %1$d audio files here; %2$d are marked
         as something other than music and %3$d are shorter than the minimum above.</string>
     <string name="interface_lists">lists</string>
+    <string name="interface_collapse_title">roll the title away when scrolling</string>
+    <string name="interface_collapse_explainer">the big title — and on an album page its cover and
+        buttons — give up their height to the list once you scroll it, and come back when you drag that
+        list past its top.</string>
     <string name="interface_letter_tiles">accent square behind group letters</string>
     <string name="library_split_artists">split artists in a credit</string>
     <string name="library_split_artists_explainer">a track tagged “artist feat. guest” or

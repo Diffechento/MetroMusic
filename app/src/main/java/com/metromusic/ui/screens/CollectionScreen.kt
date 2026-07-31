@@ -109,6 +109,9 @@ fun CollectionScreen(onNavigate: (Screen) -> Unit) {
             // almost none of its own and each section header takes the same indent instead. That
             // way header and rows sit on one edge — see MetroPanoramaSection's headerPadding.
             sectionPadding = 2.dp,
+            // Settings → interface. The title is worth a row and a half of library, and whether that
+            // is a good trade is the user's call.
+            collapsingTitle = settings.collapseTitle,
             sections = sections.map { section ->
                 MetroPanoramaSection(
                     title = stringResource(sectionTitleOf(section)),

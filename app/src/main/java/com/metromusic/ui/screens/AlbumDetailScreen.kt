@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +24,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.AppBar
 import com.metrocompose.AppBarButton
 import com.metrocompose.MetroPage
+import com.metrocompose.metroCollapseOnScroll
+import com.metrocompose.metroCollapsingHeader
+import com.metrocompose.rememberMetroCollapse
 import com.metrocompose.MetroRegular
 import com.metrocompose.MetroTheme
 import com.metrocompose.metroContinuum
@@ -62,8 +66,19 @@ fun AlbumDetailScreen(albumId: Long, onNavigate: (Screen) -> Unit) {
     val tracks = remember(library, albumId) { library.tracksOf(album) }
     val totalMs = remember(tracks) { tracks.sumOf { it.durationMs } }
 
+    // The cover, the numbers and the app bar roll away as the track list is scrolled, and come back
+    // when it is dragged past its top. On a record with more than a screenful of tracks that is the
+    // difference between six rows and eleven; the cover has already done its job by then, and it is
+    // still one drag away. The mechanism is the framework's — see MetroCollapse.
+    val collapse = rememberMetroCollapse()
+    val settings by services.settings.settings.collectAsStateWithLifecycle()
+    val rolling = settings.collapseTitle
+
     Box(Modifier.fillMaxSize()) {
         MetroPage(album.artist.uppercase(), album.title) {
+        // Clipped, so the cover slides up behind the page's title instead of over it.
+        Column(if (rolling) Modifier.metroCollapseOnScroll(collapse).clipToBounds() else Modifier) {
+        Column(if (rolling) Modifier.metroCollapsingHeader(collapse) else Modifier) {
             Row(Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp)) {
                 AlbumArt(
                     album = album,
@@ -121,6 +136,7 @@ fun AlbumDetailScreen(albumId: Long, onNavigate: (Screen) -> Unit) {
                 }
             }
             Spacer(Modifier.height(6.dp))
+        }
 
             LazyColumn(Modifier.fillMaxSize()) {
                 items(tracks, key = { it.id }) { track ->
@@ -134,6 +150,7 @@ fun AlbumDetailScreen(albumId: Long, onNavigate: (Screen) -> Unit) {
                     )
                 }
             }
+        }
         }
         TrackActionsHost(actions)
     }

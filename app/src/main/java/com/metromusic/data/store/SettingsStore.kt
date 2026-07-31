@@ -100,6 +100,15 @@ data class Settings(
      * already coloured tiles, and the result was two sections that looked like different apps.
      */
     val letterTiles: Boolean = true,
+    /**
+     * Let a big page title roll away as the list under it is scrolled, and come back when that list is
+     * dragged past its top.
+     *
+     * On by default: on a phone the title is worth a row and a half of library, and it has said what it
+     * has to say by the time you are reading the list. A switch because it is also *how you know where
+     * you are* — someone who navigates by that word rather than by what is under it wants it to stay.
+     */
+    val collapseTitle: Boolean = true,
     /** Home panorama section order; missing names are appended in their declared order. */
     val sectionOrder: List<String> = emptyList(),
     /** How each section is arranged, as an enum name; anything unknown reads as the default. */
@@ -214,6 +223,8 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setStripArtwork(on: Boolean) = store.update { it.copy(stripArtwork = on) }
 
     fun setLetterTiles(on: Boolean) = store.update { it.copy(letterTiles = on) }
+
+    fun setCollapseTitle(on: Boolean) = store.update { it.copy(collapseTitle = on) }
 
     fun setOnlineArtwork(on: Boolean) = store.update { it.copy(onlineArtwork = on) }
 
