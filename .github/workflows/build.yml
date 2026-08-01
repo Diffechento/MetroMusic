@@ -104,6 +104,59 @@ jobs:
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "versionName $name"
 
+      # Releasing means keeping four things in step: the tag, `versionName`, the `RELEASE_DATE` literal
+      # the about page shows, and the fastlane changelog for this `versionCode` — which *is* the
+      # "what's new" on the F-Droid page and is read from the commit being built, so a missing one is
+      # silently no changelog rather than an error anywhere. This step checks them on a tag build
+      # instead of writing them.
+      #
+      # Deliberately a check and not a write. The date is a literal so that the same source always
+      # builds the same APK: `Date()` at configure time would make no two builds agree and no task
+      # could ever be up to date. Having CI stamp it would be worse than the manual step it saves —
+      # F-Droid builds this very commit on their own infrastructure, with none of this workflow, so
+      # their binary and the release here would disagree about what version they are. What is actually
+      # easy to forget is moving the literal, and forgetting is exactly what a failing build fixes.
+      - name: The tag, the version and the date agree
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          name="${{ steps.version.outputs.name }}"
+          code=$(grep -oP 'versionCode = \K\d+' app/build.gradle.kts)
+          literal=$(sed -n 's/.*RELEASE_DATE", "\\"\(.*\)\\"".*/\1/p' app/build.gradle.kts)
+          fail=0
+
+          if [ "$GITHUB_REF_NAME" != "v$name" ]; then
+            echo "::error::tag $GITHUB_REF_NAME against versionName $name — the tag is v<versionName>."
+            fail=1
+          fi
+
+          # `date -d` reads "1 august 2026"; an unparseable literal is itself the failure.
+          if ! stamped=$(date -d "$literal" +%Y-%m-%d 2>/dev/null); then
+            echo "::error::RELEASE_DATE \"$literal\" is not a date this can read."
+            fail=1
+          else
+            tagged=$(git log -1 --format=%cs)
+            # A day either side, because the runner reads the commit date in UTC and the commit was
+            # made in somebody's own timezone. Weeks of slack is what this is meant to catch: a literal
+            # left at the previous release's date.
+            if [ "$(( ( $(date -d "$stamped" +%s) - $(date -d "$tagged" +%s) ) / 86400 ))" -gt 1 ] ||
+               [ "$(( ( $(date -d "$tagged" +%s) - $(date -d "$stamped" +%s) ) / 86400 ))" -gt 1 ]; then
+              echo "::error::RELEASE_DATE is $stamped but this commit is from $tagged — move the literal in app/build.gradle.kts."
+              fail=1
+            fi
+          fi
+
+          changelog="fastlane/metadata/android/en-US/changelogs/$code.txt"
+          if [ ! -f "$changelog" ]; then
+            echo "::error::no $changelog — that file is the what's-new on the F-Droid page."
+            fail=1
+          elif [ "$(wc -c < "$changelog")" -gt 500 ]; then
+            echo "::error::$changelog is $(wc -c < "$changelog") characters; F-Droid's limit is 500."
+            fail=1
+          fi
+
+          [ "$fail" = 0 ] || exit 1
+          echo "$GITHUB_REF_NAME · versionName $name · versionCode $code · released $literal · $changelog"
+
       - name: Name the artefacts after the version
         run: |
           mkdir -p out
