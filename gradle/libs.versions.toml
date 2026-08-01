@@ -15,10 +15,11 @@ concurrentFutures = "1.2.0"
 jaudiotagger = "3.0.1"
 
 [libraries]
-# The framework. 1.0.0 is on Maven Central; **1.0.1 is not published yet** and resolves from
-# mavenLocal only — `cd ../MetroDemo && ./gradlew :metro:publishToMavenLocal` (mavenLocal() is first
-# in settings.gradle.kts, so it wins). Until 1.0.1 is on Central this branch does not build on a
-# machine that has never published it, F-Droid's builder included.
+# The framework, from Maven Central — a plain clone builds with no local checkout of it. mavenLocal()
+# is first in settings.gradle.kts and wins when it has the same version, which is how a change to the
+# framework is tried here before release: `cd ../MetroDemo && ./gradlew :metro:publishToMavenLocal`.
+# Raise the version here only once that version is actually on Central, or a fresh clone, CI and
+# F-Droid's builder all fail to resolve it.
 metrocompose = { group = "io.github.diffechento", name = "metro", version.ref = "metrocompose" }
 
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

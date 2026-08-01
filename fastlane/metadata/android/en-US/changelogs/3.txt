@@ -1,0 +1,3 @@
+Sorting, asked for in the first issue anyone filed. Hold a group header in songs, albums or artists and four arrangements unroll out of it: by name, by date added, by length or year, by plays. Each keeps its headings, and tapping one zooms out over the groups the way the alphabet did.
+
+The library screens give back a row and a half of space, too: the big title is tighter and now rolls away as you scroll, and on an album page the cover and the buttons go with it. Switchable in settings.

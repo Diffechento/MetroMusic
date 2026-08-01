@@ -24,7 +24,10 @@ songs, genres, playlists, history and settings, in whatever order you put them. 
 settings sit one swipe to the *left* of where you start and nothing is more than a swipe away.
 
 **Getting around a big library.** Long lists group alphabetically and open the WP8 jump grid over both
-Latin and Cyrillic. Tapping a section header searches inside that section. A long press on any album,
+Latin and Cyrillic. Hold a group header and songs, albums or artists rearrange — by date added, by
+length, by year, by how often you have played them — and every arrangement keeps headings you can zoom
+out over, so a list ordered by a number you cannot see still says where you are. Tapping a section
+header searches inside that section. A long press on any album,
 artist or genre plays it, queues it after what you already queued, or hides it — and hiding takes
 effect in every list at once. Album metadata is edited into the tags inside the files, which is the
 only level where a change sticks. Playlists, favourites, play counts and history are yours and local.

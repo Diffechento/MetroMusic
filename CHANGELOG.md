@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.1
+
+Built on `io.github.diffechento:metro:1.0.1`.
+
+**The songs, albums and artists sections can be arranged four ways each.** Hold a group header and
+the arrangements unroll out of it; the list re-orders and every run of rows keeps a heading, so
+ordering by a number you cannot see still says where you are.
+
+- **songs** — name, date added (by month), length (four bands), times played (four bands)
+- **albums** — name, artist (grouped by the *artist's* letter, so the zoom-out is still the alphabet),
+  date added, year (a heading per year, with "year unknown" last)
+- **artists** — name, songs, albums, times played
+
+Tap a heading and it still zooms out over the groups and jumps to the one you pick — the alphabet, the
+months, the bands. That is the same gesture on every arrangement: a tap that meant "zoom out" under a
+letter and "choose an arrangement" under a band would teach one thing and do another. A closed set of
+bands offers all four and dims the ones your library has nothing in; date added shows the months it
+has, because there is no set of all months. Each section remembers its own arrangement — they are
+different questions, and an artist has no length to sort by. Tapping a row plays the list **as
+arranged**, so the top song under "times played" is followed by the second.
+
+**The library screens give back a row and a half of space.** The panorama's title spent 83dp above its
+own letters and 63dp below: the status bar is now cleared by inset rather than by a fixed 52dp, the
+blank the font reserves above the capitals is trimmed, and the gaps are 6dp and 12dp. Measured on a
+1080x2400 screen, a section's first row started 788px down and now starts at 609px.
+
+**And the title rolls away as you scroll.** It gives up its *height*, so the list grows into the space
+rather than being covered by it, and it comes back when the list is dragged past its top. The album
+page does the same with the cover, the numbers and its app bar — fourteen tracks fill the screen
+instead of six. It is a setting (settings → interface), because the title is also how some people know
+where they are.
+
+**A banner no longer swallows the screen while it is up.** "Added to queue" and the volume strip lived
+in a screen-sized window, so for the two seconds one was showing, every tap went into it and nothing
+underneath answered.
+
+**The zoom-out and a context menu's sheet are slightly translucent**, so what you pulled back from
+stays faintly behind it and both read as something laid over the page rather than as a different
+screen. A menu of arrangements also marks the one in force in accent — offering four ways to sort and
+saying nothing about which you are looking at makes the user pick one to find out.
+
 ## 1.0.1
 
 Packaging, so the app can be built from source by F-Droid rather than distributed as a binary. The
