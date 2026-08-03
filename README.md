@@ -13,6 +13,12 @@ switchable off.
 
 `minSdk 26` · `compileSdk 36` · Kotlin and Compose · GPLv3
 
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="70">](https://f-droid.org/packages/com.metromusic/)
+
+Also on the [releases page](https://github.com/Diffechento/MetroMusic/releases/latest), as an APK — but
+the two are signed with different keys (F-Droid builds and signs their own from this source), so moving
+from one to the other means uninstalling first.
+
 | start | now playing | panorama ∞ |
 |:---:|:---:|:---:|
 | ![The start screen: a large lowercase title over the artists section, alphabetical with a tile per letter, Latin and Cyrillic together](docs/screen-start.png) | ![The player: cover art over a backdrop of itself, a hairline progress line, and ringed transport buttons at the bottom](docs/screen-player.png) | ![The albums section mid-swipe, covers beside their titles, the panorama's title wrapping round to its own beginning](docs/screen-albums.png) |
