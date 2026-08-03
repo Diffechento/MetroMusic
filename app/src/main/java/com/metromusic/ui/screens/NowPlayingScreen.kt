@@ -23,25 +23,31 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.metrocompose.MetroCrossfade
 import com.metrocompose.MetroIcon
 import com.metrocompose.MetroRegular
+import com.metrocompose.MetroPageSwipeState
 import com.metrocompose.MetroRisingPageState
 import com.metrocompose.MetroSwap
 import com.metrocompose.MetroSlider
@@ -49,7 +55,7 @@ import com.metrocompose.MetroTheme
 import com.metrocompose.TransportButton
 import com.metrocompose.metroRiseDrag
 import com.metrocompose.metroSlideIn
-import com.metrocompose.rememberMetroSwipe
+import com.metrocompose.rememberMetroPageSwipe
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.ui.components.AlbumArt
@@ -125,19 +131,27 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
 
     val trackId = state.trackId ?: -1L
 
-    // Sideways swipes change track. The gesture, the decision and the fly-out all belong to the
-    // framework; this screen only says what "next" means and how far each layer follows the finger.
-    val swipe = rememberMetroSwipe(
-        onNext = { services.player.next() },
-        onPrevious = { services.player.previous() },
-        // The page comes home instead of being carried off and replaced from the far edge. A swipe
-        // between two tracks of one album would otherwise flip the cover and the backdrop for an
-        // identical cover and backdrop; pressing "next" changes only what differs, and so does this.
-        carryThrough = false,
-        // The last track of the queue has nothing after it, and a page that flies a quarter of the
-        // screen and comes back to the same song reads as the gesture having failed rather than as
-        // there being nowhere to go. Backward is always allowed: it restarts the track.
-        canGoNext = { state.hasNext }
+    // Sideways drags page between the tracks of the queue, and the neighbours are on screen the whole
+    // time: what arrives is what was visibly coming, and letting go only finishes a movement already
+    // made. The page it lands on is a queue position, so the swipe commits with `skipToQueueIndex`
+    // rather than with "next" — it has shown you the face you are landing on, so it must land there.
+    //
+    // It replaces a swipe that moved the whole screen under the finger and then, on release, sprang
+    // *back* to the middle while the content changed on its own schedule underneath: the finger went
+    // one way, the page went the other, and the change was a third movement the hand had no part in.
+    //
+    // `slideEpoch` counts the changes this gesture caused. The face reads it as a `key`, so a track
+    // that arrived by sliding does not *also* fade and fly its cover in — while a track that arrived
+    // any other way (a button, the last one ending) keeps that choreography, which is what it is for.
+    var slideEpoch by remember { mutableIntStateOf(0) }
+    val pager = rememberMetroPageSwipe(
+        index = state.queueIndex,
+        previousIndex = state.previousIndex,
+        nextIndex = state.nextIndex,
+        onSettleTo = { index ->
+            slideEpoch++
+            services.player.skipToQueueIndex(index)
+        }
     )
 
     // While the thumb is held, show where it is rather than where playback is.
@@ -158,7 +172,7 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
             // the page's own position rather than a nudge that triggers an animation afterwards.
             .metroRiseDrag(
                 rising,
-                swipe = swipe,
+                pager,
                 enabled = settings.gesturePlayerDown,
                 swipeEnabled = settings.gesturePlayerSwipe
             )
@@ -172,6 +186,17 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
         val coverSize = (maxHeight - ChromeHeight - navigationInset)
             .coerceIn(120.dp, maxWidth - 24.dp - ToggleColumnWidth)
         val loading = rememberAlbumArt(state.albumId, trackId, coverSize)
+
+        // The neighbours' covers, decoded before a finger asks for them. They are composed only while
+        // a swipe is in flight, so without this the first frames of every drag would carry a blank
+        // square in from the edge and fill it in a moment later — the same defect the strip's backdrop
+        // had, for the same reason. Two extra decodes at the player's own size while the player is
+        // open, which the artwork cache is capped for; at rest nothing here holds them.
+        val coverPx = with(LocalDensity.current) { coverSize.roundToPx() }
+        LaunchedEffect(state.previous?.albumId, state.next?.albumId, coverPx) {
+            state.previous?.let { services.artwork.load(it.albumId, it.trackId, coverPx) }
+            state.next?.let { services.artwork.load(it.albumId, it.trackId, coverPx) }
+        }
 
         // Layer 1 — the backdrop, overscaled so panning never exposes an edge, at a third of the
         // drag speed, and cross-fading from one album to the next with its own small parallax.
@@ -227,40 +252,45 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
         Column(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer { translationX = swipe.offset }
                 .navigationBarsPadding()
                 .padding(top = 106.dp, bottom = 52.dp)
         ) {
             // The words wait for the artwork to land before they start turning over, then go in
             // sequence down the screen rather than all at once — both measured off the phone, and
-            // together they are most of why a track change reads as slow and deliberate there.
-            MetroSwap(
-                target = state.artist,
-                modifier = Modifier.padding(horizontal = 24.dp),
-                delayMillis = TextLead
-            ) { artist ->
-                Text(
-                    text = artist,
-                    color = colors.fg,
-                    fontFamily = MetroRegular,
-                    fontSize = 30.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            // together they are most of why a track change reads as slow and deliberate there. That
+            // is for a change nobody dragged for; a slid one is already a movement, so the `key` on
+            // `slideEpoch` rebuilds the swap and it starts on the new words instead of turning over.
+            PagedFace(
+                pager = pager,
+                current = state.artist,
+                previous = state.previous?.artist,
+                next = state.next?.artist,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            ) { artist, slot ->
+                if (slot == 0) {
+                    key(slideEpoch) {
+                        MetroSwap(target = artist, delayMillis = TextLead) { FaceLine(it, 30.sp, colors.fg) }
+                    }
+                } else {
+                    FaceLine(artist, 30.sp, colors.fg)
+                }
             }
-            MetroSwap(
-                target = state.album,
-                modifier = Modifier.padding(horizontal = 24.dp),
-                delayMillis = TextLead + TextStagger
-            ) { album ->
-                Text(
-                    text = album,
-                    color = colors.subtle,
-                    fontFamily = MetroRegular,
-                    fontSize = 19.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            PagedFace(
+                pager = pager,
+                current = state.album,
+                previous = state.previous?.album,
+                next = state.next?.album,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            ) { album, slot ->
+                if (slot == 0) {
+                    key(slideEpoch) {
+                        MetroSwap(target = album, delayMillis = TextLead + TextStagger) {
+                            FaceLine(it, 19.sp, colors.subtle)
+                        }
+                    }
+                } else {
+                    FaceLine(album, 19.sp, colors.subtle)
+                }
             }
 
             Spacer(Modifier.height(10.dp))
@@ -269,14 +299,33 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
                 Column(Modifier.width(coverSize)) {
                     // No continuum key: the player is an overlay over the navigation host, not a
                     // page inside it, so there is no element on the page below for a shared
-                    // element to pair with. Keyed on the album, not the track, because skipping
-                    // between tracks of one album leaves the same cover on screen.
-                    AlbumArt(
-                        albumId = state.albumId,
-                        representativeTrackId = trackId,
-                        size = coverSize,
-                        modifier = Modifier.metroSlideIn(state.albumId)
-                    )
+                    // element to pair with. `metroSlideIn` is keyed on the album, not the track,
+                    // because skipping between tracks of one album leaves the same cover on screen —
+                    // and it is skipped altogether for a cover that arrived by sliding, which has
+                    // just travelled the width of the screen under the finger.
+                    PagedFace(
+                        pager = pager,
+                        current = state.face,
+                        previous = state.previous,
+                        next = state.next
+                    ) { face, slot ->
+                        if (slot == 0) {
+                            key(slideEpoch) {
+                                AlbumArt(
+                                    albumId = face.albumId,
+                                    representativeTrackId = face.trackId,
+                                    size = coverSize,
+                                    modifier = Modifier.metroSlideIn(face.albumId)
+                                )
+                            }
+                        } else {
+                            AlbumArt(
+                                albumId = face.albumId,
+                                representativeTrackId = face.trackId,
+                                size = coverSize
+                            )
+                        }
+                    }
 
                     // A hairline against the bottom edge of the cover, and the time the track has
                     // left rather than a second copy of its duration.
@@ -343,19 +392,22 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
 
             Spacer(Modifier.height(6.dp))
 
-            MetroSwap(
-                target = state.title,
-                modifier = Modifier.padding(horizontal = 24.dp),
-                delayMillis = TextLead + TextStagger * 2
-            ) { title ->
-                Text(
-                    text = title,
-                    color = colors.fg,
-                    fontFamily = MetroRegular,
-                    fontSize = 22.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            PagedFace(
+                pager = pager,
+                current = state.title,
+                previous = state.previous?.title,
+                next = state.next?.title,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            ) { title, slot ->
+                if (slot == 0) {
+                    key(slideEpoch) {
+                        MetroSwap(target = title, delayMillis = TextLead + TextStagger * 2) {
+                            FaceLine(it, 22.sp, colors.fg)
+                        }
+                    }
+                } else {
+                    FaceLine(title, 22.sp, colors.fg)
+                }
             }
 
             Spacer(Modifier.weight(1f))
@@ -390,6 +442,64 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
                     ringSize = 60.dp
                 ) { services.player.next() }
             }
+        }
+    }
+}
+
+/**
+ * One element of the track's face — a line of text, the cover — drawn for the current track and, while
+ * a swipe is in flight, for the neighbours either side, each translated to its own slot.
+ *
+ * Only the *face* is built out of these. The slider, the times, the toggles and the transport are not:
+ * they belong to the player rather than to the track, and a swipe that carried the play button off the
+ * screen with the artwork would be moving the furniture to change a record. That is also why this is a
+ * wrapper per element instead of one layer around everything — the face and the chrome are interleaved
+ * down the same column, and the column's own order is what puts the slider against the cover's bottom
+ * edge.
+ *
+ * The neighbours are composed only while the pager says so, because each of them decodes a cover at the
+ * player's own size: three at once for the length of a gesture is worth it, three at rest is not.
+ *
+ * [content] is given the slot it is drawing so that the current one can keep the choreography a track
+ * change has when nobody swiped for it, and the neighbours — which are already sliding — can do without.
+ */
+/** One line of the face, so the three slots of a [PagedFace] cannot drift apart in style. */
+@Composable
+private fun FaceLine(text: String, size: TextUnit, color: Color) {
+    Text(
+        text = text,
+        color = color,
+        fontFamily = MetroRegular,
+        fontSize = size,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun <T> PagedFace(
+    pager: MetroPageSwipeState,
+    current: T,
+    previous: T?,
+    next: T?,
+    modifier: Modifier = Modifier,
+    content: @Composable (value: T, slot: Int) -> Unit
+) {
+    Box(modifier) {
+        if (pager.active) {
+            previous?.let { value ->
+                Box(Modifier.graphicsLayer { translationX = pager.offsetForSlot(-1) }) {
+                    content(value, -1)
+                }
+            }
+            next?.let { value ->
+                Box(Modifier.graphicsLayer { translationX = pager.offsetForSlot(1) }) {
+                    content(value, 1)
+                }
+            }
+        }
+        Box(Modifier.graphicsLayer { translationX = pager.offsetForSlot(0) }) {
+            content(current, 0)
         }
     }
 }

@@ -5,6 +5,7 @@ import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import androidx.concurrent.futures.await
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -399,8 +400,42 @@ class PlayerController(
             repeatMode = player.repeatMode,
             hasNext = player.hasNextMediaItem(),
             hasPrevious = player.hasPreviousMediaItem(),
-            queueSize = player.mediaItemCount
+            queueSize = player.mediaItemCount,
+            queueIndex = player.currentMediaItemIndex,
+            previousIndex = player.previousMediaItemIndex.takeIf { it != C.INDEX_UNSET },
+            nextIndex = player.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET },
+            previous = player.faceAt(player.previousMediaItemIndex),
+            next = player.faceAt(player.nextMediaItemIndex)
         )
+    }
+
+    /**
+     * A queue entry as the player's swipe needs to draw it. Read from the queue's own metadata rather
+     * than from the library, so it costs nothing and is right even for a queue built out of a playlist
+     * whose tracks have since been re-scanned.
+     */
+    private fun Player.faceAt(index: Int): TrackFace? {
+        if (index == C.INDEX_UNSET || index < 0 || index >= mediaItemCount) return null
+        val item = getMediaItemAt(index)
+        val id = item.mediaId.toLongOrNull() ?: return null
+        val metadata = item.mediaMetadata
+        return TrackFace(
+            trackId = id,
+            title = metadata.title?.toString().orEmpty(),
+            artist = metadata.artist?.toString().orEmpty(),
+            album = metadata.albumTitle?.toString().orEmpty(),
+            albumId = queueAlbumIds[id] ?: -1L
+        )
+    }
+
+    /**
+     * Goes to a queue position outright, which is what the player's swipe commits to: it has already
+     * shown you the track you are landing on, so it must land there. [previous] keeps the phone's
+     * behaviour of restarting the current track instead, because a *button* press early in a track is
+     * a different question from a gesture that dragged a particular face into the middle of the screen.
+     */
+    fun skipToQueueIndex(index: Int) = command { player ->
+        if (index in 0 until player.mediaItemCount) player.seekToDefaultPosition(index)
     }
 
     private fun Track.toMediaItem(): MediaItem = MediaItem.Builder()
