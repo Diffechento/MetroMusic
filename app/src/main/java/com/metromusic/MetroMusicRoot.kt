@@ -11,12 +11,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,13 +35,16 @@ import com.metrocompose.MetroTheme
 import com.metrocompose.MetroTopBanner
 import com.metrocompose.MetroVolumeBanner
 import com.metrocompose.rememberMetroBackStack
+import com.metrocompose.rememberMetroRisingPage
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.ui.components.AppBackdrop
 import com.metromusic.ui.components.LocalOpenLyrics
 import com.metromusic.ui.components.LocalOpenPlayer
 import com.metromusic.ui.components.MiniPlayer
+import com.metromusic.ui.components.MiniPlayerBackdrop
 import com.metromusic.ui.components.MiniPlayerHeight
+import com.metromusic.ui.components.rememberPlayingBackdrop
 import com.metromusic.ui.formatTrackCount
 import com.metromusic.ui.nav.Screen
 import com.metromusic.playback.QueueNotice
@@ -80,6 +87,39 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
     val volume by services.volume.state.collectAsStateWithLifecycle()
     var playerOpen by rememberSaveable { mutableStateOf(openPlayerAtStart) }
 
+    // The window's own height, measured on the box the player fills rather than asked of the
+    // configuration — `screenHeightDp` is the space an app is given and is short by the system bars,
+    // while the rising player is full-bleed. The strip draws the top of the same picture the page
+    // draws, so being 8% out is visible there.
+    //
+    // Kept *here*, at the top of the composable, and deliberately not read from a `BoxWithConstraints`
+    // around the page. That was the first version and it strands the player: a subcomposition is
+    // disposed and re-run when its constraints change, which happens while the insets settle at
+    // startup, and it takes the page's `rememberCoroutineScope` with it — so a close animation running
+    // at that moment simply dies, leaving the page a tenth of the way up the screen with nothing to
+    // finish it. It needs the player to have been open when the process was killed, which is exactly
+    // the state a restored session comes back in.
+    var windowHeightPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+
+    // The playing cover, decoded once and held *here* so it outlives the player: the page is removed
+    // from the composition while it rests in the strip, so a bitmap remembered inside it is rebuilt
+    // from nothing on every pull and the first frames of the gesture have no artwork at all. Both the
+    // strip's backdrop and the page's are handed this same object, which is also what stops them being
+    // two decodes at two sharpnesses.
+    val backdropArt = rememberPlayingBackdrop(playerState.albumId, playerState.trackId ?: -1L)
+
+    // The player's position between the strip and the whole screen, which a finger can hold anywhere.
+    // `playerOpen` stays the app's truth — a tap, Back, the widget all set it and the page follows —
+    // and a drag reports back through `onOpenChange`, so the two never disagree about what is open.
+    val rising = rememberMetroRisingPage(
+        open = playerOpen,
+        fromHeight = MiniPlayerHeight,
+        windowHeight = if (windowHeightPx > 0) with(density) { windowHeightPx.toDp() } else Dp.Unspecified,
+        onOpenChange = { playerOpen = it }
+    )
+
+
     // Permission is granted by the time this composes, so it's safe to touch the library.
     LaunchedEffect(Unit) {
         services.library.start()
@@ -117,7 +157,7 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
     // the gradient (or the cover, if settings say so) stays put while pages come and go over it
     // instead of the panorama having a wallpaper and every detail page dropping to flat black.
     MetroBackdrop(backdrop = { AppBackdrop() }) {
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().onSizeChanged { windowHeightPx = it.height }) {
         // No inset here on purpose: every page fills the window and the framework's own
         // components — MetroPage, MetroPanorama, MetroBottomBar — keep their *content* clear of the
         // gesture bar while their surfaces reach the bottom edge. Padding the whole column instead
@@ -153,8 +193,14 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
             // of lists — on every frame of the rise, and the strip the page is supposed to drop back
             // into was shrinking while the page slid towards where it used to be. The player covers
             // the strip completely for the whole animation anyway, so there is nothing to hide.
-            MetroBottomBar(visible = playerState.hasTrack) {
-                MiniPlayer(state = playerState, onOpen = { playerOpen = true })
+            // The cover goes behind the strip, and behind the navigation bar under it, which is why
+            // it is the *bar's* background and not something the strip draws inside itself. Without
+            // it the player's full-bleed artwork ends its drop by turning into a black rectangle.
+            MetroBottomBar(
+                visible = playerState.hasTrack,
+                background = { MiniPlayerBackdrop(backdropArt) }
+            ) {
+                MiniPlayer(state = playerState, rising = rising, onOpen = { playerOpen = true })
             }
         }
 
@@ -162,8 +208,8 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
         // than stopping at the gesture bar and leaving a strip of app background — which is exactly
         // what it looked like on a phone. The screen insets its own controls instead, and
         // MetroRisingPage adds the navigation bar to the strip height it rises out of.
-            MetroRisingPage(visible = playerOpen, fromHeight = MiniPlayerHeight) {
-                NowPlayingScreen(onCollapse = { playerOpen = false })
+            MetroRisingPage(rising) {
+                NowPlayingScreen(rising, backdropArt)
             }
         }
     }

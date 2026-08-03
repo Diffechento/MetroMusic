@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,18 +42,20 @@ import androidx.media3.common.Player
 import com.metrocompose.MetroCrossfade
 import com.metrocompose.MetroIcon
 import com.metrocompose.MetroRegular
+import com.metrocompose.MetroRisingPageState
 import com.metrocompose.MetroSwap
 import com.metrocompose.MetroSlider
 import com.metrocompose.MetroTheme
 import com.metrocompose.TransportButton
-import com.metrocompose.metroDismissDown
+import com.metrocompose.metroRiseDrag
 import com.metrocompose.metroSlideIn
-import com.metrocompose.metroSwipe
-import com.metrocompose.rememberMetroDismiss
 import com.metrocompose.rememberMetroSwipe
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.ui.components.AlbumArt
+import com.metromusic.ui.components.BackdropAlpha
+import com.metromusic.ui.components.BackdropScrimBottom
+import com.metromusic.ui.components.BackdropScrimTop
 import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.rememberAlbumArt
 import com.metromusic.ui.formatDuration
@@ -91,12 +94,21 @@ private const val TextStagger = 0
  * rings, because those are the buttons you hit without looking; it sits low, within thumb reach.
  * Nothing carries a caption — captions belong to the app bar, and the player doesn't use one.
  *
- * Dragging sideways moves the foreground at finger speed and the backdrop at a third of it —
- * the same parallax idea as the panorama, applied to one screen. Let go past a quarter of the
- * width and it commits to the next or previous track; anything less springs back.
+ * Dragging sideways moves the page at finger speed. Let go past a quarter of the width and it commits
+ * to the next or previous track; anything less springs back. At the end of the queue there is nothing
+ * to commit to, and the page says so by barely moving.
+ *
+ * The backdrop used to lag behind at a third of that, for the panorama's sense of depth. It cannot any
+ * more: the cover is now drawn at exactly the screen's width so that the strip can show the top of the
+ * same square, and at that scale there is no slack at the edges for anything to travel into.
+ *
+ * **The downward gesture is not this screen's any more.** Pushing the player away moves the whole
+ * rising page, so the drag belongs to [rising] and the page itself is what follows the finger — see
+ * [MetroRisingPageState]. This screen only lends its surface to the gesture, and both axes go through
+ * one detector so a diagonal thumb cannot start a track change and a dismissal at once.
  */
 @Composable
-fun NowPlayingScreen(onCollapse: () -> Unit = {}) {
+fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
     val services = LocalServices.current
     val colors = MetroTheme.colors
     val state by services.player.state.collectAsStateWithLifecycle()
@@ -121,11 +133,12 @@ fun NowPlayingScreen(onCollapse: () -> Unit = {}) {
         // The page comes home instead of being carried off and replaced from the far edge. A swipe
         // between two tracks of one album would otherwise flip the cover and the backdrop for an
         // identical cover and backdrop; pressing "next" changes only what differs, and so does this.
-        carryThrough = false
+        carryThrough = false,
+        // The last track of the queue has nothing after it, and a page that flies a quarter of the
+        // screen and comes back to the same song reads as the gesture having failed rather than as
+        // there being nowhere to go. Backward is always allowed: it restarts the track.
+        canGoNext = { state.hasNext }
     )
-    // Pushing the page down puts it back in the strip it came out of — the gesture that matches the
-    // way it arrived, and the one you reach for instead of Back with a thumb on a tall screen.
-    val dismiss = rememberMetroDismiss(onDismiss = onCollapse)
 
     // While the thumb is held, show where it is rather than where playback is.
     var scrubbing by remember { mutableStateOf<Float?>(null) }
@@ -141,8 +154,14 @@ fun NowPlayingScreen(onCollapse: () -> Unit = {}) {
         Modifier
             .fillMaxSize()
             .background(colors.bg)
-            .metroSwipe(swipe, enabled = settings.gesturePlayerSwipe)
-            .metroDismissDown(dismiss, enabled = settings.gesturePlayerDown)
+            // One detector, both axes, the axis decided once per gesture — and the vertical one is
+            // the page's own position rather than a nudge that triggers an animation afterwards.
+            .metroRiseDrag(
+                rising,
+                swipe = swipe,
+                enabled = settings.gesturePlayerDown,
+                swipeEnabled = settings.gesturePlayerSwipe
+            )
     ) {
         // As wide as the gutter and the toggle strip leave it, and no taller than what the text
         // and the button bar don't need — on a short screen the chrome wins. The backdrop asks for
@@ -154,17 +173,15 @@ fun NowPlayingScreen(onCollapse: () -> Unit = {}) {
             .coerceIn(120.dp, maxWidth - 24.dp - ToggleColumnWidth)
         val loading = rememberAlbumArt(state.albumId, trackId, coverSize)
 
-        // The artwork the backdrop is *currently* able to show. A track change swaps the album id
-        // before the new bitmap has been decoded, and drawing that gap is what made the backdrop
-        // blink black between tracks; keeping the last picture we actually have means the old one
-        // stays until the new one can take over from it.
-        var backdrop by remember { mutableStateOf<Bitmap?>(null) }
-        LaunchedEffect(loading) {
-            if (loading != null) backdrop = loading
-        }
-
         // Layer 1 — the backdrop, overscaled so panning never exposes an edge, at a third of the
         // drag speed, and cross-fading from one album to the next with its own small parallax.
+        //
+        // [backdrop] is handed in by the shell and is the same object the strip is drawing. It used to
+        // be remembered here, with the last decoded cover kept so a track change did not blink black —
+        // which is still needed and now happens out there instead. In here it could not work: this page
+        // does not exist while it rests in the strip, so that state was rebuilt from nothing on every
+        // pull, the first frames of the gesture had no bitmap, and the cover arrived a moment later
+        // through the cross-fade. On screen that is the backdrop changing as you drag.
         if (backdrop != null) {
             MetroCrossfade(target = backdrop, modifier = Modifier.fillMaxSize()) { artwork ->
                 if (artwork != null) {
@@ -172,24 +189,34 @@ fun NowPlayingScreen(onCollapse: () -> Unit = {}) {
                         bitmap = artwork.asImageBitmap(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        // A node that *is* the square: as wide as the screen, as tall as it is wide,
+                        // at the top of the page — see the note on [BackdropAlpha]. Cropped to fill
+                        // the whole page it was magnified two and a half times, which is invisible
+                        // here and unrecognisable in the strip that shows one band of it. Expressed
+                        // as layout rather than as a painter's alignment, because the strip has to
+                        // put the same square in the same place and that has to be exact.
+                        //
+                        // No sideways parallax any more: at this scale the picture is exactly as wide
+                        // as the screen and any travel would expose an edge. The vertical parallax
+                        // went earlier, when the page itself started doing the whole travel.
                         modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = 1.3f
-                                scaleY = 1.3f
-                                translationX = swipe.offset * 0.33f
-                                translationY = dismiss.offset * 0.33f
-                                alpha = 0.30f
-                            }
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .graphicsLayer { alpha = BackdropAlpha }
                     )
                 }
             }
             Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        listOf(colors.bg.copy(alpha = 0.1f), colors.bg.copy(alpha = 0.95f))
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                colors.bg.copy(alpha = BackdropScrimTop),
+                                colors.bg.copy(alpha = BackdropScrimBottom)
+                            )
+                        )
                     )
-                )
             )
         }
 
@@ -200,10 +227,7 @@ fun NowPlayingScreen(onCollapse: () -> Unit = {}) {
         Column(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    translationX = swipe.offset
-                    translationY = dismiss.offset
-                }
+                .graphicsLayer { translationX = swipe.offset }
                 .navigationBarsPadding()
                 .padding(top = 106.dp, bottom = 52.dp)
         ) {
