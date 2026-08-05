@@ -2,27 +2,31 @@
 
 ## Unreleased
 
-**The queue is a screen now, and it is one pull further up.** The player came out of the strip; pull it
-up again and the queue comes out over it — the same movement, one page on — and pushing its title back
-down, tapping that title, or Back puts it away. There is a caret in the space under the transport that
-says so and opens it on a tap, because a gesture with nothing on screen to hint at it is a feature only
-its author knows about. It opens on the track you are listening to rather than on the top of a queue
-whose first forty songs have played.
+**The queue is a screen now, and it is one pull further up.** The player came out of the strip; pull
+it up again and the queue comes out over it — the same movement, one page on — and pushing it back
+down anywhere on the page, tapping its title, or Back puts it away. Anywhere means anywhere: the
+title answers to the push directly, and the list hands the same push over as soon as it has nothing
+left to scroll to, so a page dragged down from the top of the list — or from the empty space under a
+short queue — travels with your finger like any other. The way *in* has a mark of its own: a caret
+in the space under the transport, which opens the queue on a tap, because a gesture with nothing on
+screen to hint at it is a feature only its author knows about. It opens on the track you are
+listening to rather than on the top of a queue whose first forty songs have played.
 
-**Hold a row to pick it up, swipe it aside to remove it.** Holding lifts the row under your finger and
-dragging carries it a place at a time, with the list creeping while you hold it against either end.
-Swiping it sideways — either way — takes it out of the queue: the row travels with the word "remove"
-uncovered behind it, at full strength exactly where letting go would commit, so you are told where the
-threshold is instead of finding it out by losing a song. There is no menu on this screen at all; both
-of the things you come here for are the row itself moving under your hand.
+**Hold a row to pick it up, swipe it aside to remove it.** Holding lifts the row under your finger
+and dragging carries it a place at a time, with the list creeping while you hold it against either
+end. Swiping it sideways — either way — takes it out of the queue: the row travels with the word
+"remove" uncovered behind it, at full strength exactly where letting go would commit, so you are
+told where the threshold is instead of finding it out by losing a song. There is no menu on this
+screen at all; both of the things you come here for are the row itself moving under your hand.
 
-Removing the song that is playing is allowed and does what it says: playback moves to the next one. Taking
-the last row out empties the queue, and an emptied queue does not come back at the next launch.
+Removing the song that is playing is allowed and does what it says: playback moves to the next one.
+Taking the last row out empties the queue, and an emptied queue does not come back at the next
+launch.
 
-Three new switches on settings → gestures ("swipe up to see the queue", "push the title down to close
-it", "swipe a song aside to remove it"), because the upward pull shares an axis with the push that puts
-the player away, the sideways one shares a list with scrolling and dragging, and a gesture that fires by
-accident is worse than no gesture — the more so when it deletes something.
+Three new switches on settings → gestures ("swipe up to see the queue", "swipe down to close it",
+"swipe a song aside to remove it"), because the upward pull shares an axis with the push that puts
+the player away, the sideways one shares a list with scrolling and dragging, and a gesture that
+fires by accident is worse than no gesture — the more so when it deletes something.
 
 ## 1.1
 

@@ -318,7 +318,7 @@
     <string name="gesture_player_down">swipe down to collapse</string>
     <string name="gesture_player_up">swipe up to see the queue</string>
     <string name="gesture_queue">queue</string>
-    <string name="gesture_queue_down">push the title down to close it</string>
+    <string name="gesture_queue_down">swipe down to close it</string>
     <string name="gesture_queue_remove">swipe a song aside to remove it</string>
     <string name="gesture_explainer">tapping always works and is not listed here. turn a gesture off
         if it fires when you did not mean it to.</string>

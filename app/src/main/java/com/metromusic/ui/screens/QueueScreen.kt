@@ -39,6 +39,7 @@ import com.metrocompose.MetroSemilight
 import com.metrocompose.MetroTheme
 import com.metrocompose.metroReorderRow
 import com.metrocompose.metroRiseDrag
+import com.metrocompose.metroRiseOverscroll
 import com.metrocompose.metroRowDismiss
 import com.metrocompose.rememberMetroReorder
 import com.metrocompose.rememberMetroRowDismiss
@@ -55,8 +56,9 @@ import com.metromusic.ui.formatTrackCount
  * It is a second [MetroRisingPageState] stacked on the first one, and it has to be: the player is
  * already an overlay outside the navigation host, so a queue pushed as a destination would appear
  * *under* it. Pulling the player up once it is open is the gesture — the same movement that brought the
- * player out of the strip, one page further on — and pushing this page's own title back down puts it
- * away, as does Back.
+ * player out of the strip, one page further on — and pushing it back down puts it away, as does Back.
+ * That push works anywhere: the title answers to a drag directly, and the list hands over what it cannot
+ * scroll, so a page dragged down from the top of the list travels with the finger like any other.
  *
  * **Holding a row picks it up**, and dragging carries it a place at a time, with the list creeping while
  * the row is held against either end. **Swiping a row aside removes it.** There is no menu here at all:
@@ -102,9 +104,9 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(colors.bg)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            // The title is the handle. The list underneath owns every vertical drag inside itself —
-            // it has to, it scrolls — so the push that puts this page away lives up here, where there
-            // is nothing else a downward drag could mean.
+            // The title answers to the push directly, because no list is involved in touching it — the
+            // list below hands the same push over through nested scroll, so between them the gesture
+            // works anywhere on the page rather than only on one strip of it.
             //
             // A tap on it does the same thing, which is the idiom the strip already teaches: tap it or
             // pull it, either one opens the player. Here it is tap it or push it, and either one leaves.
@@ -145,7 +147,17 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
                 return@Column
             }
 
-            LazyColumn(Modifier.fillMaxSize(), state = listState) {
+            // And the list itself puts the page away, so the gesture is available anywhere on the
+            // screen and not only on the title: a downward drag it has nothing left to scroll to — the
+            // top of it, or a queue too short to scroll at all — becomes the page's own travel. It
+            // keeps the scroll it can use, which is why this is a nested-scroll hand-over rather than a
+            // second drag detector fighting the list for the same finger.
+            LazyColumn(
+                Modifier
+                    .fillMaxSize()
+                    .metroRiseOverscroll(rising, enabled = settings.gestureQueueDown),
+                state = listState
+            ) {
                 itemsIndexed(entries, key = { _, entry -> entry.uid }) { index, entry ->
                     QueueRow(
                         face = entry.face,
