@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+**The queue is a screen now, and it is one pull further up.** The player came out of the strip; pull it
+up again and the queue comes out over it — the same movement, one page on — and pushing its title back
+down, tapping that title, or Back puts it away. There is a caret in the space under the transport that
+says so and opens it on a tap, because a gesture with nothing on screen to hint at it is a feature only
+its author knows about. It opens on the track you are listening to rather than on the top of a queue
+whose first forty songs have played.
+
+**Hold a row to pick it up.** Drag it and it moves a place at a time, with the list creeping when you
+hold it against either end; let go without having moved it and you get the menu a hold has always
+given, with **remove from queue** on it — and **play next**, which moves that song up behind whatever
+is playing. One press offers both, and which one you get is decided by whether your hand moved.
+
+Removing the song that is playing is allowed and does what it says: playback moves to the next one. Taking
+the last row out empties the queue, and an emptied queue does not come back at the next launch.
+
+Two new switches on settings → gestures ("swipe up to see the queue", "push the title down to close it"),
+because the upward pull shares an axis with the push that puts the player away, and a gesture that fires
+by accident is worse than no gesture.
+
 ## 1.1
 
 Built on `io.github.diffechento:metro:1.0.1`.

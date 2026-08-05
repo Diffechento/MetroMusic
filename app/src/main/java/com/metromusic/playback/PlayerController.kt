@@ -60,6 +60,27 @@ class PlayerController(
     private val _state = MutableStateFlow(PlayerState.Empty)
     val state: StateFlow<PlayerState> = _state.asStateFlow()
 
+    private val _queue = MutableStateFlow<List<TrackFace>>(emptyList())
+
+    /**
+     * The whole queue, in the order the player holds it — what the queue screen draws.
+     *
+     * A flow of its own rather than a field on [PlayerState], for the same reason the position is one:
+     * [PlayerState] is collected by the strip, the player and the scrobbler and is rebuilt on every
+     * player event, and hanging a list of every track in the queue off it would allocate that list
+     * dozens of times a session for the benefit of one screen that is usually not open. Here the list is
+     * rebuilt only when the queue itself changes, which [publish] decides by comparing the ids it has
+     * already collected for the saved session.
+     *
+     * With shuffle on this stays the *timeline* order, which is the order the queue was built in and the
+     * one a move or a removal is addressed in — what plays next comes from `nextMediaItemIndex` and is
+     * shown by the player, not here.
+     */
+    val queue: StateFlow<List<TrackFace>> = _queue.asStateFlow()
+
+    /** The ids [queue] was last built from, so an unchanged queue is not rebuilt or re-emitted. */
+    private var queueIds: List<Long> = emptyList()
+
     /** Ids of the current queue, so we can map a media item back to a track. */
     private var queueAlbumIds: Map<Long, Long> = emptyMap()
 
@@ -170,16 +191,10 @@ class PlayerController(
      * that changes what would be restored — a new queue, a skip, shuffle, repeat — is an event, and
      * a track that is merely playing changes none of it.
      */
-    private fun remember(player: Player) {
-        val count = player.mediaItemCount
+    private fun remember(player: Player, ids: List<Long>) {
         // An empty player is the state at startup, before the restore has run — saving it there
         // would erase the queue we are about to put back. Emptying the queue on purpose ([stop])
         // clears the store itself.
-        if (count == 0) return
-        val ids = ArrayList<Long>(count)
-        for (i in 0 until count) {
-            ids.add(player.getMediaItemAt(i).mediaId.toLongOrNull() ?: continue)
-        }
         if (ids.isEmpty()) return
         savedQueue.save(
             SavedQueue(
@@ -381,7 +396,11 @@ class PlayerController(
     private fun publish(player: Player) {
         val item = player.currentMediaItem
         val metadata = player.mediaMetadata
-        remember(player)
+        // One walk of the queue per event, shared by the two things that need it: the snapshot that
+        // survives the process, and the list the queue screen draws.
+        val ids = player.queueTrackIds()
+        remember(player, ids)
+        publishQueue(player, ids)
         NowPlayingWidget.publish(
             context = context,
             title = metadata.title?.toString().orEmpty(),
@@ -407,6 +426,70 @@ class PlayerController(
             previous = player.faceAt(player.previousMediaItemIndex),
             next = player.faceAt(player.nextMediaItemIndex)
         )
+    }
+
+    /**
+     * Every queue entry's track id, in order.
+     *
+     * An id that will not parse is skipped rather than guessed at, which is what the saved queue has
+     * always done — and nothing ever is, since every item in this queue was built by [toMediaItem] out
+     * of a track of the library.
+     */
+    private fun Player.queueTrackIds(): List<Long> {
+        val count = mediaItemCount
+        if (count == 0) return emptyList()
+        val ids = ArrayList<Long>(count)
+        for (i in 0 until count) {
+            ids.add(getMediaItemAt(i).mediaId.toLongOrNull() ?: continue)
+        }
+        return ids
+    }
+
+    /**
+     * Rebuilds [queue] when, and only when, the queue is not the one it already holds.
+     *
+     * The comparison is against the ids rather than against the faces: it is what tells a move or a
+     * removal from a track merely starting, and it costs a list of longs that had to be walked anyway.
+     * Without it every play, pause and seek would allocate a face per track for a screen that is
+     * usually shut.
+     */
+    private fun publishQueue(player: Player, ids: List<Long>) {
+        if (ids == queueIds) return
+        queueIds = ids
+        _queue.value = (0 until player.mediaItemCount).mapNotNull { player.faceAt(it) }
+    }
+
+    /**
+     * Moves one queue entry to another position — the queue screen's drag, one place at a time.
+     *
+     * media3 does the rest: what is playing keeps playing whether it was the thing moved or something
+     * moved around it, and `currentMediaItemIndex` follows it. The "play next" cursor is held as an id
+     * and looked up, so it survives this without being told.
+     */
+    fun moveQueueItem(from: Int, to: Int) = command { player ->
+        val count = player.mediaItemCount
+        if (from !in 0 until count || to !in 0 until count || from == to) return@command
+        player.moveMediaItem(from, to)
+    }
+
+    /**
+     * Takes one entry out of the queue.
+     *
+     * Removing the track that is playing is allowed and is the interesting case: media3 moves to the
+     * next one and carries on, which is what the gesture asks for — the alternative, refusing it, would
+     * mean the one row you cannot get rid of is the one you are listening to.
+     *
+     * Emptying the queue this way ends up in the same place as [stop]: the file is cleared, because a
+     * queue the user has just taken apart row by row must not come back at the next launch.
+     */
+    fun removeQueueItem(index: Int) = command { player ->
+        if (index !in 0 until player.mediaItemCount) return@command
+        if (player.getMediaItemAt(index).mediaId == queueTailId) queueTailId = null
+        player.removeMediaItem(index)
+        if (player.mediaItemCount == 0) {
+            queueTailId = null
+            savedQueue.clear()
+        }
     }
 
     /**

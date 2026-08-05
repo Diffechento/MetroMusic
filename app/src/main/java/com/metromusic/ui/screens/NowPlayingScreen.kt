@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.metrocompose.MetroCrossfade
 import com.metrocompose.MetroIcon
+import com.metrocompose.MetroLineIcon
 import com.metrocompose.MetroRegular
 import com.metrocompose.MetroPageSwipeState
 import com.metrocompose.MetroRisingPageState
@@ -110,11 +113,21 @@ private const val TextStagger = 0
  *
  * **The downward gesture is not this screen's any more.** Pushing the player away moves the whole
  * rising page, so the drag belongs to [rising] and the page itself is what follows the finger — see
- * [MetroRisingPageState]. This screen only lends its surface to the gesture, and both axes go through
- * one detector so a diagonal thumb cannot start a track change and a dismissal at once.
+ * [MetroRisingPageState]. This screen only lends its surface to the gesture, and all three things a
+ * drag here can mean go through one detector so a diagonal thumb cannot start two of them.
+ *
+ * The third is [queue]: pulling the player up again, once it has nowhere further to rise, brings the
+ * queue out over it. The same movement that opened the player, one page further on — and the caret in
+ * the space under the transport says so and does it on a tap, because a gesture with no mark on the
+ * screen anywhere is a feature only its author knows about.
  */
 @Composable
-fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
+fun NowPlayingScreen(
+    rising: MetroRisingPageState,
+    queue: MetroRisingPageState,
+    backdrop: Bitmap?,
+    onOpenQueue: () -> Unit
+) {
     val services = LocalServices.current
     val colors = MetroTheme.colors
     val state by services.player.state.collectAsStateWithLifecycle()
@@ -174,7 +187,9 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
                 rising,
                 pager,
                 enabled = settings.gesturePlayerDown,
-                swipeEnabled = settings.gesturePlayerSwipe
+                swipeEnabled = settings.gesturePlayerSwipe,
+                upward = queue,
+                upwardEnabled = settings.gesturePlayerUp
             )
     ) {
         // As wide as the gutter and the toggle strip leave it, and no taller than what the text
@@ -442,6 +457,28 @@ fun NowPlayingScreen(rising: MetroRisingPageState, backdrop: Bitmap?) {
                     ringSize = 60.dp
                 ) { services.player.next() }
             }
+        }
+
+        // The mark for the page above this one, in the band the column already leaves empty under the
+        // transport — a layer of its own rather than a row in that column, so the cover's size, which
+        // is what the column has left over, is not a pixel different for it being here.
+        //
+        // It is drawn whether or not the upward gesture is switched on, because with the gesture off it
+        // is the only way in; a caret that disappeared with the swipe would take the feature with it.
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp)
+                .size(width = 72.dp, height = 28.dp)
+                .clickable(onClickLabel = stringResource(R.string.queue_open)) { onOpenQueue() },
+            contentAlignment = Alignment.Center
+        ) {
+            MetroLineIcon(
+                icon = MetroIcon.ChevronUp,
+                color = colors.subtle,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

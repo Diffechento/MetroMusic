@@ -137,6 +137,16 @@ data class Settings(
     val gestureStripUp: Boolean = true,
     val gesturePlayerSwipe: Boolean = true,
     val gesturePlayerDown: Boolean = true,
+    /**
+     * Pull the player up again to see the queue, and push the queue back down to leave it.
+     *
+     * The pair is the same movement as the strip's, one page further on: the player comes out of the
+     * strip, the queue comes out of the player. Two switches rather than one because they are two
+     * gestures on two surfaces, and the one that can fire by accident is the upward one — it shares an
+     * axis with the push that puts the player away.
+     */
+    val gesturePlayerUp: Boolean = true,
+    val gestureQueueDown: Boolean = true,
 
     // ---- equalizer ----
     val equalizerEnabled: Boolean = false,
@@ -239,6 +249,10 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setGesturePlayerSwipe(on: Boolean) = store.update { it.copy(gesturePlayerSwipe = on) }
 
     fun setGesturePlayerDown(on: Boolean) = store.update { it.copy(gesturePlayerDown = on) }
+
+    fun setGesturePlayerUp(on: Boolean) = store.update { it.copy(gesturePlayerUp = on) }
+
+    fun setGestureQueueDown(on: Boolean) = store.update { it.copy(gestureQueueDown = on) }
 
     fun setSongSort(sort: SongSort) = store.update { it.copy(songSortName = sort.name) }
 

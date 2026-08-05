@@ -117,6 +117,19 @@ private fun GestureSettings() {
             checked = settings.gesturePlayerDown,
             onChange = { services.settings.setGesturePlayerDown(it) }
         )
+        SettingRow(
+            title = stringResource(R.string.gesture_player_up),
+            checked = settings.gesturePlayerUp,
+            onChange = { services.settings.setGesturePlayerUp(it) }
+        )
+
+        Spacer(Modifier.height(18.dp))
+        SettingsHeader(stringResource(R.string.gesture_queue))
+        SettingRow(
+            title = stringResource(R.string.gesture_queue_down),
+            checked = settings.gestureQueueDown,
+            onChange = { services.settings.setGestureQueueDown(it) }
+        )
 
         Spacer(Modifier.height(18.dp))
         Text(

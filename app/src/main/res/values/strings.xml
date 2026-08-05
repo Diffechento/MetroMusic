@@ -240,6 +240,13 @@
     <!-- The banner that confirms something was queued; the title of what was added follows it. -->
     <string name="queued_heading">ADDED TO QUEUE</string>
 
+    <!-- ==== the queue screen, which is pulled up out of the player ==== -->
+    <string name="queue_overline">NOW PLAYING</string>
+    <string name="queue_title">queue</string>
+    <string name="queue_hint">hold a song to move it</string>
+    <string name="queue_empty">nothing is queued.</string>
+    <string name="queue_open">show the queue</string>
+
     <!-- ==== track menu ==== -->
     <string name="menu_play_next">play next</string>
     <string name="menu_favorite_add">add to favorites</string>
@@ -247,6 +254,7 @@
     <string name="menu_add_to_playlist">add to playlist</string>
     <string name="menu_show_lyrics">show lyrics</string>
     <string name="menu_remove_from_playlist">remove from playlist</string>
+    <string name="menu_remove_from_queue">remove from queue</string>
     <string name="menu_hide">hide</string>
     <string name="menu_edit">edit</string>
     <string name="menu_merge_genre">merge into…</string>
@@ -308,6 +316,9 @@
     <string name="gesture_player">player</string>
     <string name="gesture_player_swipe">swipe sideways to change track</string>
     <string name="gesture_player_down">swipe down to collapse</string>
+    <string name="gesture_player_up">swipe up to see the queue</string>
+    <string name="gesture_queue">queue</string>
+    <string name="gesture_queue_down">push the title down to close it</string>
     <string name="gesture_explainer">tapping always works and is not listed here. turn a gesture off
         if it fires when you did not mean it to.</string>
 

@@ -57,6 +57,7 @@ import com.metromusic.ui.screens.LyricsScreen
 import com.metromusic.ui.screens.NowPlayingScreen
 import com.metromusic.ui.screens.PlaylistDetailScreen
 import com.metromusic.ui.screens.PlaylistsScreen
+import com.metromusic.ui.screens.QueueScreen
 import com.metromusic.ui.screens.SettingsDetailScreen
 import com.metromusic.ui.screens.SettingsScreen
 import kotlinx.coroutines.flow.first
@@ -119,6 +120,21 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
         onOpenChange = { playerOpen = it }
     )
 
+    // And the queue over the player, which is the same movement one page further on: the player comes
+    // out of the strip, the queue comes out of the player. `fromHeight` of zero because it rises out of
+    // the bottom edge of the screen rather than out of a strip — there is nothing of it showing while it
+    // is shut, and nothing whose navigation inset it should inherit.
+    //
+    // A page rather than a destination for the same reason the player is one, and more so: a destination
+    // would appear *under* the player, which is the one thing it must not do.
+    var queueOpen by rememberSaveable { mutableStateOf(false) }
+    val queueRising = rememberMetroRisingPage(
+        open = queueOpen,
+        fromHeight = 0.dp,
+        windowHeight = if (windowHeightPx > 0) with(density) { windowHeightPx.toDp() } else Dp.Unspecified,
+        onOpenChange = { queueOpen = it }
+    )
+
 
     // Permission is granted by the time this composes, so it's safe to touch the library.
     LaunchedEffect(Unit) {
@@ -148,9 +164,13 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
     }
 
     // Nothing to show the player about, so don't let it linger — losing the queue while it is
-    // open (the last track ends, the service is stopped) should put you back on the library.
+    // open (the last track ends, the service is stopped) should put you back on the library. The queue
+    // screen goes with it: taking the last row out of it is a way to reach exactly that state.
     LaunchedEffect(playerState.hasTrack) {
-        if (!playerState.hasTrack) playerOpen = false
+        if (!playerState.hasTrack) {
+            queueOpen = false
+            playerOpen = false
+        }
     }
 
     // One backdrop for the whole app: pages inside a MetroBackdrop leave their own background off, so
@@ -209,7 +229,18 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
         // what it looked like on a phone. The screen insets its own controls instead, and
         // MetroRisingPage adds the navigation bar to the strip height it rises out of.
             MetroRisingPage(rising) {
-                NowPlayingScreen(rising, backdropArt)
+                NowPlayingScreen(
+                    rising = rising,
+                    queue = queueRising,
+                    backdrop = backdropArt,
+                    onOpenQueue = { queueOpen = true }
+                )
+            }
+
+            // Over the player, and composed after it so that it is: the queue is the only thing in the
+            // app that covers the player, and it is opaque while it does.
+            MetroRisingPage(queueRising) {
+                QueueScreen(rising = queueRising, onClose = { queueOpen = false })
             }
         }
     }
@@ -296,6 +327,11 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
     // Composed after the nav host, so while the player is open this takes Back first and the
     // back stack underneath keeps its place.
     BackHandler(enabled = playerOpen) { playerOpen = false }
+
+    // And after that one, so Back closes the queue and leaves the player it was over. The two are a
+    // stack of overlays and Back unwinds them one at a time, which is what the back stack under them
+    // does as well.
+    BackHandler(enabled = queueOpen) { queueOpen = false }
 
     // Leaving takes two presses. At the root of the stack a single stray Back — and the gesture is
     // easy to trigger by accident on a tall phone — would otherwise close a music app mid-song.
