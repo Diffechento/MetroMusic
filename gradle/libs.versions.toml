@@ -5,10 +5,11 @@ coreKtx = "1.15.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.12.01"
-# 1.0.2 IS NOT ON CENTRAL. It exists in mavenLocal only, published from ../MetroDemo on the
-# `smoother-gestures` branch, and this line is why this branch must not be merged to main or tagged
-# before it is: a fresh clone, CI and F-Droid's builder all resolve from Central and would fail to
-# find it. Central first, then the push. See the note in libs beneath.
+# On Central since 2026-08-05, which is what makes this line safe to have on main: a fresh clone, CI
+# and F-Droid's builder all resolve from there. `mavenLocal()` still comes first in
+# `settings.gradle.kts`, so a machine with a framework checkout keeps testing its own build — and that
+# is exactly why the rule is Central first and the push second. Raise this number only once the new
+# version is really resolvable, not merely published.
 metrocompose = "1.0.2"
 media3 = "1.5.1"
 serialization = "1.7.3"
