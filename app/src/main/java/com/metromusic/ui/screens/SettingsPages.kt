@@ -130,6 +130,11 @@ private fun GestureSettings() {
             checked = settings.gestureQueueDown,
             onChange = { services.settings.setGestureQueueDown(it) }
         )
+        SettingRow(
+            title = stringResource(R.string.gesture_queue_remove),
+            checked = settings.gestureQueueRemove,
+            onChange = { services.settings.setGestureQueueRemove(it) }
+        )
 
         Spacer(Modifier.height(18.dp))
         Text(

@@ -9,17 +9,20 @@ says so and opens it on a tap, because a gesture with nothing on screen to hint 
 its author knows about. It opens on the track you are listening to rather than on the top of a queue
 whose first forty songs have played.
 
-**Hold a row to pick it up.** Drag it and it moves a place at a time, with the list creeping when you
-hold it against either end; let go without having moved it and you get the menu a hold has always
-given, with **remove from queue** on it — and **play next**, which moves that song up behind whatever
-is playing. One press offers both, and which one you get is decided by whether your hand moved.
+**Hold a row to pick it up, swipe it aside to remove it.** Holding lifts the row under your finger and
+dragging carries it a place at a time, with the list creeping while you hold it against either end.
+Swiping it sideways — either way — takes it out of the queue: the row travels with the word "remove"
+uncovered behind it, at full strength exactly where letting go would commit, so you are told where the
+threshold is instead of finding it out by losing a song. There is no menu on this screen at all; both
+of the things you come here for are the row itself moving under your hand.
 
 Removing the song that is playing is allowed and does what it says: playback moves to the next one. Taking
 the last row out empties the queue, and an emptied queue does not come back at the next launch.
 
-Two new switches on settings → gestures ("swipe up to see the queue", "push the title down to close it"),
-because the upward pull shares an axis with the push that puts the player away, and a gesture that fires
-by accident is worse than no gesture.
+Three new switches on settings → gestures ("swipe up to see the queue", "push the title down to close
+it", "swipe a song aside to remove it"), because the upward pull shares an axis with the push that puts
+the player away, the sideways one shares a list with scrolling and dragging, and a gesture that fires by
+accident is worse than no gesture — the more so when it deletes something.
 
 ## 1.1
 

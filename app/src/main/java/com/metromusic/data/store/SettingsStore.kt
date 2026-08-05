@@ -147,6 +147,15 @@ data class Settings(
      */
     val gesturePlayerUp: Boolean = true,
     val gestureQueueDown: Boolean = true,
+    /**
+     * Swipe a queue row aside to take it out of the queue.
+     *
+     * The one gesture in the app that *destroys* something, in a list that is also scrolled and whose
+     * rows are also held and dragged — so it is the last one anybody should be stuck with. On by
+     * default all the same: with it off there is no way at all to remove a track, and the row travels
+     * with the word under it long before it commits.
+     */
+    val gestureQueueRemove: Boolean = true,
 
     // ---- equalizer ----
     val equalizerEnabled: Boolean = false,
@@ -253,6 +262,8 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setGesturePlayerUp(on: Boolean) = store.update { it.copy(gesturePlayerUp = on) }
 
     fun setGestureQueueDown(on: Boolean) = store.update { it.copy(gestureQueueDown = on) }
+
+    fun setGestureQueueRemove(on: Boolean) = store.update { it.copy(gestureQueueRemove = on) }
 
     fun setSongSort(sort: SongSort) = store.update { it.copy(songSortName = sort.name) }
 

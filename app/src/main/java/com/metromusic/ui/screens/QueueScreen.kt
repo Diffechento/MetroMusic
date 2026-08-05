@@ -23,14 +23,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.metrocompose.Metro
 import com.metrocompose.MetroBottomInset
-import com.metrocompose.MetroContextMenu
 import com.metrocompose.MetroLight
 import com.metrocompose.MetroRegular
 import com.metrocompose.MetroRisingPageState
@@ -38,7 +39,9 @@ import com.metrocompose.MetroSemilight
 import com.metrocompose.MetroTheme
 import com.metrocompose.metroReorderRow
 import com.metrocompose.metroRiseDrag
+import com.metrocompose.metroRowDismiss
 import com.metrocompose.rememberMetroReorder
+import com.metrocompose.rememberMetroRowDismiss
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.playback.TrackFace
@@ -55,11 +58,10 @@ import com.metromusic.ui.formatTrackCount
  * player out of the strip, one page further on — and pushing this page's own title back down puts it
  * away, as does Back.
  *
- * **Holding a row picks it up.** Drag it and it moves, one place at a time, with the list creeping when
- * the row is held against either end. Let go without having moved it and the context menu opens
- * instead, which is what a hold means everywhere else in the app — so one press offers both and the
- * hand decides which. See `MetroReorderState` for why that is one gesture rather than a grip in the
- * margin, which is how the playlist page does it.
+ * **Holding a row picks it up**, and dragging carries it a place at a time, with the list creeping while
+ * the row is held against either end. **Swiping a row aside removes it.** There is no menu here at all:
+ * the two things this screen exists for are both the row itself moving under the finger, which is a
+ * shorter road than a sheet you have to read — and it leaves the hold free to mean one thing only.
  *
  * **The order on screen is this screen's own copy of it.** Every edit is applied here and sent to the
  * player, rather than sent and waited for: a `MediaController` answers a frame or several later, and a
@@ -98,8 +100,6 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
         if (at > 0) listState.scrollToItem(at)
     }
 
-    var menuFor by remember { mutableStateOf<Long?>(null) }
-
     Box(Modifier.fillMaxSize().background(colors.bg)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             // The title is the handle. The list underneath owns every vertical drag inside itself —
@@ -130,16 +130,14 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
                     fontSize = 46.sp,
                     maxLines = 1
                 )
-                Text(
-                    text = if (entries.isEmpty()) {
-                        stringResource(R.string.queue_hint)
-                    } else {
-                        formatTrackCount(entries.size)
-                    },
-                    color = colors.dim,
-                    fontFamily = MetroRegular,
-                    fontSize = 13.sp
-                )
+                if (entries.isNotEmpty()) {
+                    Text(
+                        text = formatTrackCount(entries.size),
+                        color = colors.dim,
+                        fontFamily = MetroRegular,
+                        fontSize = 13.sp
+                    )
+                }
             }
 
             if (entries.isEmpty()) {
@@ -149,36 +147,18 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
 
             LazyColumn(Modifier.fillMaxSize(), state = listState) {
                 itemsIndexed(entries, key = { _, entry -> entry.uid }) { index, entry ->
-                    val lifted = reorder.active && reorder.index == index
                     QueueRow(
                         face = entry.face,
                         position = index + 1,
                         isCurrent = index == playerState.queueIndex,
-                        lifted = lifted,
-                        menuOpen = menuFor == entry.uid,
+                        lifted = reorder.active && reorder.index == index,
+                        swipeToRemove = settings.gestureQueueRemove,
                         onPlay = { services.player.skipToQueueIndex(index) },
                         onRemove = {
-                            menuFor = null
                             entries = entries.filterNot { it.uid == entry.uid }
                             services.player.removeQueueItem(index)
                         },
-                        onPlayNext = {
-                            menuFor = null
-                            val to = playerState.queueIndex
-                                .let { if (it < index) it + 1 else it }
-                                .coerceIn(0, entries.lastIndex)
-                            if (to != index) {
-                                entries = entries.toMutableList()
-                                    .apply { add(to, removeAt(index)) }
-                                services.player.moveQueueItem(index, to)
-                            }
-                        },
-                        onDismissMenu = { menuFor = null },
-                        modifier = Modifier.metroReorderRow(
-                            state = reorder,
-                            index = index,
-                            onHeldStill = { menuFor = entry.uid }
-                        )
+                        modifier = Modifier.metroReorderRow(state = reorder, index = index)
                     )
                 }
                 item(key = "queue-inset") { MetroBottomInset(extra = 20.dp) }
@@ -197,10 +177,6 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
  */
 private data class QueueEntry(val uid: Long, val face: TrackFace)
 
-/** Where "remove from queue" and "play next" sit in the row's menu. */
-private const val RemoveIndex = 0
-private const val PlayNextIndex = 1
-
 /**
  * One row of the queue: its position, its cover, and what it is.
  *
@@ -211,6 +187,12 @@ private const val PlayNextIndex = 1
  *
  * The number is the position in the queue and not the track number on its album: this list is an order
  * somebody made, and its rows come from as many albums as they like.
+ *
+ * **Swiping the row aside removes it**, either way, and there is no menu on this screen at all: the two
+ * things you come here to do are reorder and remove, and both are now the row itself moving under the
+ * finger rather than a sheet unrolling to be read. The word appears in the gap as the row leaves and is
+ * at full strength exactly where letting go would commit, so the threshold is something the hand is
+ * told rather than has to discover by losing a song.
  */
 @Composable
 private fun QueueRow(
@@ -218,35 +200,43 @@ private fun QueueRow(
     position: Int,
     isCurrent: Boolean,
     lifted: Boolean,
-    menuOpen: Boolean,
+    swipeToRemove: Boolean,
     onPlay: () -> Unit,
     onRemove: () -> Unit,
-    onPlayNext: () -> Unit,
-    onDismissMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = MetroTheme.colors
-    MetroContextMenu(
-        expanded = menuOpen,
-        items = listOf(
-            stringResource(R.string.menu_remove_from_queue),
-            stringResource(R.string.menu_play_next)
-        ),
-        onSelect = { index ->
-            when (index) {
-                RemoveIndex -> onRemove()
-                PlayNextIndex -> onPlayNext()
+    val away = rememberMetroRowDismiss(onDismiss = onRemove)
+    Box(modifier) {
+        // Behind the row, and only ever seen through the gap the row leaves — which is why the block
+        // spans the whole row and is simply covered up: no arithmetic about how wide the gap is, and
+        // the word is revealed by the row moving off it rather than drawn to fit.
+        if (away.active) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(colors.accent.copy(alpha = away.progress))
+            ) {
+                Text(
+                    text = stringResource(R.string.queue_remove),
+                    color = Metro.Fg,
+                    fontFamily = MetroRegular,
+                    fontSize = 15.sp,
+                    modifier = Modifier
+                        .align(
+                            if (away.offset > 0f) Alignment.CenterStart else Alignment.CenterEnd
+                        )
+                        .padding(horizontal = 24.dp)
+                )
             }
-        },
-        onDismiss = onDismissMenu,
-        // "Play next" against the track that is already playing, or the one already next, has nothing
-        // to do. Greyed rather than dropped, so the menu keeps its shape — see [MetroContextMenu].
-        disabledItems = if (isCurrent) setOf(PlayNextIndex) else emptySet(),
-        modifier = modifier
-    ) {
+        }
         Row(
             Modifier
                 .fillMaxWidth()
+                // The row is where you can see it: the layer and the detector are on the same node, so
+                // the finger stays on the row it is carrying.
+                .graphicsLayer { translationX = away.offset }
+                .metroRowDismiss(away, enabled = swipeToRemove)
                 // A row that is up is tinted, not merely shifted: the finger is over it, so the only
                 // part of it the eye can check is the edges.
                 //

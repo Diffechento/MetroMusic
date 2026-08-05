@@ -243,7 +243,8 @@
     <!-- ==== the queue screen, which is pulled up out of the player ==== -->
     <string name="queue_overline">NOW PLAYING</string>
     <string name="queue_title">queue</string>
-    <string name="queue_hint">hold a song to move it</string>
+    <!-- The word revealed behind a queue row as it is swiped aside. -->
+    <string name="queue_remove">remove</string>
     <string name="queue_empty">nothing is queued.</string>
     <string name="queue_open">show the queue</string>
 
@@ -254,7 +255,6 @@
     <string name="menu_add_to_playlist">add to playlist</string>
     <string name="menu_show_lyrics">show lyrics</string>
     <string name="menu_remove_from_playlist">remove from playlist</string>
-    <string name="menu_remove_from_queue">remove from queue</string>
     <string name="menu_hide">hide</string>
     <string name="menu_edit">edit</string>
     <string name="menu_merge_genre">merge into…</string>
@@ -319,6 +319,7 @@
     <string name="gesture_player_up">swipe up to see the queue</string>
     <string name="gesture_queue">queue</string>
     <string name="gesture_queue_down">push the title down to close it</string>
+    <string name="gesture_queue_remove">swipe a song aside to remove it</string>
     <string name="gesture_explainer">tapping always works and is not listed here. turn a gesture off
         if it fires when you did not mean it to.</string>
 
