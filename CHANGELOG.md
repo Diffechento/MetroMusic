@@ -1,6 +1,38 @@
 # Changelog
 
-## Unreleased
+## 1.2
+
+Built on `io.github.diffechento:metro:1.0.2`.
+
+**Every gesture follows your finger, and lets go at the speed your hand had.** A report after 1.1 that
+"doing any gestures is a bit rough" turned out to be four separate faults being felt as one, all of them
+in the framework. The largest: a settle handed the finger's velocity *accepted* it and threw it away,
+because only a spring reads that argument and every settle here was an easing curve. So each gesture
+ended with the speed jumping to whatever the curve began at, at exactly the moment your hand was judging
+the result — a discontinuity in the one thing a drag is made of. Everything that follows a drag now ends
+on a critically damped spring given the gesture's own velocity: an ease-out with no bounce in it, and no
+seam where the finger lifts.
+
+**The player is dragged rather than nudged.** Pulling the strip up used to move it 26dp, decide, and
+then play a canned animation from wherever the page had reached — your hand doing one thing while your
+eye watched another. The page's position *is* the drag now, and letting go only finishes a movement
+already underway. One detector owns both of the player's axes, too: a sideways swipe and a downward push
+were two separate one-axis detectors that could not arbitrate, so a thumb thirty degrees off the
+horizontal started both at once. The axis is locked to whichever way you actually moved.
+
+**And the player pages between tracks instead of springing back.** The neighbouring tracks are laid out
+either side and your finger moves all three, so the track that lands is the one that was visibly
+coming — rather than the screen springing back to the middle and the change then arriving afterwards as
+its own choreography, one movement of which went the opposite way to the hand. Only the face pages: the
+slider, the times and the transport belong to the player rather than to the track, and a swipe that
+carried the play button off the screen would be moving the furniture to change a record. At the end of
+the queue the page resists instead of flying a quarter of the screen and coming back to the same song.
+
+**The strip carries the top of the playing cover**, because a player dropping back into a flat black bar
+ends the movement by turning the artwork into a black rectangle. It is not a picture of its own but the
+same square the full player draws — the cover at the screen's width, hung from the top of the page — so
+the strip shows the top of it, pulling up draws the rest out from underneath, and the size never changes
+on the way.
 
 **The queue is a screen now, and it is one pull further up.** The player came out of the strip; pull
 it up again and the queue comes out over it — the same movement, one page on — and pushing it back
@@ -27,6 +59,26 @@ Three new switches on settings → gestures ("swipe up to see the queue", "swipe
 "swipe a song aside to remove it"), because the upward pull shares an axis with the push that puts
 the player away, the sideways one shares a list with scrolling and dragging, and a gesture that
 fires by accident is worse than no gesture — the more so when it deletes something.
+
+**Fixed: editing an album's tags did nothing on a release build**, which is every build anyone has
+installed — it worked in development throughout and listed an error per track on a phone. jaudiotagger
+finds the class for each tag field by name and copies frames through a constructor it looks up
+reflectively, and minification is invisible to both: the classes were renamed and the constructors
+removed, so the library could no longer build the field it had been asked to write. It did not say that.
+The message named the *value* instead, which is why the first report read as a problem with Cyrillic
+text and was not one.
+
+**Fixed: the panorama went on taking a sideways swipe after it had visibly stopped moving.** Swipe
+between sections and then try to scroll a list and the panorama moved sideways instead, unless you left a
+pause between the two. A surface that is still animating deliberately takes the next touch without
+waiting for the slop — that is how you catch a list still in flight — but the slop is the only place the
+direction is arbitrated, and the snap was still creeping by fractions of a pixel for hundreds of
+milliseconds after the movement was over. It now stops calling itself a scroll when it stops moving.
+
+**Fixed: a band of tinted artwork appeared over the library** while the player was on its way up. The
+player's backdrop is deliberately overscaled so panning never exposes an edge, and that overspill hung
+above the page's top edge — invisible on a page that could only be all the way open or all the way shut,
+which is why nothing caught it until the page could be held halfway.
 
 ## 1.1
 

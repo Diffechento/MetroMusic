@@ -39,7 +39,10 @@ effect in every list at once. Album metadata is edited into the tags inside the 
 only level where a change sticks. Playlists, favourites, play counts and history are yours and local.
 
 **Playing.** Media3 in a media session: notification, lock screen, headset and Bluetooth, and playback
-that outlives the screen. The queue and the current track come back after the app is closed. Apple
+that outlives the screen. Pull the strip up for the player and up again for the queue, where a row is
+held to pick it up and swiped aside to remove it; the player pages between tracks under your finger,
+and every one of those gestures has a switch. The queue and the current track come back after the app
+is closed. Apple
 Lossless is decoded in the app, because Android ships no ALAC decoder and silently plays such files as
 silence. Equalizer over the device's own bands, sleep timer, and a WP8 volume banner in place of the
 system panel.

@@ -1,0 +1,5 @@
+Gestures follow your finger and let go at the speed your hand had. The player is dragged out of the strip rather than nudged into opening, and it pages between tracks, so the one that lands is the one you saw coming. The strip carries the top of the playing cover.
+
+Pull the player up again and the queue comes out over it: hold a row to move it, swipe it aside to remove it.
+
+Fixed: editing an album's tags did nothing on a release build, which is every build anyone installed.
