@@ -1,9 +1,12 @@
 package com.metromusic.ui.screens
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,9 +20,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.ListRow
 import com.metrocompose.MetroBottomInset
 import com.metrocompose.MetroContextMenu
+import com.metrocompose.MetroEdgeScroll
 import com.metrocompose.MetroListBox
 import com.metrocompose.MetroLongList
 import com.metrocompose.MetroTextBox
+import com.metrocompose.metroGroupChar
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.model.Library
@@ -114,7 +119,8 @@ fun ArtistsSection(
         modifier = listModifier,
         filledGroupHeaders = settings.letterTiles,
         sorts = sorts,
-        onSortSelected = { index -> services.settings.setArtistSort(ArtistSort.entries[index]) }
+        onSortSelected = { index -> services.settings.setArtistSort(ArtistSort.entries[index]) },
+        edgeScroll = settings.gestureEdgeScroll
     ) { artist ->
         CollectionRowWithActions(
             key = artist.id,
@@ -167,7 +173,8 @@ fun AlbumsSection(
         // own group letters is what made this section look like a different app.
         filledGroupHeaders = settings.letterTiles,
         sorts = sorts,
-        onSortSelected = { index -> services.settings.setAlbumSort(AlbumSort.entries[index]) }
+        onSortSelected = { index -> services.settings.setAlbumSort(AlbumSort.entries[index]) },
+        edgeScroll = settings.gestureEdgeScroll
     ) { album ->
         CollectionRowWithActions(
             key = album.id,
@@ -236,7 +243,8 @@ fun SongsSection(
             modifier = listModifier,
             filledGroupHeaders = settings.letterTiles,
             sorts = sorts,
-            onSortSelected = { index -> services.settings.setSongSort(SongSort.entries[index]) }
+            onSortSelected = { index -> services.settings.setSongSort(SongSort.entries[index]) },
+            edgeScroll = settings.gestureEdgeScroll
         ) { track ->
             TrackRowWithActions(
                 track = track,
@@ -268,13 +276,29 @@ fun GenresSection(library: Library, modifier: Modifier, onNavigate: (Screen) -> 
         return
     }
     val services = LocalServices.current
+    val settings by services.settings.settings.collectAsStateWithLifecycle()
     val actions = rememberCollectionActions()
     // Which genre is waiting to be merged into another; the picker below is what chooses the target.
     var mergeSource by remember { mutableStateOf<String?>(null) }
 
     // Counting per genre in one pass beats filtering the whole track list per row.
     val counts = remember(library) { library.tracks.groupingBy { it.genre }.eachCount() }
-    LazyColumn(modifier) {
+    val listState = rememberLazyListState()
+    // The band down the edge, by hand: genres are one flat list rather than a MetroLongList, so there
+    // are no runs to name and the tile carries the letter of the genre reached — which is the same
+    // answer the other three sections give, arrived at from a shorter list.
+    MetroEdgeScroll(
+        state = listState,
+        modifier = modifier,
+        enabled = settings.gestureEdgeScroll,
+        itemCount = library.genres.size,
+        label = { index ->
+            library.genres.getOrNull(index)
+                ?.let { metroGroupChar(it).lowercaseChar().toString() }
+                .orEmpty()
+        }
+    ) {
+    LazyColumn(Modifier.fillMaxSize(), state = listState) {
         items(library.genres, key = { it }) { genre ->
             val tracks = remember(library, genre) { library.tracksOfGenre(genre) }
             MetroContextMenu(
@@ -305,6 +329,7 @@ fun GenresSection(library: Library, modifier: Modifier, onNavigate: (Screen) -> 
         // The section reaches the bottom edge of the screen, so the list carries the gesture bar's
         // room at its end instead of stopping short of it.
         item { MetroBottomInset(extra = 20.dp) }
+    }
     }
 
     // Everything except the genre being merged — merging something into itself is the one choice that

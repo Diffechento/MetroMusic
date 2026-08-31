@@ -1,5 +1,74 @@
 # Changelog
 
+## Unreleased
+
+Built on `io.github.diffechento:metro:1.0.3`.
+
+**An album is its tags, not its folder.** One record split across two folders — a CD1/CD2 rip, a
+track downloaded later into a different place — showed as two albums, because the id the library
+grouped by was Android's own, and Android bakes the file's folder into it whenever there is no album
+artist tag. Albums are now gathered by what the files say: the album title, plus the album artist
+where there is one, so two records that merely share a name ("Greatest Hits") still stay apart. The
+listening history follows its albums across the change, and files with no album tag at all keep the
+old per-folder behaviour — with no tag there is nothing better to go on.
+
+**Drag the left edge of a list to scroll it fast.** A band down the side of the artists, albums, songs
+and genres: put a finger on it and the list travels its whole length under the drag, with the letter you
+have reached carried in a tile beside your finger — the gallery movement, on a library. It is not a
+replacement for tapping a heading to zoom out to the alphabet, which answers "take me to Н"; this
+answers "take me a third of the way in", which is not a letter and so was not a question you could ask.
+A hairline shows where you are in the list whenever it is scrolling, so the band can be found without
+being told about. Tapping a row inside the band still plays it, and swiping sideways there still changes
+section. On settings → gestures, like every other gesture the app adds on top of tapping, and it appears
+on lists longer than about two screens — below that an ordinary scroll already reaches everything.
+
+**A record is filed under its album artist.** A compilation used to be filed under whoever its first
+track happened to credit, so twelve artists on one album meant the album lived under one of them,
+picked by track number; and a record where every song reads "band feat. somebody" was by the band and
+said so nowhere. Both are what the album artist tag is for, and it is read now — the album's row, its
+page and whose page it appears on all follow it, while the credit under each song stays exactly as the
+file spells it. The album artist gets a page of their own, so "Various Artists" is somewhere to go
+rather than a name with nothing behind it. A switch on settings → library, because a ripper that wrote
+something odd in that tag would otherwise move an album somewhere its owner would not think to look.
+Needs Android 11, which is where the system started reporting the tag at all.
+
+**Search the whole library at once**, from a row at the top of "more". The panorama's own search is a
+different question — tapping a section header filters that section, which is "which of these" — and
+this is the one where you do not know, or do not care, whether what you half-remember is a title, a
+band or a record. Results come grouped by what they are, with a count on each group, so a query that
+turns up one artist and forty of their songs says so instead of being a wall to scroll. Tapping does
+what tapping that row does anywhere else: a song plays and the rest open.
+
+**Open an audio file from anywhere else on the phone.** Tapping a song in a file manager, a download or
+an attachment offers MetroMusic and plays it, with the player already up. A file the library knows is
+played as that track, counted and queued like any other; one from outside — a file the scan has not
+reached, or one another app holds — plays as itself, and does not pretend to be part of a library it
+is not in.
+
+**Even out the volume between tracks**, off by default, on settings → playback. It reads the
+ReplayGain tags files are given when they are ripped or tagged — ID3, Vorbis comments and MP4 atoms
+alike, and the R128 numbers Opus uses — out of the stream the player is already parsing, so it costs
+nothing and needs no second pass over the files. It can only turn a loud track down, never a quiet one
+up, which is the honest limit of a volume that is a fraction of the output: a library mastered
+uniformly quiet will hear nothing change, and the setting says so.
+
+**Save the queue as a playlist.** A queue built out of four albums and then pruned is a playlist that
+does not exist yet, and the only way to keep it used to be building it again from memory. One button
+under the queue's title; the order it writes down is the order on screen.
+
+**Fixed: the banner at the top of the screen arrived in two jerks.** The volume strip, "added to
+queue" and "press back again" all drop in from the top edge, and all three did it by moving their own
+window — which the system applies on its own schedule, so almost the whole travel happened before
+anything was on screen and the last few pixels then crawled. On the way down the strip's lower rows
+also passed under the clock and the wifi icon, so it read as landing in the wrong place and then
+correcting itself. Both are gone: the strip is placed once and its contents drop inside it, clear of
+the clock. That is framework work — MangoTile 1.0.3.
+
+**Fixed: the player did not open when the app was launched to play something.** Nothing had a track
+for the first moment of a launch — the player is still connecting — and that counted as the queue
+having been lost, which closes the player. It only counts as lost now once something has actually
+played.
+
 ## 1.2
 
 Built on `io.github.diffechento:metro:1.0.2`.

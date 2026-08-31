@@ -82,7 +82,31 @@ data class Settings(
      * library is to be able to turn it off. See `splitArtists`.
      */
     val splitArtistCredits: Boolean = true,
+    /**
+     * Let the album artist tag say who a record is by, instead of its first track's credit.
+     *
+     * On by default, and it is the answer for the two cases the credit cannot give one for: a
+     * compilation, which is otherwise filed under whoever happens to open it, and a record whose
+     * every track reads "band feat. somebody", which is by the band and says so nowhere else.
+     *
+     * A switch all the same, because badly tagged files are the norm and this one *moves albums*:
+     * a ripper that wrote the composer, or the label, or "Various Artists" over a perfectly ordinary
+     * record puts it somewhere its owner will not look, and the only way to find that out about your
+     * own library is to be able to turn it off. Read while scanning, so changing it re-runs the scan.
+     *
+     * Needs API 30 for `ALBUM_ARTIST`, like genres; below that it reads as off.
+     */
+    val useAlbumArtist: Boolean = true,
     val sleepTimerMinutes: Int = 0,
+    /**
+     * Even out the loudness between tracks, from the ReplayGain tags the files carry.
+     *
+     * Off by default: it is a change to how loud the music is, made without being asked, and on a
+     * library with no gain tags at all it would be a switch that does nothing while looking like it
+     * should. Whoever wants it knows they do — see [com.metromusic.playback.ReplayGain] for what it
+     * can and cannot do (it can only turn quiet a track that is too loud).
+     */
+    val volumeNormalization: Boolean = false,
 
     // ---- appearance ----
     /** Take dark/light from the device instead of from [dark]. */
@@ -156,6 +180,16 @@ data class Settings(
      * with the word under it long before it commits.
      */
     val gestureQueueRemove: Boolean = true,
+    /**
+     * Drag the left edge of a long list to scroll it by its whole length.
+     *
+     * It is the one gesture that takes an axis a list already uses, over rows that are also tapped: a
+     * band 32dp wide down the side of the artists, albums, songs and genres, where a vertical drag
+     * scrubs instead of scrolling. That is exactly the trade a switch exists for — somebody who scrolls
+     * with a thumb hooked over the left edge of the phone would otherwise scrub every time they meant
+     * to scroll. A tap in the band still plays the row under it, with the gesture on or off.
+     */
+    val gestureEdgeScroll: Boolean = true,
 
     // ---- equalizer ----
     val equalizerEnabled: Boolean = false,
@@ -251,6 +285,10 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
 
     fun setSplitArtistCredits(on: Boolean) = store.update { it.copy(splitArtistCredits = on) }
 
+    fun setUseAlbumArtist(on: Boolean) = store.update { it.copy(useAlbumArtist = on) }
+
+    fun setVolumeNormalization(on: Boolean) = store.update { it.copy(volumeNormalization = on) }
+
     fun setGestureStripSwipe(on: Boolean) = store.update { it.copy(gestureStripSwipe = on) }
 
     fun setGestureStripUp(on: Boolean) = store.update { it.copy(gestureStripUp = on) }
@@ -264,6 +302,8 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setGestureQueueDown(on: Boolean) = store.update { it.copy(gestureQueueDown = on) }
 
     fun setGestureQueueRemove(on: Boolean) = store.update { it.copy(gestureQueueRemove = on) }
+
+    fun setGestureEdgeScroll(on: Boolean) = store.update { it.copy(gestureEdgeScroll = on) }
 
     fun setSongSort(sort: SongSort) = store.update { it.copy(songSortName = sort.name) }
 

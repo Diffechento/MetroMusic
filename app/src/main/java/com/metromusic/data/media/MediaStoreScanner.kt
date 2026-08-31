@@ -7,6 +7,7 @@ import android.provider.MediaStore
 import com.metromusic.data.model.Album
 import com.metromusic.data.model.Library
 import com.metromusic.data.model.Track
+import com.metromusic.data.model.albumIdOf
 import com.metromusic.data.model.albumsByArtistIndex
 import com.metromusic.data.model.artistIdOf
 import com.metromusic.data.model.artistsOf
@@ -27,6 +28,16 @@ class MediaStoreScanner(private val context: Context) {
 
     private val hasGenreColumn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
 
+    /**
+     * The album artist column, on the platforms that publish one.
+     *
+     * `ALBUM_ARTIST` became public API at API 30, the same release as `GENRE`, and asking a provider
+     * for a column it does not publish is an `IllegalArgumentException` rather than a null — so this
+     * is gated exactly as the genre column is, and below it an album is filed under its first track's
+     * credit as it always was.
+     */
+    private val hasAlbumArtistColumn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+
     private val projection: Array<String>
         get() = buildList {
             add(MediaStore.Audio.Media._ID)
@@ -40,6 +51,7 @@ class MediaStoreScanner(private val context: Context) {
             add(MediaStore.Audio.Media.DATE_ADDED)
             add(MediaStore.Audio.Media.IS_MUSIC)
             if (hasGenreColumn) add(MediaStore.Audio.Media.GENRE)
+            if (hasAlbumArtistColumn) add(MediaStore.Audio.Media.ALBUM_ARTIST)
         }.toTypedArray()
 
     /** What the last scan saw and what it left out, so a missing album can be accounted for. */
@@ -54,13 +66,17 @@ class MediaStoreScanner(private val context: Context) {
      * @param minDurationMs drops ringtones, notification blips and stray voice memos that are
      *   flagged as music. 30s is the usual cut-off.
      * @param splitCredits file a track under every artist its credit names — see [splitArtists].
+     * @param useAlbumArtist read the album artist tag and let it say who a record is by.
      */
-    suspend fun scan(minDurationMs: Long, splitCredits: Boolean): Library =
-        withContext(Dispatchers.IO) {
-            val tracks = queryTracks(minDurationMs, splitCredits)
-            if (tracks.isEmpty()) return@withContext Library.Empty
-            buildLibrary(tracks)
-        }
+    suspend fun scan(
+        minDurationMs: Long,
+        splitCredits: Boolean,
+        useAlbumArtist: Boolean
+    ): Library = withContext(Dispatchers.IO) {
+        val tracks = queryTracks(minDurationMs, splitCredits, useAlbumArtist)
+        if (tracks.isEmpty()) return@withContext Library.Empty
+        buildLibrary(tracks)
+    }
 
     /**
      * Every audio row the store has, filtered in Kotlin rather than in SQL.
@@ -76,7 +92,11 @@ class MediaStoreScanner(private val context: Context) {
      * The cost is reading the ringtones too — a few hundred rows — and the gain is [Report], which is
      * what the library page shows so a missing track can be accounted for instead of guessed at.
      */
-    private fun queryTracks(minDurationMs: Long, splitCredits: Boolean): List<Track> {
+    private fun queryTracks(
+        minDurationMs: Long,
+        splitCredits: Boolean,
+        useAlbumArtist: Boolean
+    ): List<Track> {
         val cursor: Cursor = context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
             projection,
@@ -98,6 +118,11 @@ class MediaStoreScanner(private val context: Context) {
             val musicCol = c.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC)
             val genreCol = if (hasGenreColumn) {
                 c.getColumnIndex(MediaStore.Audio.Media.GENRE)
+            } else {
+                -1
+            }
+            val albumArtistCol = if (hasAlbumArtistColumn && useAlbumArtist) {
+                c.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
             } else {
                 -1
             }
@@ -129,17 +154,52 @@ class MediaStoreScanner(private val context: Context) {
                 // Every artist the credit names, so a guest gets one section rather than the star
                 // getting one per guest. Off, it is the credit as written and nothing else, which is
                 // what a library of "Earth, Wind & Fire" wants.
-                val artistNames = (if (splitCredits) splitArtists(credit) else listOf(credit))
+                val creditNames = (if (splitCredits) splitArtists(credit) else listOf(credit))
                     .ifEmpty { listOf(credit) }
+                // The album artist, where the tag has one and it says something the credit does not.
+                // A file whose album artist repeats its artist — which is most of them — is left
+                // exactly as it was, so the common library gains nothing to hold and nothing to draw.
+                val albumArtist = if (albumArtistCol >= 0) {
+                    c.getString(albumArtistCol)
+                        ?.trim()
+                        ?.takeUnless { it.isEmpty() || it == MediaStoreUnknown }
+                } else {
+                    null
+                }
+                val albumArtistNames = if (albumArtist != null && albumArtist != credit) {
+                    (if (splitCredits) splitArtists(albumArtist) else listOf(albumArtist))
+                        .ifEmpty { listOf(albumArtist) }
+                } else {
+                    emptyList()
+                }
+                // Filed under both. The credit's names come first, so `artistNames.first()` is still
+                // the performer the row shows and [Track.artistId] means what it always meant.
+                val artistNames = if (albumArtistNames.isEmpty()) {
+                    creditNames
+                } else {
+                    (creditNames + albumArtistNames).distinct()
+                }
+                val albumTitle = c.getString(albumCol)?.trim()
+                    ?.takeUnless { it.isEmpty() || it == MediaStoreUnknown }
+                val mediaAlbumId = c.getLong(albumIdCol)
                 result += Track(
                     id = id,
                     title = c.getString(titleCol) ?: UnknownTitle,
                     artist = credit,
-                    artistId = artistIdOf(artistNames.first()),
+                    artistId = artistIdOf(creditNames.first()),
                     artistNames = artistNames,
-                    album = c.getString(albumCol)?.takeUnless { it == MediaStoreUnknown }
-                        ?: UnknownAlbum,
-                    albumId = c.getLong(albumIdCol),
+                    albumArtist = albumArtist,
+                    albumArtistNames = albumArtistNames,
+                    album = albumTitle ?: UnknownAlbum,
+                    // The tags are the album, not the store's row: MediaStore's ALBUM_ID hashes the
+                    // file's parent directory in whenever there is no album artist tag, which is what
+                    // made a record split across two folders show as two albums. See [albumIdOf].
+                    albumId = if (albumTitle != null) {
+                        albumIdOf(albumTitle, albumArtist)
+                    } else {
+                        mediaAlbumId
+                    },
+                    mediaAlbumId = mediaAlbumId,
                     durationMs = duration,
                     trackNo = c.getInt(trackCol),
                     year = c.getInt(yearCol),
@@ -161,15 +221,28 @@ class MediaStoreScanner(private val context: Context) {
 
         val albums = tracksByAlbum.map { (albumId, albumTracks) ->
             val first = albumTracks.first()
+            // Who the record is by. The album artist where the files carry one — the commonest of
+            // them, on the genre section's reasoning: one track of twelve tagged differently is a
+            // mistake in that track, not a second album artist. Where they carry none this is the
+            // first track's credit, which is what it has always been.
+            val albumArtist = albumTracks.mapNotNull { it.albumArtist }
+                .groupingBy { it }
+                .eachCount()
+                .maxByOrNull { it.value }
+                ?.key
+            val lead = albumTracks.firstOrNull { it.albumArtist == albumArtist } ?: first
+            // The names the album artist splits into, or that track's own credit where the two say
+            // the same thing (which is when `albumArtistNames` is left empty).
+            val leadNames = lead.albumArtistNames.ifEmpty { lead.artistNames }
             Album(
                 id = albumId,
                 title = first.album,
-                artist = first.artist,
-                artistId = first.artistId,
-                // Everyone its tracks credit, in the order the record introduces them, so an album
-                // with one guest track is on that guest's page too — and a compilation is on all of
-                // theirs, which is the only useful answer for a compilation.
-                artistNames = albumTracks.flatMap { it.artistNames }.distinct(),
+                artist = albumArtist ?: first.artist,
+                artistId = artistIdOf(leadNames.first()),
+                // The album artist, then everyone its tracks credit in the order the record
+                // introduces them — so an album with one guest track is on that guest's page too,
+                // and a compilation is on all of theirs as well as on its own.
+                artistNames = (leadNames + albumTracks.flatMap { it.artistNames }).distinct(),
                 year = albumTracks.maxOf { it.year },
                 trackCount = albumTracks.size,
                 dateAdded = albumTracks.maxOf { it.dateAdded },

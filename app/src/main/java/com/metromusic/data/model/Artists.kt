@@ -103,6 +103,35 @@ fun artistIdOf(name: String): Long {
     return hash and Long.MAX_VALUE
 }
 
+/**
+ * The id an album is filed under: a hash of what the tags say, not MediaStore's `ALBUM_ID`.
+ *
+ * The store's id is not the album. It is computed with the file's *parent directory* as a
+ * disambiguator whenever there is no album artist tag — so it really means "this album, in this
+ * folder": one record split across two folders came out as two albums, and untagged files made one
+ * "unknown album" per folder. Hashing the tags instead makes the folder irrelevant, and — like
+ * [artistIdOf], and for the same reason [com.metromusic.data.store.HiddenStore] keys by name —
+ * survives the media database being rebuilt and its ids handed out again.
+ *
+ * The album artist is part of the identity where there is one, so two records that merely share a
+ * title ("Greatest Hits") stay apart; where there is none the title stands alone, which is what
+ * keeps a compilation whose tracks credit twelve people as one album. The two halves are separated
+ * by a NUL so no spelling of one can collide with the other. (Tracks with no album *title* never
+ * come here at all — with nothing to hash, the store's per-folder id is the only signal there is,
+ * and the scanner keeps it.)
+ *
+ * [SyntheticAlbumBit] is set on the result so an id built here can never equal a real MediaStore
+ * row id, which is what those untagged tracks keep using.
+ */
+fun albumIdOf(title: String, albumArtist: String?): Long {
+    var hash = FnvOffset
+    for (char in fold(title) + "\u0000" + fold(albumArtist.orEmpty())) {
+        hash = hash xor char.code.toLong()
+        hash *= FnvPrime
+    }
+    return (hash and Long.MAX_VALUE) or SyntheticAlbumBit
+}
+
 /** Case and whitespace are not part of an artist's identity. */
 private fun fold(name: String): String =
     name.trim().lowercase().replace(Whitespace, " ")
@@ -119,3 +148,6 @@ private val Dangling = charArrayOf(',', ';', '&')
 private const val ArticleThe = "the "
 private const val FnvOffset = -3750763034362895579L // 0xcbf29ce484222325
 private const val FnvPrime = 1099511628211L
+
+/** Set on every [albumIdOf] id: still positive, and MediaStore row ids never reach bit 62. */
+private const val SyntheticAlbumBit = 1L shl 62

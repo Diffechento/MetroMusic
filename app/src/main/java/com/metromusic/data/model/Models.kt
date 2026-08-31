@@ -25,10 +25,40 @@ data class Track(
      * media database at all, so the ids have to come from the names — see [splitArtists].
      */
     val artistId: Long,
-    /** Every artist the credit names, in the order it names them. */
+    /**
+     * Every artist this track is filed under: the ones its credit names, followed by the ones its
+     * *album artist* tag names that the credit did not.
+     *
+     * The album artist is in here rather than only on the [Album] because the indices are built from
+     * tracks: an album artist who plays on none of the tracks under their own name — "Various
+     * Artists", or the band on a record whose every track is credited "band feat. somebody" — would
+     * otherwise own albums and no songs, which `artistsOf` cannot even give a page to.
+     */
     val artistNames: List<String>,
+    /**
+     * The album artist tag, as the file spells it, or null where there is none — see
+     * [com.metromusic.data.store.Settings.useAlbumArtist] for why there may be none even when the
+     * file has one.
+     */
+    val albumArtist: String? = null,
+    /** [albumArtist] split the way [artist] is; empty when there is no album artist. */
+    val albumArtistNames: List<String> = emptyList(),
     val album: String,
+    /**
+     * The album this track is filed under — [albumIdOf] over the tags, not MediaStore's `ALBUM_ID`.
+     *
+     * The store's id bakes the file's parent directory in whenever there is no album artist tag, so
+     * it really means "this album, in this folder": one record split across two folders was two
+     * albums, and every folder of untagged files was an "unknown album" of its own. Grouping follows
+     * this id, so grouping follows the tags. A track with no album tag at all keeps the store's id —
+     * there is nothing to hash, and the folder is the only signal left.
+     */
     val albumId: Long,
+    /**
+     * MediaStore's own `ALBUM_ID`, kept for the one thing it is still right about: asking the store
+     * itself, i.e. the legacy `albumart` URI. Never a grouping key.
+     */
+    val mediaAlbumId: Long,
     val durationMs: Long,
     /** Raw MediaStore value; may be encoded as disc * 1000 + track. */
     val trackNo: Int,
@@ -49,9 +79,25 @@ data class Track(
 data class Album(
     val id: Long,
     val title: String,
+    /**
+     * Who the record is by: the **album artist** where the files carry one, and the first track's
+     * credit where they do not.
+     *
+     * The distinction is the whole point of reading that tag. A compilation's tracks each credit
+     * somebody different, so filing the album under the first of them puts "Now That's What I Call
+     * Music" under whoever happens to open it; and a record where every track says "band feat.
+     * guest" is by the band, which is the one thing none of its tracks says on its own.
+     */
     val artist: String,
-    /** Primary artist, as on [Track.artistId]. */
+    /** Primary artist, as on [Track.artistId] — the album artist's, where there is one. */
     val artistId: Long,
+    /**
+     * Everyone the record is filed under: the album artist first, then everyone its tracks credit.
+     *
+     * Both halves matter. Without the first, a compilation is on twenty artists' pages and not on
+     * the one it is actually by; without the second, a record with one guest track stops appearing
+     * on that guest's page.
+     */
     val artistNames: List<String>,
     val year: Int,
     val trackCount: Int,

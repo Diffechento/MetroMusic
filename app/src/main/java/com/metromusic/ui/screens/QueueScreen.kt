@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -30,8 +33,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.metrocompose.AppBar
+import com.metrocompose.AppBarButton
 import com.metrocompose.Metro
 import com.metrocompose.MetroBottomInset
+import com.metrocompose.MetroInputBox
 import com.metrocompose.MetroLight
 import com.metrocompose.MetroRegular
 import com.metrocompose.MetroRisingPageState
@@ -46,6 +52,7 @@ import com.metrocompose.rememberMetroRowDismiss
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.playback.TrackFace
+import com.metromusic.ui.Glyphs
 import com.metromusic.ui.components.AlbumArt
 import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.formatTrackCount
@@ -88,6 +95,8 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
             entries = queue.mapIndexed { index, face -> QueueEntry(index.toLong(), face) }
         }
     }
+
+    var saving by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
     val reorder = rememberMetroReorder(listState, rowCount = entries.size) { from, to ->
@@ -147,6 +156,22 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
                 return@Column
             }
 
+            // The one thing on this screen that is not a row moving under a finger, and the reason it
+            // is a button rather than another gesture: a queue somebody assembled out of four albums
+            // and then pruned is a playlist that does not exist yet, and the only alternative to
+            // keeping it here is building it again in the playlists screen from memory.
+            //
+            // Where the app puts an app bar — under the title, not at the bottom edge — and the inset
+            // is consumed before it, because [AppBar] clears the gesture bar for the case where it is
+            // the last thing on a full-bleed screen and here it is the first.
+            AppBar(
+                Modifier
+                    .consumeWindowInsets(WindowInsets.navigationBars)
+                    .padding(bottom = 4.dp)
+            ) {
+                AppBarButton(Glyphs.Add, stringResource(R.string.queue_save)) { saving = true }
+            }
+
             // And the list itself puts the page away, so the gesture is available anywhere on the
             // screen and not only on the title: a downward drag it has nothing left to scroll to — the
             // top of it, or a queue too short to scroll at all — becomes the page's own travel. It
@@ -177,6 +202,28 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
             }
         }
     }
+
+    // The order as it is on screen, which is the order the user just made — not the player's idea of
+    // what plays next, and not the shuffle. Anything the library does not have an id for is left out
+    // rather than written down as a number that will resolve to nothing (see `PlayerController
+    // .ExternalTrackId`); a playlist is ids, and an id that means nothing is a row that never draws.
+    MetroInputBox(
+        visible = saving,
+        title = stringResource(R.string.queue_save),
+        placeholder = stringResource(R.string.label_name),
+        onConfirm = { name ->
+            val ids = entries.map { it.face.trackId }.filter { it > 0 }
+            if (ids.isNotEmpty()) {
+                services.playlists.create(
+                    name = name,
+                    trackIds = ids,
+                    now = System.currentTimeMillis()
+                )
+            }
+            saving = false
+        },
+        onDismiss = { saving = false }
+    )
 }
 
 /**

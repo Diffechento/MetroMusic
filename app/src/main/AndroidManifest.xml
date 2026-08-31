@@ -36,14 +36,51 @@
         android:theme="@style/Theme.MetroMusic"
         tools:targetApi="34">
 
+        <!-- singleTop so that a file opened while the app is already running arrives at the
+             instance that is on screen, through onNewIntent, instead of stacking a second copy of
+             the shell on top of the first. It is also what makes the widget's `screen` extra work
+             against a running activity, which it never did. -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.MetroMusic">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Opening an audio file from a file manager, a download or an attachment. Two
+                 filters rather than one: a mime type and a scheme in the same <data> element are
+                 an AND, so the type-only filter is what catches the content uris every modern
+                 provider hands out, and the second one catches the file: and http(s) uris older
+                 apps still send with no type attached. The extensions are listed because a
+                 provider that knows nothing about a file offers it as application/octet-stream. -->
+            <intent-filter android:priority="1">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="application/ogg" />
+                <data android:mimeType="application/x-ogg" />
+                <data android:mimeType="application/itunes" />
+            </intent-filter>
+            <intent-filter android:priority="1">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.mp3" />
+                <data android:pathPattern=".*\\.flac" />
+                <data android:pathPattern=".*\\.m4a" />
+                <data android:pathPattern=".*\\.aac" />
+                <data android:pathPattern=".*\\.ogg" />
+                <data android:pathPattern=".*\\.opus" />
+                <data android:pathPattern=".*\\.wav" />
+                <data android:pathPattern=".*\\.mka" />
             </intent-filter>
         </activity>
 

@@ -137,6 +137,23 @@ private fun GestureSettings() {
         )
 
         Spacer(Modifier.height(18.dp))
+        SettingsHeader(stringResource(R.string.gesture_lists))
+        SettingRow(
+            title = stringResource(R.string.gesture_edge_scroll),
+            checked = settings.gestureEdgeScroll,
+            onChange = { services.settings.setGestureEdgeScroll(it) }
+        )
+        // This one gets a line of its own: it is the only gesture here that shares its axis with a
+        // list's own scrolling, so what it takes and what it leaves is worth saying outright.
+        Text(
+            text = stringResource(R.string.gesture_edge_scroll_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp)
+        )
+
+        Spacer(Modifier.height(18.dp))
         Text(
             text = stringResource(R.string.gesture_explainer),
             color = colors.dim,
@@ -680,11 +697,28 @@ private fun LastFmSettings() {
 @Composable
 private fun PlaybackSettings() {
     val services = LocalServices.current
+    val colors = MetroTheme.colors
     val settings by services.settings.settings.collectAsStateWithLifecycle()
     val sleepRemaining by services.player.sleepRemainingMs.collectAsStateWithLifecycle()
     var pickingSleep by remember { mutableStateOf(false) }
 
     SettingsPageFrame(stringResource(R.string.settings_playback)) {
+        SettingsHeader(stringResource(R.string.playback_loudness))
+        SettingRow(
+            title = stringResource(R.string.playback_normalize),
+            checked = settings.volumeNormalization,
+            onChange = { services.settings.setVolumeNormalization(it) }
+        )
+        Text(
+            text = stringResource(R.string.playback_normalize_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+
+        Spacer(Modifier.height(18.dp))
+        SettingsHeader(stringResource(R.string.playback_sleep))
         ListRow(
             primary = stringResource(R.string.sleep_timer),
             secondary = if (sleepRemaining > 0) {
@@ -768,6 +802,18 @@ private fun LibrarySettings() {
         )
         Text(
             text = stringResource(R.string.library_split_artists_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        SettingRow(
+            title = stringResource(R.string.library_album_artist),
+            checked = settings.useAlbumArtist,
+            onChange = { services.settings.setUseAlbumArtist(it) }
+        )
+        Text(
+            text = stringResource(R.string.library_album_artist_explainer),
             color = colors.dim,
             fontFamily = MetroRegular,
             fontSize = 13.sp,

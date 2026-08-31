@@ -215,6 +215,17 @@ private fun MoreSection(
     onNavigate: (Screen) -> Unit
 ) {
     LazyColumn(modifier) {
+        // The way in to searching the whole library at once. It lives here rather than on the
+        // panorama's title because the title has a job already — tapping a *section* header opens
+        // that section's own box — and two searches reachable by two taps on the same screen would
+        // be a puzzle about which one you were about to get.
+        item {
+            ListRow(
+                primary = stringResource(R.string.search_title),
+                secondary = stringResource(R.string.search_everywhere),
+                onClick = { onNavigate(Screen.Search) }
+            )
+        }
         item {
             ListRow(stringResource(R.string.row_playlists), "$playlistCount") {
                 onNavigate(Screen.Playlists)

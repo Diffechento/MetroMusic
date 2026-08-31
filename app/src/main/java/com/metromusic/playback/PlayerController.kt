@@ -4,6 +4,8 @@ import android.content.ComponentName
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
+import android.provider.OpenableColumns
 import androidx.concurrent.futures.await
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -56,6 +58,16 @@ class PlayerController(
 ) {
     private var controller: MediaController? = null
     private val connectMutex = Mutex()
+
+    /**
+     * A track by its MediaStore id, filled in by the composition root.
+     *
+     * Only [playFile] needs it, and only to answer one question: is the file another app just handed
+     * us one this library already knows? A property rather than a constructor argument for the reason
+     * `ArtworkLoader.albumNames` is one — the library is built above this, so it cannot be passed in
+     * from below.
+     */
+    var trackById: ((Long) -> Track?)? = null
 
     private val _state = MutableStateFlow(PlayerState.Empty)
     val state: StateFlow<PlayerState> = _state.asStateFlow()
@@ -126,6 +138,9 @@ class PlayerController(
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) return
             // REPEAT means the same track came round again; that still counts as a play.
             val trackId = mediaItem?.mediaId?.toLongOrNull() ?: return
+            // A file opened from outside the app is not in the library, so there is nothing for a
+            // play count to be about and nothing the history section could show — see [playFile].
+            if (trackId <= 0) return
             stats.recordPlay(trackId, queueAlbumIds[trackId] ?: -1L)
         }
     }
@@ -196,6 +211,11 @@ class PlayerController(
         // would erase the queue we are about to put back. Emptying the queue on purpose ([stop])
         // clears the store itself.
         if (ids.isEmpty()) return
+        // A queue holding something the library does not — a file opened from another app, see
+        // [playFile] — cannot be written down, because what is written down is ids to resolve against
+        // the library. Saving it would come back as nothing at the next launch *and* throw away the
+        // queue the user actually built, so the old one is left where it is instead.
+        if (ids.any { it <= 0 }) return
         savedQueue.save(
             SavedQueue(
                 trackIds = ids,
@@ -224,6 +244,78 @@ class PlayerController(
             if (first != null) stats.recordPlay(first.id, first.albumId)
         }
     }
+
+    /**
+     * Plays one audio file handed to the app from outside it — a tap in a file manager, an
+     * attachment, a download. The whole of what `ACTION_VIEW` amounts to.
+     *
+     * Where the file is one MediaStore already indexes, and the library has finished reading it, this
+     * is an ordinary [play] of that track and behaves like one in every respect: play counts, the
+     * queue, the saved session, the artwork. That is the case worth having, and it is why this looks
+     * the id up rather than always taking the short road.
+     *
+     * Everything else — a file from another app's provider, or one whose scan has not landed yet
+     * because the app was launched *by* this intent — is played as a queue of one item that the
+     * library does not contain. It carries [ExternalTrackId] so that the shell still counts it as
+     * something playing (the strip and the player both key off having a track id at all), and that
+     * id resolves to nothing anywhere else, which is exactly right: there is no album page to open,
+     * no play count to keep, and nothing for the next launch to restore.
+     */
+    fun playFile(uri: Uri) {
+        scope.launch {
+            val known = mediaStoreId(uri)?.let { id -> trackById?.invoke(id) }
+            if (known != null) {
+                play(listOf(known))
+                return@launch
+            }
+            externalName = withContext(Dispatchers.IO) { displayName(uri) }
+            queueAlbumIds = emptyMap()
+            queueTailId = null
+            command { player ->
+                player.setMediaItems(listOf(externalItem(uri)), 0, 0L)
+                player.prepare()
+                player.play()
+            }
+        }
+    }
+
+    /** The row id behind a `content://media/…/audio/media/<id>` uri, if that is what this is. */
+    private fun mediaStoreId(uri: Uri): Long? {
+        if (uri.authority != MediaStore.AUTHORITY) return null
+        return runCatching { ContentUris.parseId(uri) }.getOrNull()?.takeIf { it > 0 }
+    }
+
+    /**
+     * What to call a file from outside the library when its tags do not say — see [displayName].
+     *
+     * Held here rather than put on the media item, which is the mistake the first version made: a
+     * `MediaItem`'s own metadata *overrides* what the container turns out to say, so setting the file
+     * name as the title meant a properly tagged song announced itself as `12.mp3` for as long as it
+     * played. Used only when the tags leave the title empty, and only for the external item.
+     */
+    private var externalName: String? = null
+
+    /**
+     * What to call the file if its tags do not.
+     *
+     * `DISPLAY_NAME` is the file's own name and is all any provider promises.
+     */
+    private fun displayName(uri: Uri): String? = runCatching {
+        context.contentResolver
+            .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getString(0) else null }
+    }.getOrNull() ?: uri.lastPathSegment
+
+    private fun externalItem(uri: Uri): MediaItem = MediaItem.Builder()
+        .setMediaId(ExternalTrackId.toString())
+        .setUri(uri)
+        .setMediaMetadata(
+            MediaMetadata.Builder()
+                .setIsBrowsable(false)
+                .setIsPlayable(true)
+                .build()
+        )
+        .build()
 
     /**
      * Slots one track in right after whatever is playing, without disturbing it.
@@ -352,14 +444,19 @@ class PlayerController(
 
     private suspend fun fadeOutAndPause() = withContext(Dispatchers.Main) {
         val player = controller ?: return@withContext
+        // Where the volume is *now*, not a hard 1: [ReplayGain] may have turned this track down to
+        // sit level with the rest of the library, and fading from full would make the last seconds of
+        // the night louder than the song was. It is also what gets put back at the end, so a fade
+        // does not quietly undo the normalisation for everything played afterwards.
+        val start = player.volume
         val steps = 20
         repeat(steps) { step ->
-            player.volume = 1f - (step + 1) / steps.toFloat()
+            player.volume = start * (1f - (step + 1) / steps.toFloat())
             delay(FadeMs / steps)
         }
         player.pause()
         // Restore the volume so the next play isn't silent.
-        player.volume = 1f
+        player.volume = start
         publish(player)
     }
 
@@ -396,6 +493,11 @@ class PlayerController(
     private fun publish(player: Player) {
         val item = player.currentMediaItem
         val metadata = player.mediaMetadata
+        // A file from outside the library falls back to its file name, and only if its tags leave the
+        // title empty — see [externalName]. Everything else in the app has a title by construction.
+        val title = metadata.title?.toString()?.takeUnless { it.isBlank() }
+            ?: externalName?.takeIf { item?.mediaId == ExternalTrackId.toString() }
+            ?: ""
         // One walk of the queue per event, shared by the two things that need it: the snapshot that
         // survives the process, and the list the queue screen draws.
         val ids = player.queueTrackIds()
@@ -403,12 +505,12 @@ class PlayerController(
         publishQueue(player, ids)
         NowPlayingWidget.publish(
             context = context,
-            title = metadata.title?.toString().orEmpty(),
+            title = title,
             artist = metadata.artist?.toString().orEmpty()
         )
         _state.value = PlayerState(
             trackId = item?.mediaId?.toLongOrNull(),
-            title = metadata.title?.toString().orEmpty(),
+            title = title,
             artist = metadata.artist?.toString().orEmpty(),
             album = metadata.albumTitle?.toString().orEmpty(),
             albumId = item?.mediaId?.toLongOrNull()?.let { queueAlbumIds[it] } ?: -1L,
@@ -529,7 +631,9 @@ class PlayerController(
                 .setTitle(title)
                 .setArtist(artist)
                 .setAlbumTitle(album)
-                .setArtworkUri(albumArtUri(albumId))
+                // The store's own id, not the library's: this URI is answered by MediaStore's legacy
+                // albumart table, which has never heard of a tag-derived album id.
+                .setArtworkUri(albumArtUri(mediaAlbumId))
                 .setIsBrowsable(false)
                 .setIsPlayable(true)
                 .build()
@@ -544,6 +648,15 @@ class PlayerController(
 
         /** Press "previous" after this much and you get the track restarted instead. */
         const val RestartThresholdMs = 3_000L
+
+        /**
+         * The id an audio file from outside the library plays under — see [playFile].
+         *
+         * Negative on purpose, and the same sentinel the rest of the app already uses for "no such
+         * row": every lookup it is put through (a track, an album, a cover, a play count) answers
+         * nothing, which is the truth about it, while the shell still sees *something* playing.
+         */
+        const val ExternalTrackId = -1L
 
         /** How long the sleep timer takes to fade playback out. */
         const val FadeMs = 5_000L

@@ -52,6 +52,13 @@ class PlaybackService : MediaSessionService() {
         val services = (application as MetroMusicApp).services
         player.setAudioSessionId(services.effects.sessionId)
 
+        // Loudness evened out between tracks, if the user asked for it. It has to be here rather than
+        // on the controller's side of the session: what it changes is the player's own volume, and the
+        // tags it reads arrive as metadata callbacks that only this side gets.
+        player.addListener(
+            ReplayGain(services.settings, services.scope) { volume -> player.volume = volume }
+        )
+
         // Which decoder was picked, what format it was handed and why it stopped — the only way to
         // tell "playing silence" from "not playing" without ears on the device. Debug builds only.
         if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger())

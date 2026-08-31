@@ -27,6 +27,15 @@ sealed interface Screen {
     data object Playlists : Screen
     data object Settings : Screen
 
+    /**
+     * One query against the whole library, as opposed to the panorama's per-section box.
+     *
+     * A destination and not a filter on the panorama: it is a place you go and come back from, and
+     * the thing it finds is as likely to be an artist or a playlist as a song in the list you
+     * happened to be looking at.
+     */
+    data object Search : Screen
+
     data class SettingsDetail(val page: SettingsPage) : Screen
     data class AlbumDetail(val albumId: Long) : Screen
     data class AlbumEdit(val albumId: Long) : Screen
@@ -41,6 +50,7 @@ sealed interface Screen {
             Collection -> "collection"
             Playlists -> "playlists"
             Settings -> "settings"
+            Search -> "search"
             is SettingsDetail -> "setting:${screen.page.name}"
             is AlbumDetail -> "album:${screen.albumId}"
             is AlbumEdit -> "album-edit:${screen.albumId}"
@@ -56,6 +66,7 @@ sealed interface Screen {
                 return when (value) {
                     "playlists" -> Playlists
                     "settings" -> Settings
+                    "search" -> Search
                     else -> Collection
                 }
             }

@@ -58,6 +58,7 @@ import com.metromusic.ui.screens.NowPlayingScreen
 import com.metromusic.ui.screens.PlaylistDetailScreen
 import com.metromusic.ui.screens.PlaylistsScreen
 import com.metromusic.ui.screens.QueueScreen
+import com.metromusic.ui.screens.SearchScreen
 import com.metromusic.ui.screens.SettingsDetailScreen
 import com.metromusic.ui.screens.SettingsScreen
 import kotlinx.coroutines.flow.first
@@ -77,7 +78,11 @@ import kotlinx.coroutines.flow.first
  * panorama of lists in the frames the animation needed. As an overlay, nothing underneath moves.
  */
 @Composable
-fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart: Boolean = false) {
+fun MetroMusicRoot(
+    initialScreen: Screen = Screen.Collection,
+    openPlayerAtStart: Boolean = false,
+    openPlayerRequests: Int = 0
+) {
     val services = LocalServices.current
     val nav = rememberMetroBackStack(
         initial = initialScreen,
@@ -136,6 +141,13 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
     )
 
 
+    // An intent that reached an activity already on screen and asked for the player: a file opened
+    // from a file manager, the home-screen tile. The activity counts them and the page still belongs
+    // to this composable, so there is one owner of `playerOpen` and not two.
+    LaunchedEffect(openPlayerRequests) {
+        if (openPlayerRequests > 0) playerOpen = true
+    }
+
     // Permission is granted by the time this composes, so it's safe to touch the library.
     LaunchedEffect(Unit) {
         services.library.start()
@@ -166,8 +178,16 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
     // Nothing to show the player about, so don't let it linger — losing the queue while it is
     // open (the last track ends, the service is stopped) should put you back on the library. The queue
     // screen goes with it: taking the last row out of it is a way to reach exactly that state.
+    //
+    // Only once something has actually played, which is not a detail: for the first second of a launch
+    // there is no track *yet* — the controller is still connecting, and a queue being restored or a
+    // file being opened from another app arrives later still. Closing on that shut the player the
+    // moment it was asked for, so a song opened from a file manager played behind the library.
+    var everHadTrack by remember { mutableStateOf(false) }
     LaunchedEffect(playerState.hasTrack) {
-        if (!playerState.hasTrack) {
+        if (playerState.hasTrack) {
+            everHadTrack = true
+        } else if (everHadTrack) {
             queueOpen = false
             playerOpen = false
         }
@@ -191,6 +211,7 @@ fun MetroMusicRoot(initialScreen: Screen = Screen.Collection, openPlayerAtStart:
                     when (screen) {
                         Screen.Collection -> CollectionScreen(onNavigate = nav::push)
                         Screen.Playlists -> PlaylistsScreen(onNavigate = nav::push)
+                        Screen.Search -> SearchScreen(onNavigate = nav::push)
                         Screen.Settings -> SettingsScreen(onNavigate = nav::push)
                         is Screen.SettingsDetail -> SettingsDetailScreen(screen.page)
                         is Screen.AlbumDetail ->

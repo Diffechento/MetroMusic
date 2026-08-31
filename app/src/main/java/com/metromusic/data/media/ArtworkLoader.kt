@@ -52,6 +52,15 @@ class ArtworkLoader(context: Context) {
 
     var albumNames: ((Long) -> CoverQuery?)? = null
 
+    /**
+     * MediaStore's own album id for one of ours, for the legacy `albumart` table — the one URI here
+     * that has to speak the store's language rather than the library's (album ids are derived from
+     * the tags, not taken from the store — see [com.metromusic.data.model.albumIdOf]). Filled in the
+     * same way [albumNames] is; a null answer falls back to the id as given, which for an album with
+     * no album tag *is* the store's own.
+     */
+    var mediaAlbumId: ((Long) -> Long?)? = null
+
     /** Cached synchronously if present — lets a scrolling list draw without a frame of blank. */
     fun peek(albumId: Long, sizePx: Int): Bitmap? = cache.get(key(albumId, bucket(sizePx)))
 
@@ -95,12 +104,14 @@ class ArtworkLoader(context: Context) {
         misses.clear()
     }
 
-    private fun decode(albumId: Long, trackId: Long, size: Int): Bitmap? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            decodeViaThumbnail(trackId, size) ?: decodeViaAlbumArtUri(albumId, size)
+    private fun decode(albumId: Long, trackId: Long, size: Int): Bitmap? {
+        val storeId = mediaAlbumId?.invoke(albumId) ?: albumId
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            decodeViaThumbnail(trackId, size) ?: decodeViaAlbumArtUri(storeId, size)
         } else {
-            decodeViaAlbumArtUri(albumId, size)
+            decodeViaAlbumArtUri(storeId, size)
         }
+    }
 
     /**
      * The supported path on API 29+: MediaStore returns an already-downscaled thumbnail, so

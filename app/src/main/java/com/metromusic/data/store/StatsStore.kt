@@ -73,6 +73,24 @@ class StatsStore(context: Context, scope: CoroutineScope) {
         it.copy(recentTrackIds = emptyList(), recentAlbumIds = emptyList(), playCounts = emptyMap())
     }
 
+    /**
+     * Rewrites history rows recorded under one album id scheme into another — the scan calls it with
+     * MediaStore's ids mapped to the tag-derived ones (see `albumIdOf`), so the history section is
+     * not emptied by the ids changing under it.
+     *
+     * Waits for the store's own read first: checked against the in-memory default a moment before the
+     * file lands, the old ids are invisible and the migration silently never happens. Distinct after
+     * the rewrite, because two store rows that were one album now really are one entry.
+     */
+    suspend fun migrateAlbumIds(map: Map<Long, Long>) {
+        if (map.isEmpty()) return
+        val loaded = store.awaitLoaded()
+        if (loaded.recentAlbumIds.none { it in map }) return
+        store.update { stats ->
+            stats.copy(recentAlbumIds = stats.recentAlbumIds.map { map[it] ?: it }.distinct())
+        }
+    }
+
     suspend fun flush() = store.flush()
 
     private companion object {

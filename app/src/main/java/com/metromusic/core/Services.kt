@@ -69,6 +69,7 @@ class Services(context: Context) {
             hidden = hidden,
             genres = genres,
             artwork = artwork,
+            stats = stats,
             scope = scope
         )
     }
@@ -77,7 +78,12 @@ class Services(context: Context) {
     val playbackState: PlaybackStateStore by lazy { PlaybackStateStore(appContext, scope) }
 
     val player: PlayerController by lazy {
-        PlayerController(appContext, scope, stats, playbackState)
+        PlayerController(appContext, scope, stats, playbackState).also { player ->
+            // Pointed back at the library rather than handed it: the library is built on top of the
+            // player's own stores, so it cannot be a constructor argument, and the lambda is not
+            // called until a file arrives from another app. Same shape as [ArtworkLoader.albumNames].
+            player.trackById = { id -> library.library.value.track(id) }
+        }
     }
 
     /**

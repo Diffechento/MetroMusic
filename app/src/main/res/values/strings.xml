@@ -68,7 +68,7 @@
     <string name="settings_lastfm">last.fm</string>
     <string name="settings_lastfm_hint">scrobble what you play</string>
     <string name="settings_playback">playback</string>
-    <string name="settings_playback_hint">sleep timer</string>
+    <string name="settings_playback_hint">loudness, sleep timer</string>
     <string name="settings_library">library</string>
     <string name="settings_library_hint">what counts as music</string>
     <string name="settings_hidden">hidden</string>
@@ -215,6 +215,17 @@
     <string name="lastfm_gave_up">gave up waiting. close this and try again.</string>
 
     <!-- ==== playback and library pages ==== -->
+    <string name="playback_loudness">loudness</string>
+    <string name="playback_sleep">sleep</string>
+    <string name="playback_normalize">even out the volume between tracks</string>
+    <string name="playback_normalize_explainer">uses the replaygain tags your files were given when
+        they were ripped or tagged. it can only turn a loud track down, never a quiet one up, and a
+        file with no such tag plays as it is.</string>
+    <string name="library_album_artist">believe the album artist tag</string>
+    <string name="library_album_artist_explainer">a record is filed under its album artist rather
+        than under whoever its first track credits — which is what keeps a compilation together, and
+        an album whose every track says “band feat. someone” under the band. turn it off if a ripper
+        wrote something odd in that tag. needs android 11.</string>
     <string name="sleep_timer">sleep timer</string>
     <string name="sleep_off">off</string>
     <!-- Time left on the sleep timer, e.g. "12:30 left". -->
@@ -247,6 +258,8 @@
     <string name="queue_remove">remove</string>
     <string name="queue_empty">nothing is queued.</string>
     <string name="queue_open">show the queue</string>
+    <!-- Keeps the queue, in the order it is on screen, as a playlist. -->
+    <string name="queue_save">save as playlist</string>
 
     <!-- ==== track menu ==== -->
     <string name="menu_play_next">play next</string>
@@ -259,6 +272,13 @@
     <string name="menu_edit">edit</string>
     <string name="menu_merge_genre">merge into…</string>
     <string name="search_placeholder">search</string>
+
+    <!-- ==== searching the whole library, from the "more" section ==== -->
+    <string name="search_title">search</string>
+    <string name="search_everywhere">artists, albums, songs, genres, playlists</string>
+    <string name="search_hint">type to search the whole library.</string>
+    <!-- No result at all; the query is repeated back so it is clear what was asked. -->
+    <string name="search_nothing">nothing here matches “%1$s”.</string>
     <string name="press_back_again">press back again to close</string>
     <string name="action_cancel">cancel</string>
 
@@ -320,6 +340,12 @@
     <string name="gesture_queue">queue</string>
     <string name="gesture_queue_down">swipe down to close it</string>
     <string name="gesture_queue_remove">swipe a song aside to remove it</string>
+    <string name="gesture_lists">lists</string>
+    <string name="gesture_edge_scroll">drag the left edge to scroll fast</string>
+    <string name="gesture_edge_scroll_explainer">a band down the left side of the artists, albums, songs
+        and genres: drag it and the list travels its whole length under your finger, naming the letter
+        you have reached. it appears on lists longer than about two screens, and tapping a row there
+        still plays it.</string>
     <string name="gesture_explainer">tapping always works and is not listed here. turn a gesture off
         if it fires when you did not mean it to.</string>
 

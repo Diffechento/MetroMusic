@@ -14,6 +14,7 @@ import com.metromusic.data.model.mergingGenres
 import com.metromusic.data.store.GenreStore
 import com.metromusic.data.store.HiddenStore
 import com.metromusic.data.store.SettingsStore
+import com.metromusic.data.store.StatsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -41,6 +42,7 @@ class LibraryRepository(
     private val hidden: HiddenStore,
     private val genres: GenreStore,
     private val artwork: ArtworkLoader,
+    private val stats: StatsStore,
     private val scope: CoroutineScope
 ) {
     /** What the device actually holds, before anything the user asked to hide is taken out. */
@@ -95,6 +97,15 @@ class LibraryRepository(
                 )
             }
         }
+        // MediaStore's id for one of ours, for the legacy albumart URI. The first track answers for
+        // the album — an album merged out of several store rows takes the art of the row its first
+        // track sits in, which is the same choice [representativeTrackId] already makes.
+        artwork.mediaAlbumId = { id ->
+            val current = library.value
+            current.album(id)?.let { album ->
+                current.tracksOf(album).firstOrNull()?.mediaAlbumId
+            }
+        }
     }
 
     private val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
@@ -115,11 +126,12 @@ class LibraryRepository(
             observer
         )
 
-        // Both of these are read *during* the scan — the duration filter and how a credit is split
-        // into artists — so changing either has to re-run it.
+        // All three of these are read *during* the scan — the duration filter, how a credit is split
+        // into artists, and whether the album artist tag is believed — so changing any of them has to
+        // re-run it.
         scope.launch {
             settings.settings
-                .map { it.minTrackSeconds to it.splitArtistCredits }
+                .map { Triple(it.minTrackSeconds, it.splitArtistCredits, it.useAlbumArtist) }
                 .distinctUntilChanged()
                 .collect { rescan(debounce = false) }
         }
@@ -134,13 +146,22 @@ class LibraryRepository(
                 val values = settings.settings.value
                 val scanned = scanner.scan(
                     minDurationMs = values.minTrackSeconds * 1000L,
-                    splitCredits = values.splitArtistCredits
+                    splitCredits = values.splitArtistCredits,
+                    useAlbumArtist = values.useAlbumArtist
                 )
                 // Album ids can be reused after a media rescan; stale covers would be wrong.
                 if (scanned.albums != _library.value.albums) artwork.clear()
                 _library.value = scanned
                 _report.value = scanner.lastReport
                 _loaded.value = true
+                // History rows written under MediaStore's album ids follow their albums to the
+                // tag-derived ones, so the history section survives the id scheme changing under it.
+                // A no-op once nothing in the history carries a store id any more.
+                stats.migrateAlbumIds(
+                    scanned.tracks.asSequence()
+                        .filter { it.albumId != it.mediaAlbumId }
+                        .associate { it.mediaAlbumId to it.albumId }
+                )
             } finally {
                 _scanning.value = false
             }
