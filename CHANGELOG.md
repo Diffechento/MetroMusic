@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3
 
 Built on `io.github.diffechento:metro:1.0.3`.
 

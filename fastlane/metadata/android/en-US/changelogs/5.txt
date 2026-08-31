@@ -1,0 +1,3 @@
+An album is its tags now, not its folder: a record split across two folders is one album, and compilations are filed under their album artist. Search the whole library from "more". Drag the left edge of a long list to scroll it fast. Open audio files from other apps. Even out loudness between tracks from the ReplayGain tags, and save the queue as a playlist.
+
+Fixed: the top banner arrived in two jerks, and the player did not open when the app was launched to play a file.
