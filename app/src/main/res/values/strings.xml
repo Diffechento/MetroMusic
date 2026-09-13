@@ -244,9 +244,28 @@
     <string name="library_scanning">scanning…</string>
     <string name="lyrics_heading">lyrics</string>
     <string name="lyrics_lookup">look up lyrics</string>
-    <string name="lyrics_explainer">lyrics come from genius. whether a song has any is checked once,
-        in the background, and remembered — that is what greys out “show lyrics” for the ones that
-        have none.</string>
+    <string name="lyrics_explainer">a .lrc or .txt file beside the track is used first, then the words
+        written inside the file itself, and a .lrc with timestamps in it makes them follow the music.
+        failing that they are looked up online. whether a song has any is checked once, in the
+        background, and remembered — that is what greys out “show lyrics” for the ones that have
+        none.</string>
+    <string name="lyrics_service">look them up on</string>
+    <string name="lyrics_service_lrclib">lrclib — can be synced</string>
+    <string name="lyrics_service_genius">genius — text only</string>
+    <string name="lyrics_service_explainer">lrclib is a community collection of .lrc files, so what it
+        answers with often carries timings and follows the music. genius has deeper coverage of obscure
+        and non-english releases, and publishes words without timings. neither needs an account.
+        changing this forgets what the other one answered.</string>
+    <string name="lyrics_folder">lyrics folder</string>
+    <string name="lyrics_folder_none">not set — files beside the track are found anyway</string>
+    <string name="lyrics_folder_explainer">only needed if you keep .lrc files somewhere other than
+        with the music, or if this phone will not hand over the one sitting next to a song. a folder
+        given here is searched, and written to when the one beside the track cannot be.</string>
+    <string name="lyrics_folder_clear">forget this folder</string>
+    <string name="lyrics_save_lrc">save fetched lyrics as .lrc</string>
+    <string name="lyrics_save_lrc_explainer">writes what genius answers into a .lrc next to the song,
+        in the format every other player reads — so the words outlive this app. genius publishes text
+        and not timings, so a saved file is not a synced one.</string>
 
     <!-- The banner that confirms something was queued; the title of what was added follows it. -->
     <string name="queued_heading">ADDED TO QUEUE</string>
@@ -370,6 +389,10 @@
     <!-- ==== lyrics page ==== -->
     <string name="lyrics_none">no lyrics found for this one.</string>
     <string name="lyrics_source">lyrics from genius</string>
+    <string name="lyrics_source_lrclib">lyrics from lrclib</string>
+    <string name="lyrics_source_file">from %1$s</string>
+    <string name="lyrics_source_tag">from the tags in %1$s</string>
+    <string name="lyrics_source_file_unnamed">from a file on this device</string>
 
     <!-- ==== detail pages ==== -->
     <string name="album_title">album</string>

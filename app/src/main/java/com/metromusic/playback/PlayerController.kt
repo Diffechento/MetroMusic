@@ -392,6 +392,19 @@ class PlayerController(
         }
     }
 
+    /**
+     * Seeks to a moment rather than to a proportion of the track.
+     *
+     * Which is what a tapped line of a timed `.lrc` means: the file says where that line is in
+     * milliseconds, and turning that into a fraction on the way in only to multiply it back out
+     * would lose the last of it to the float.
+     */
+    fun seekTo(positionMs: Long) = command { player ->
+        val duration = player.duration
+        val target = if (duration > 0) positionMs.coerceIn(0L, duration) else positionMs.coerceAtLeast(0L)
+        player.seekTo(target)
+    }
+
     fun seekToFraction(fraction: Float) = command { player ->
         val duration = player.duration
         if (duration > 0) player.seekTo((duration * fraction.coerceIn(0f, 1f)).toLong())

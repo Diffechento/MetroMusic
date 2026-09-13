@@ -53,6 +53,23 @@ enum class ArtistSort {
 }
 
 /**
+ * Which service is asked for the words of a song that has none on the device.
+ *
+ * The two are different products rather than the same one twice, which is why this is a choice the
+ * user makes and not a fallback order picked here. **LRCLIB** is a community database of `.lrc`
+ * files: it is the only one of the two that can answer with timings, so it is the only way the page
+ * follows the music for a track that carries no file of its own. **Genius** is an editorial lyrics
+ * site with deeper coverage — obscure releases, non-English catalogues — and no timings at all,
+ * ever, because it publishes words rather than `.lrc`.
+ *
+ * Persisted by name, like [LibrarySection] and the sorts: adding a service later must not silently
+ * change what an older settings file meant.
+ */
+enum class LyricsSource {
+    LrcLib, Genius
+}
+
+/**
  * User preferences. [accentArgb], [dark] and [backgroundArgb] feed straight into the framework's
  * `MetroTheme`, so changing them re-themes the whole app on the next frame.
  *
@@ -222,7 +239,36 @@ data class Settings(
     val lastfmApiSecret: String? = null,
 
     // ---- lyrics ----
-    val lyricsEnabled: Boolean = true
+    val lyricsEnabled: Boolean = true,
+    /**
+     * Which online service [lyricsEnabled] asks — see [LyricsSource].
+     *
+     * LRCLIB by default, because it is the only one that can answer with timings and a page that
+     * follows the music is the better thing to land on by default. Genius is one tap away for anyone
+     * whose library is deeper than a community `.lrc` database reaches.
+     */
+    val lyricsSourceName: String = LyricsSource.LrcLib.name,
+    /**
+     * Write the words fetched from Genius out as a `.lrc` beside the music.
+     *
+     * Off by default, because it is the one lyrics setting that *creates files on the device* — and
+     * a switch that quietly scatters a few hundred small files through somebody's music folder is
+     * not a default. What it buys is that the words stop being this app's: `.lrc` is the format every
+     * other player reads, and a file in the music folder survives this app being uninstalled.
+     *
+     * It needs [lyricsFolderUri] on Android 10 and above, where an app cannot make a file of its own
+     * in shared storage without being handed a folder — see `LyricsFiles`.
+     */
+    val lyricsSaveLrc: Boolean = false,
+    /**
+     * The folder `.lrc` files are read from and written to, as a persisted document-tree uri.
+     *
+     * Null means "only the sidecar beside the track", which is all that is possible without asking,
+     * and which stops working at Android 13: `READ_MEDIA_AUDIO` covers the audio files and not the
+     * text file next to them. Pointing this at the music folder is what makes the traditional layout
+     * work again on a modern phone.
+     */
+    val lyricsFolderUri: String? = null
 ) {
     /** Section order as the enum, filling in anything the saved list doesn't mention. */
     val sections: List<LibrarySection>
@@ -245,6 +291,10 @@ data class Settings(
 
     val artistSort: ArtistSort
         get() = ArtistSort.entries.firstOrNull { it.name == artistSortName } ?: ArtistSort.Name
+
+    /** The chosen service; an unknown name reads as the default rather than throwing settings away. */
+    val lyricsSource: LyricsSource
+        get() = LyricsSource.entries.firstOrNull { it.name == lyricsSourceName } ?: LyricsSource.LrcLib
 
     companion object {
         /** WP8 cyan — the framework's own default accent. */
@@ -361,6 +411,14 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     }
 
     fun setLyricsEnabled(on: Boolean) = store.update { it.copy(lyricsEnabled = on) }
+
+    fun setLyricsSource(source: LyricsSource) =
+        store.update { it.copy(lyricsSourceName = source.name) }
+
+    fun setLyricsSaveLrc(on: Boolean) = store.update { it.copy(lyricsSaveLrc = on) }
+
+    fun setLyricsFolder(uri: String?) =
+        store.update { it.copy(lyricsFolderUri = uri?.takeIf(String::isNotBlank)) }
 
     suspend fun flush() = store.flush()
 }

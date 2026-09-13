@@ -1,5 +1,8 @@
 package com.metromusic.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,7 +51,9 @@ import com.metrocompose.SettingRow
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.lastfm.lastFmConfigured
+import com.metromusic.data.lyrics.lyricsFolderName
 import com.metromusic.data.store.Hidden
+import com.metromusic.data.store.LyricsSource
 import com.metromusic.ui.formatAlbumCount
 import com.metromusic.ui.formatArtistCount
 import com.metromusic.ui.formatDuration
@@ -759,6 +764,7 @@ private fun LibrarySettings() {
     val scanning by services.library.scanning.collectAsStateWithLifecycle()
     val report by services.library.report.collectAsStateWithLifecycle()
     var pickingMinLength by remember { mutableStateOf(false) }
+    var pickingLyricsSource by remember { mutableStateOf(false) }
 
     SettingsPageFrame(stringResource(R.string.settings_library)) {
         ListRow(
@@ -864,6 +870,63 @@ private fun LibrarySettings() {
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
+
+        Spacer(Modifier.height(6.dp))
+        ListRow(
+            primary = stringResource(R.string.lyrics_service),
+            secondary = stringResource(lyricsSourceLabel(settings.lyricsSource)),
+            onClick = { pickingLyricsSource = true }
+        )
+        Text(
+            text = stringResource(R.string.lyrics_service_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+
+        // The system's own folder picker, which is the only way an app is handed a directory it can
+        // both read and write from Android 10 onwards. The grant is taken as persistable inside
+        // `LyricsFiles` — without that it lasts until the process dies, which reads as the feature
+        // having worked once.
+        val pickFolder = rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocumentTree()
+        ) { uri -> if (uri != null) services.lyrics.setLyricsFolder(uri) }
+        val folder = settings.lyricsFolderUri?.let { lyricsFolderName(Uri.parse(it)) }
+        ListRow(
+            primary = stringResource(R.string.lyrics_folder),
+            secondary = folder ?: stringResource(R.string.lyrics_folder_none),
+            onClick = { pickFolder.launch(null) }
+        )
+        Text(
+            text = stringResource(R.string.lyrics_folder_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        if (folder != null) {
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.padding(horizontal = 24.dp)) {
+                MetroButton(stringResource(R.string.lyrics_folder_clear)) {
+                    services.lyrics.setLyricsFolder(null)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(6.dp))
+        SettingRow(
+            title = stringResource(R.string.lyrics_save_lrc),
+            checked = settings.lyricsSaveLrc,
+            onChange = { services.settings.setLyricsSaveLrc(it) }
+        )
+        Text(
+            text = stringResource(R.string.lyrics_save_lrc_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
     }
 
     MetroListBox(
@@ -876,6 +939,25 @@ private fun LibrarySettings() {
         },
         onDismiss = { pickingMinLength = false }
     )
+
+    // Through the repository rather than straight to the settings store: switching services has to
+    // forget what the old one answered, and that is the repository's cache and index to clear.
+    MetroListBox(
+        visible = pickingLyricsSource,
+        title = stringResource(R.string.lyrics_service),
+        items = LyricsSource.entries.map { stringResource(lyricsSourceLabel(it)) },
+        onSelect = { index ->
+            LyricsSource.entries.getOrNull(index)?.let { services.lyrics.setLyricsSource(it) }
+            pickingLyricsSource = false
+        },
+        onDismiss = { pickingLyricsSource = false }
+    )
+}
+
+@StringRes
+private fun lyricsSourceLabel(source: LyricsSource): Int = when (source) {
+    LyricsSource.LrcLib -> R.string.lyrics_service_lrclib
+    LyricsSource.Genius -> R.string.lyrics_service_genius
 }
 
 // ---- shared bits ----

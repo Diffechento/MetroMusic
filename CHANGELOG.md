@@ -1,5 +1,59 @@
 # Changelog
 
+## Unreleased
+
+**Lyrics can come from the device, and they can follow the music.** A `.lrc` beside a song — the
+thirty-year-old format every other player reads — is used ahead of anything fetched from the internet,
+and when it carries timestamps the page keeps up with the track: the line being sung is the big one,
+the rest sit back out of the way, and tapping any line jumps the song to it. Words sung a second time
+are a second line in the file, so a chorus highlights in the right place each time round rather than
+the first. The page follows along only when the song on screen is the song playing — lyrics open from
+a list as often as from the player, and following the position there would mean lighting up one song's
+line at another song's position. Scroll it by hand and it stops chasing you for a few seconds, which is
+long enough to read back a verse.
+
+**Lyrics written inside the file are read too**, which is where a FLAC usually keeps them — and an MP3
+and an M4A, under their own names for the same thing. Many of those tags hold a whole `.lrc` pasted in,
+timestamps and all, so those follow the music exactly as a separate file does. Between a timed source
+and a flat one the timed one wins, wherever each of them came from.
+
+**You choose where lyrics are looked up**, on settings → library: **LRCLIB** or **Genius**. They are
+different things rather than two of the same, which is why it is a choice and not a fallback order.
+LRCLIB is a community collection of `.lrc` files and is the only one of the two that can answer with
+*timings*, so a song with no file of its own can still follow the music; Genius reaches further into
+obscure and non-English catalogues and publishes words without timings, which it has never had. Neither
+needs an account. LRCLIB is the default, on the grounds that words that keep time are the better thing
+to land on. Changing the setting forgets what the other service said — both its "no"s, which say nothing
+about the new one, and its cached words, which would otherwise quietly win over the answers you switched
+to get.
+
+**Fetched lyrics can be saved as a `.lrc`**, on settings → library. It writes the words next to the
+song under the song's own name, so they outlive this app and any other player can find them; Genius
+publishes words and not timings, so a saved file is a flat one. Off by default, because it is the one
+lyrics setting that creates files on the phone. There is also a folder setting for anyone who keeps
+their `.lrc` files somewhere other than with the music — it is a fallback, not a requirement, and
+sidecars are found without it.
+
+**The line being sung changes over smoothly.** It used to stutter, and not because anything was
+dropping frames — the words simply jumped. Growing the text meant re-measuring it, and at a phone's
+width a line of lyrics that fits on one row while it waits often needs two once it is full size, so the
+page reflowed half way through the change and everything below it shifted in a single frame, while the
+scroll that was gliding toward the line kept re-aiming at a target whose height was moving. The line is
+now measured once and only *drawn* larger, so nothing is re-laid out while it grows, and the page
+travels on the same curve and over the same time as the growth instead of on one of its own. Measured
+over the same seven changes: frames over 30ms went from twenty-nine to two.
+
+**A song that was found once stays findable.** Two copies of one song — a full recording and a short
+clip — share one entry in the "does this have lyrics" index, and LRCLIB matches on length, so it
+rightly recognises one and refuses the other. The refusal used to overwrite the success and grey the
+menu entry out for a song whose words were already on the phone. A yes is now never overwritten by a
+no: at worst the page opens and reports it found nothing, which is recoverable, where a wrong no was
+not.
+
+**"Show lyrics" no longer greys out when the online lookup is switched off.** Words on the device owe
+nothing to a network, and hiding them behind the Genius switch hid the files people had put there
+themselves.
+
 ## 1.3
 
 Built on `io.github.diffechento:metro:1.0.3`.

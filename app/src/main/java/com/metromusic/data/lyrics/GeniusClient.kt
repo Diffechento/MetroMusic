@@ -35,45 +35,41 @@ object GeniusClient {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** What a lookup can come back with. Distinguishing "no" from "couldn't ask" is the point. */
-    sealed interface Result {
-        data class Found(val text: String, val url: String) : Result
-        data object NotFound : Result
-        data object Unavailable : Result
-    }
-
     /**
      * Finds the song page for [artist] / [title] and returns its lyrics.
      *
      * The search is deliberately given both fields and the result checked against them: searching
      * for a common title like "Home" returns dozens of songs, and pasting the wrong band's lyrics
      * under a track is worse than showing none.
+     *
+     * Never synced, and that is structural rather than a gap: Genius publishes words, and there is no
+     * timing information anywhere in one of its pages to extract. Timed words are what LRCLIB is for.
      */
-    fun lyrics(artist: String, title: String): Result {
+    fun lyrics(artist: String, title: String): LyricsAnswer {
         val query = "${cleanArtist(artist)} ${cleanTitle(title)}".trim()
-        if (query.isBlank()) return Result.NotFound
+        if (query.isBlank()) return LyricsAnswer.NotFound
 
         val body = get(
             "https://genius.com/api/search/multi?q=" +
                 URLEncoder.encode(query, "UTF-8")
-        ) ?: return Result.Unavailable
+        ) ?: return LyricsAnswer.Unavailable
 
         // Not JSON means we were not talking to the search endpoint at all — a captive portal, a
         // Cloudflare challenge, a proxy's error page. That is emphatically *not* "this song has no
         // lyrics": answering NotFound there would write a permanent "no" for every song in the
         // library on the strength of one bad network.
         val hits = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()
-            ?: return Result.Unavailable
+            ?: return LyricsAnswer.Unavailable
 
-        val url = bestMatch(hits, artist, title) ?: return Result.NotFound
-        val page = get(url) ?: return Result.Unavailable
+        val url = bestMatch(hits, artist, title) ?: return LyricsAnswer.NotFound
+        val page = get(url) ?: return LyricsAnswer.Unavailable
         val text = extractLyrics(page)
         return when {
-            !text.isNullOrBlank() -> Result.Found(text, url)
+            !text.isNullOrBlank() -> LyricsAnswer.Found(text, synced = false)
             // A page that mentions Genius but has no lyrics container really has none; a page that
             // does not is something else wearing that URL.
-            page.contains("genius", ignoreCase = true) -> Result.NotFound
-            else -> Result.Unavailable
+            page.contains("genius", ignoreCase = true) -> LyricsAnswer.NotFound
+            else -> LyricsAnswer.Unavailable
         }
     }
 

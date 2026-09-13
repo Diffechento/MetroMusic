@@ -151,7 +151,6 @@ fun TrackRowWithActions(
     val services = LocalServices.current
     val stats by services.stats.stats.collectAsStateWithLifecycle()
     val lyricsKnown by services.lyrics.verdicts.collectAsStateWithLifecycle()
-    val settings by services.settings.settings.collectAsStateWithLifecycle()
     val isFavorite = track.id in stats.favorites
     val openPlayer = LocalOpenPlayer.current
     val openLyrics = LocalOpenLyrics.current
@@ -172,9 +171,13 @@ fun TrackRowWithActions(
     // Missing is the only "no": a song nobody has looked up yet stays tappable, and looking it up is
     // what the page then does. Reading `lyricsKnown` here is what re-enables the entry when a
     // background probe lands while the list is on screen.
+    //
+    // The online lookup being switched off is deliberately *not* a no any more. Words can come out of
+    // a `.lrc` on the device, which owes nothing to Genius or to a network, so greying the entry out
+    // with that switch would hide the files the user put there themselves.
     val lyricsMissing = services.lyrics.statusIn(lyricsKnown, track) == LyricsStatus.Missing
     val disabled = buildSet {
-        if (!settings.lyricsEnabled || lyricsMissing) add(LyricsIndex)
+        if (lyricsMissing) add(LyricsIndex)
     }
 
     MetroContextMenu(
