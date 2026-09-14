@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.4
+
+Built on `io.github.diffechento:metro:1.0.4`.
 
 **The albums on an artist's page can be ordered by name instead of by year**, on settings →
 interface. A discography reads as a run of releases, which is why newest-first is still the default

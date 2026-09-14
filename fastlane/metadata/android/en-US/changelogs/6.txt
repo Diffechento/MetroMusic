@@ -1,0 +1,5 @@
+Lyrics come off the device now: a .lrc beside a song, or words written inside the file, and when they carry timings the page follows the music line by line. Tap a line to jump there. Pick LRCLIB or Genius for the rest.
+
+Full screen, on settings → interface. One name spelled two ways is one artist. A record can be filed by its album artist alone. Albums on an artist's page can be ordered by name.
+
+Fixed: album tags would not save on files that spell one field twice.
