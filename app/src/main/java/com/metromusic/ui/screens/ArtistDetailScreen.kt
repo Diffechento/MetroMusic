@@ -22,6 +22,8 @@ import com.metrocompose.MetroTheme
 import com.metrocompose.metroContinuum
 import com.metromusic.R
 import com.metromusic.core.LocalServices
+import com.metromusic.data.model.Album
+import com.metromusic.data.store.ArtistAlbumOrder
 import com.metromusic.ui.components.CollectionRowWithActions
 import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.TrackActionsHost
@@ -37,11 +39,15 @@ import com.metromusic.ui.nav.Screen
 fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
     val services = LocalServices.current
     val library by services.library.library.collectAsStateWithLifecycle()
+    val settings by services.settings.settings.collectAsStateWithLifecycle()
     val playerState by services.player.state.collectAsStateWithLifecycle()
     val actions = rememberTrackActions()
     val albumActions = rememberCollectionActions()
 
-    val albums = remember(library, artistId) { library.albumsOfArtist(artistId) }
+    val order = settings.artistAlbumOrder
+    val albums = remember(library, artistId, order) {
+        library.albumsOfArtist(artistId).sortedWith(artistAlbumComparator(order))
+    }
     val tracks = remember(library, artistId) { library.tracksOfArtist(artistId) }
     val name = remember(library, artistId) { library.artistName(artistId) }
 
@@ -105,6 +111,29 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
             }
         }
         TrackActionsHost(actions)
+    }
+}
+
+/**
+ * The order one artist's albums are listed in, from settings → interface.
+ *
+ * Applied here rather than in `albumsByArtistIndex`, which is the scanner's: that index is built
+ * once for the whole library and changing this must not mean re-running a scan. Its own order is the
+ * base and this arranges it.
+ *
+ * **A year of 0 means the tags did not say, not the year zero**, so it sorts last under either
+ * answer instead of leading a discography with the albums nobody dated. The title is the tie-break
+ * in both cases — two records from one year would otherwise come out in whatever order the scan
+ * happened to reach them, which is stable within a run and arbitrary between two.
+ */
+private fun artistAlbumComparator(order: ArtistAlbumOrder): Comparator<Album> {
+    val byTitle = compareBy(String.CASE_INSENSITIVE_ORDER, Album::title)
+    return when (order) {
+        ArtistAlbumOrder.Name -> byTitle
+        ArtistAlbumOrder.Year ->
+            compareBy<Album> { it.year <= 0 }
+                .thenByDescending { it.year }
+                .then(byTitle)
     }
 }
 

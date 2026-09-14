@@ -53,6 +53,21 @@ enum class ArtistSort {
 }
 
 /**
+ * The order the albums on one artist's page are listed in.
+ *
+ * Separate from [AlbumSort], which arranges the albums *section* — a whole library of records by
+ * everybody, where the question is where a title sits in the alphabet. One artist's page is the
+ * other question: a discography, which is read as a run of releases in time. So this is two answers
+ * rather than four, and [Year] — newest first, a year nobody tagged last — is the default because it
+ * is what the page has always done and what a discography usually means.
+ *
+ * Persisted by name, like the sorts above.
+ */
+enum class ArtistAlbumOrder {
+    Year, Name
+}
+
+/**
  * Which service is asked for the words of a song that has none on the device.
  *
  * The two are different products rather than the same one twice, which is why this is a choice the
@@ -229,6 +244,14 @@ data class Settings(
     val albumSortName: String = AlbumSort.Name.name,
     val artistSortName: String = ArtistSort.Name.name,
     /**
+     * The order albums are listed in on one artist's page; see [ArtistAlbumOrder].
+     *
+     * Read where the page is drawn rather than where the index is built: the albums-per-artist index
+     * is the scanner's, and making it answer to a setting would mean re-running a scan to change the
+     * order of six rows. The index's own order is the base and the page arranges it.
+     */
+    val artistAlbumOrderName: String = ArtistAlbumOrder.Year.name,
+    /**
      * Fetch a cover from Last.fm for albums that have none in their files.
      *
      * On by default, as lyrics are: the request carries an artist and an album name and nothing about
@@ -364,6 +387,10 @@ data class Settings(
     val artistSort: ArtistSort
         get() = ArtistSort.entries.firstOrNull { it.name == artistSortName } ?: ArtistSort.Name
 
+    val artistAlbumOrder: ArtistAlbumOrder
+        get() = ArtistAlbumOrder.entries.firstOrNull { it.name == artistAlbumOrderName }
+            ?: ArtistAlbumOrder.Year
+
     /** The chosen service; an unknown name reads as the default rather than throwing settings away. */
     val lyricsSource: LyricsSource
         get() = LyricsSource.entries.firstOrNull { it.name == lyricsSourceName } ?: LyricsSource.LrcLib
@@ -470,6 +497,9 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setAlbumSort(sort: AlbumSort) = store.update { it.copy(albumSortName = sort.name) }
 
     fun setArtistSort(sort: ArtistSort) = store.update { it.copy(artistSortName = sort.name) }
+
+    fun setArtistAlbumOrder(order: ArtistAlbumOrder) =
+        store.update { it.copy(artistAlbumOrderName = order.name) }
 
     fun setSectionOrder(order: List<LibrarySection>) =
         store.update { it.copy(sectionOrder = order.map(LibrarySection::name)) }

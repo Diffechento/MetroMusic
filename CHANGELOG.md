@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**The albums on an artist's page can be ordered by name instead of by year**, on settings →
+interface. A discography reads as a run of releases, which is why newest-first is still the default
+and still what you get without touching anything; someone who knows a record by its title rather than
+by when it came out now has the alphabet instead. An album whose tags carry no year goes last under
+either answer, and two records from one year are in name order rather than in whatever order the scan
+happened to reach them.
+
 **A song with no cover no longer plays behind the last song's artwork.** The band behind the mini
 player is the playing album's cover; it is deliberately kept while the next one is being decoded, so
 that changing track is not a black blink between two pictures. But "still loading" and "this album

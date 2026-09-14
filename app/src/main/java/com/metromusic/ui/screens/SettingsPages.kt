@@ -52,6 +52,7 @@ import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.lastfm.lastFmConfigured
 import com.metromusic.data.lyrics.lyricsFolderName
+import com.metromusic.data.store.ArtistAlbumOrder
 import com.metromusic.data.store.Hidden
 import com.metromusic.data.store.LyricsSource
 import com.metromusic.ui.formatAlbumCount
@@ -333,6 +334,7 @@ private fun InterfaceSettings() {
     val services = LocalServices.current
     val colors = MetroTheme.colors
     val settings by services.settings.settings.collectAsStateWithLifecycle()
+    var pickingArtistAlbums by remember { mutableStateOf(false) }
 
     SettingsPageFrame(stringResource(R.string.settings_interface)) {
         SettingsHeader(stringResource(R.string.interface_sections))
@@ -427,7 +429,43 @@ private fun InterfaceSettings() {
             modifier = Modifier.padding(horizontal = 24.dp)
         )
 
+        // A page-level choice rather than a fifth arrangement held out of the albums section's own
+        // header: an artist's page is not a MetroLongList and its "albums" heading is a plain label,
+        // so there is nothing there for a hold to come out of. Two answers, so the picker is the
+        // whole of the interface.
+        Spacer(Modifier.height(6.dp))
+        ListRow(
+            primary = stringResource(R.string.interface_artist_albums),
+            secondary = stringResource(artistAlbumOrderLabel(settings.artistAlbumOrder)),
+            onClick = { pickingArtistAlbums = true }
+        )
+        Text(
+            text = stringResource(R.string.interface_artist_albums_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
     }
+
+    MetroListBox(
+        visible = pickingArtistAlbums,
+        title = stringResource(R.string.interface_artist_albums),
+        items = ArtistAlbumOrder.entries.map { stringResource(artistAlbumOrderLabel(it)) },
+        onSelect = { index ->
+            ArtistAlbumOrder.entries.getOrNull(index)?.let {
+                services.settings.setArtistAlbumOrder(it)
+            }
+            pickingArtistAlbums = false
+        },
+        onDismiss = { pickingArtistAlbums = false }
+    )
+}
+
+@StringRes
+private fun artistAlbumOrderLabel(order: ArtistAlbumOrder): Int = when (order) {
+    ArtistAlbumOrder.Year -> R.string.interface_artist_albums_year
+    ArtistAlbumOrder.Name -> R.string.interface_artist_albums_name
 }
 
 /**
