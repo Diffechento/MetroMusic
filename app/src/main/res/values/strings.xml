@@ -342,6 +342,12 @@
     <string name="album_edit_year">year</string>
     <string name="album_edit_genre">genre</string>
     <string name="album_edit_saving">saving…</string>
+    <string name="album_edit_manage">allow once, not per album</string>
+    <string name="album_edit_manage_explainer">android asks again for every album it has not been
+        asked about. from android 12 it can be told once instead, as a special app access you grant in
+        system settings — this takes you straight there. it needs two answers: android prompts first
+        for a permission it calls “photos and videos” (that is its own name for it; this app reads no
+        pictures), and then the switch on the page it opens.</string>
     <string name="album_edit_explainer">this writes the tags inside the files themselves, so every app
         sees the change and a rescan keeps it. android asks for your permission once before an app may
         touch music it did not put there.</string>

@@ -1,6 +1,14 @@
 package com.metromusic.ui.screens
 
+import android.Manifest
 import android.app.Activity
+import android.content.Context
+import android.content.pm.PackageManager
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,15 +23,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.MetroButton
 import com.metrocompose.MetroPage
@@ -78,6 +91,48 @@ fun AlbumEditScreen(albumId: Long, onDone: () -> Unit) {
         mutableStateOf(tracks.firstNotNullOfOrNull { it.genre }.orEmpty())
     }
     var failure by remember { mutableStateOf<String?>(null) }
+
+    // Whether Android is still going to ask about every album separately. Re-read whenever something
+    // that could change the answer comes back — the settings screen, or the runtime prompt.
+    val context = LocalContext.current
+    var asksEveryTime by remember { mutableStateOf(asksEveryTime(context)) }
+    // On resume rather than through an activity result: that settings screen belongs to Settings'
+    // own task, so `startActivityForResult` against it is answered CANCELLED the instant it is
+    // launched and the screen never even comes forward. Coming back is the event that matters
+    // anyway, and this way it is noticed however the user got there.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) asksEveryTime = asksEveryTime(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    fun openMediaManagement() {
+        // Straight to this app's own row on that page. A device whose settings have no such screen
+        // is left alone rather than crashed at.
+        runCatching {
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_REQUEST_MANAGE_MEDIA,
+                    Uri.parse("package:" + context.packageName)
+                )
+            )
+        }
+    }
+    // Media management is only half of it: the platform also wants the app to hold
+    // ACCESS_MEDIA_LOCATION before it will skip the dialog — the reasoning being that an app allowed
+    // to rewrite a file silently should already be able to see everything in it. Measured, because
+    // it is the kind of requirement documentation states and platforms forget: with the special
+    // access alone the dialog still came up, and with both it did not. Asked for here and nowhere
+    // else, so nobody who never edits a tag is ever prompted for something that reads like location.
+    val mediaLocation = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        asksEveryTime = asksEveryTime(context)
+        // Refused, so the special access would buy nothing; the row stays, which is the truth.
+        if (granted) openMediaManagement()
+    }
 
     // Built fresh on every attempt: what the user typed can change between the first try and the
     // retry that follows the consent dialog. Only the fields that differ are sent — an untouched
@@ -182,9 +237,50 @@ fun AlbumEditScreen(albumId: Long, onDone: () -> Unit) {
                 fontFamily = MetroRegular,
                 fontSize = 13.sp
             )
+
+            // The consent dialog is per set of files, so editing ten albums means answering it ten
+            // times. Since Android 12 that can be settled once, as a special app access the user
+            // grants in system settings — which is where this goes, because it is the platform's
+            // switch and not one of ours. Offered here rather than on a settings page: this is the
+            // one screen where being asked again is the thing that just happened. It disappears once
+            // granted, and it is not shown at all below Android 12, where there is nothing to offer.
+            if (asksEveryTime) {
+                Spacer(Modifier.height(16.dp))
+                MetroButton(stringResource(R.string.album_edit_manage)) {
+                    if (hasMediaLocation(context)) {
+                        openMediaManagement()
+                    } else {
+                        mediaLocation.launch(Manifest.permission.ACCESS_MEDIA_LOCATION)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.album_edit_manage_explainer),
+                    color = colors.dim,
+                    fontFamily = MetroRegular,
+                    fontSize = 13.sp
+                )
+            }
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
+
+/**
+ * Whether Android is still going to ask about every album, and there is something the user can do.
+ *
+ * False below Android 12 as well — not because it does not ask there, but because there is no such
+ * setting to send anyone to, and a button that leads nowhere is worse than the dialog it offers to
+ * silence. Both halves have to be in place: the special access *and* [Manifest.permission.
+ * ACCESS_MEDIA_LOCATION], or the dialog comes up regardless.
+ */
+private fun asksEveryTime(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        !(MediaStore.canManageMedia(context) && hasMediaLocation(context))
+
+private fun hasMediaLocation(context: Context): Boolean =
+    context.checkSelfPermission(Manifest.permission.ACCESS_MEDIA_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
 
 /** Holds the save attempt, so it and the consent dialog can each reach the other. */
 private class Attempts {
