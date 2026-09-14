@@ -82,18 +82,36 @@ val BackdropDecode = 280.dp
  *
  * The initial value is the loader's own — which is a synchronous cache peek — rather than null, so a
  * warm cache needs no frame at all to catch up.
+ *
+ * **"Not loaded yet" and "there is no cover" are two different answers, and holding on to the old
+ * picture is right for only one of them.** [rememberAlbumArt] returns null for both, so keeping the
+ * last non-null bitmap — which is what avoids a black blink between two albums — also kept the
+ * *previous* album's artwork behind the strip for ever once a track with no cover came on: the 52dp
+ * tile correctly showed its accent placeholder while the band behind it was still the record before
+ * it. [rememberAlbumArtState] is the same load reporting which of the two answers it has, and the
+ * bitmap is dropped as soon as the answer is a settled no.
  */
 @Composable
 fun rememberPlayingBackdrop(albumId: Long, representativeTrackId: Long): Bitmap? {
-    val loading = rememberAlbumArt(albumId, representativeTrackId, BackdropDecode)
+    val art = rememberAlbumArtState(albumId, representativeTrackId, BackdropDecode)
     // The last cover actually decoded, kept while the next one is on its way: a track change swaps the
     // album id before its bitmap exists, and drawing that gap is a black blink between two pictures.
-    var shown by remember { mutableStateOf(loading) }
-    LaunchedEffect(loading) {
-        if (loading != null) shown = loading
+    // A *settled* answer replaces it whatever it is, including nothing.
+    var shown by remember { mutableStateOf(art.bitmap) }
+    LaunchedEffect(art) {
+        if (art.bitmap != null || art.settled) shown = art.bitmap
     }
     return shown
 }
+
+/**
+ * What [rememberAlbumArtState] answers: the cover, and whether that is the last word on it.
+ *
+ * [settled] is false only while a decode is still outstanding. It is the distinction the drawing
+ * surfaces mostly do not need — a tile with no art draws its placeholder either way — and the one
+ * anything that *holds* a bitmap across a change absolutely does.
+ */
+data class AlbumArtState(val bitmap: Bitmap?, val settled: Boolean)
 
 /**
  * Loads cover art for the requested size and nothing bigger.
@@ -110,15 +128,30 @@ fun rememberPlayingBackdrop(albumId: Long, representativeTrackId: Long): Bitmap?
  * forever. Assigning only after the load returns still avoids blanking in the meantime.
  */
 @Composable
-fun rememberAlbumArt(albumId: Long, representativeTrackId: Long, size: Dp): Bitmap? {
+fun rememberAlbumArt(albumId: Long, representativeTrackId: Long, size: Dp): Bitmap? =
+    rememberAlbumArtState(albumId, representativeTrackId, size).bitmap
+
+/**
+ * [rememberAlbumArt], with the load's own answer to "is there a cover at all" alongside the bitmap.
+ *
+ * The single write inside the producer is what keeps the no-blanking behaviour described above: on a
+ * new album the state still holds the previous [AlbumArtState] — settled, with the old bitmap in it —
+ * until this one's peek or load returns, rather than passing through a null. What it must not do is
+ * report *this* album as settled before it is, which is why nothing is written on the way in.
+ */
+@Composable
+fun rememberAlbumArtState(albumId: Long, representativeTrackId: Long, size: Dp): AlbumArtState {
     val services = LocalServices.current
     val sizePx = with(LocalDensity.current) { size.roundToPx() }
-    val state by produceState<Bitmap?>(
-        initialValue = services.artwork.peek(albumId, sizePx),
+    val state by produceState(
+        initialValue = AlbumArtState(services.artwork.peek(albumId, sizePx), settled = false),
         albumId, representativeTrackId, sizePx
     ) {
-        value = services.artwork.peek(albumId, sizePx)
-            ?: services.artwork.load(albumId, representativeTrackId, sizePx)
+        val peeked = services.artwork.peek(albumId, sizePx)
+        value = AlbumArtState(
+            bitmap = peeked ?: services.artwork.load(albumId, representativeTrackId, sizePx),
+            settled = true
+        )
     }
     return state
 }

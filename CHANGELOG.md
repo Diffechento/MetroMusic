@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+**A song with no cover no longer plays behind the last song's artwork.** The band behind the mini
+player is the playing album's cover; it is deliberately kept while the next one is being decoded, so
+that changing track is not a black blink between two pictures. But "still loading" and "this album
+has no cover" arrived as the same answer, so a track with no artwork kept the *previous* record's
+picture behind the strip indefinitely — the little tile beside the title correctly showed its
+placeholder while the band behind it was still the album before. The two answers are now told apart
+and the band goes back to the page's own colour.
+
+**The cover no longer flies across the screen if you start moving a page before it lands.** Opening
+an album sends its cover from the list to the page it is opening; scrolling before it arrived left it
+chasing the moving list, over the top of everything, including the status bar. A page that is turning
+now ignores the finger for the quarter-second the turn lasts, and the cover goes where it was going.
+
 **Editing an album's tags works on files that carry the same field twice.** A rip that has been
 through more than one tagger often has the album artist written under two or three names at once —
 `ALBUMARTIST`, `ALBUM ARTIST`, `ALBUM_ARTIST` — and only one of them was being rewritten, so the
