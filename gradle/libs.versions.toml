@@ -5,18 +5,14 @@ coreKtx = "1.15.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.12.01"
-# !! 1.0.4 IS NOT ON CENTRAL YET — it exists in this machine's mavenLocal and nowhere else. !!
+# 1.0.4 has been on Central since 2026-09-14 and is what 1.4 shipped against — a page that is turning
+# no longer answers to the finger, so the cover flying between a list and an album page cannot be
+# chased across the screen by a list scrolled under it. Going back to 1.0.3 (on Central since
+# 2026-08-31, what 1.3 shipped against) is a one-line revert of this number plus the nav-host fix.
 #
-# It carries one fix: a page that is turning no longer answers to the finger, so the cover flying
-# between a list and an album page cannot be chased across the screen by a list being scrolled under
-# it. Everything here builds and runs against it, and a fresh clone, CI and F-Droid's builder would
-# all fail to resolve it — so `main` must not be pushed until MangoTile 1.0.4 is published and
-# *resolvable* on `repo1.maven.org`. That is the rule this line exists to enforce: Central first, the
-# push second. `mavenLocal()` comes first in `settings.gradle.kts`, which is why the failure is
-# invisible here.
-#
-# 1.0.3 has been on Central since 2026-08-31 and is what 1.3 shipped against; going back is a
-# one-line revert of this number plus the nav-host fix.
+# Raise this only once the new version is really on Central: `mavenLocal()` comes first in
+# `settings.gradle.kts`, so a number that exists only on this machine builds here and fails for a
+# fresh clone, for CI and for F-Droid's builder, with nothing on screen to say so.
 metrocompose = "1.0.4"
 media3 = "1.5.1"
 serialization = "1.7.3"
