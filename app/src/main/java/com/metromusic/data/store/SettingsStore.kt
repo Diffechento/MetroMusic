@@ -89,6 +89,28 @@ data class Settings(
      * three genres, and nobody wants to be asked about it before it is fixed.
      */
     val fixGenreDoubling: Boolean = true,
+    /**
+     * Treat names that differ only in the punctuation between their words as one artist.
+     *
+     * On by default, for the reason [fixGenreDoubling] is: `Blink 182`, `Blink-182` and `Blink‐182`
+     * in one library is a defect in the tags and not three bands, and nobody wants to be asked about
+     * it before it is fixed. The spelling kept is the one most of the files use — 99 tracks say
+     * `Blink-182` and 14 say `Blink 182`, so the library says what 99 of them say.
+     *
+     * Separators collapse to a space rather than to nothing, so `Dr. Dre` meets `Dr Dre` while
+     * `M.I.A.` and `MIA` stay apart — see `looseFold`. Read while scanning, so changing it re-runs
+     * the scan.
+     */
+    val fixArtistDoubling: Boolean = true,
+    /**
+     * File a track under every artist its credit names, rather than under the credit as one string.
+     *
+     * On by default: "Artist", "Artist feat. Guest" and "Artist, Other" in the tags is one performer
+     * and three sections otherwise, and the section you were looking for is whichever of them you did
+     * not tap. A switch, because the separators it splits on are also punctuation inside band names —
+     * "Earth, Wind & Fire" becomes two artists — and the only way to know that has happened to *your*
+     * library is to be able to turn it off. See `splitArtists`.
+     */
     val splitArtistCredits: Boolean = true,
     /**
      * Let the album artist tag say who a record is by, instead of its first track's credit.
@@ -422,6 +444,8 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
             useAlbumArtist = it.useAlbumArtist || on
         )
     }
+
+    fun setFixArtistDoubling(on: Boolean) = store.update { it.copy(fixArtistDoubling = on) }
 
     fun setVolumeNormalization(on: Boolean) = store.update { it.copy(volumeNormalization = on) }
 

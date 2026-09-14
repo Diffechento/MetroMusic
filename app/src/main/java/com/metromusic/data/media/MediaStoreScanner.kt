@@ -11,6 +11,7 @@ import com.metromusic.data.model.albumIdOf
 import com.metromusic.data.model.albumsByArtistIndex
 import com.metromusic.data.model.artistIdOf
 import com.metromusic.data.model.artistsOf
+import com.metromusic.data.model.mergingArtistSpellings
 import com.metromusic.data.model.splitArtists
 import com.metromusic.data.model.tracksByAlbumOrdered
 import com.metromusic.data.model.tracksByArtistIndex
@@ -73,17 +74,23 @@ class MediaStoreScanner(private val context: Context) {
      *   [com.metromusic.data.store.Settings.artistsFromAlbumArtist].
      * @param preferKnownArtist which of those names wins: the one with the most records here rather
      *   than the one written first. Means nothing without [albumArtistOnly].
+     * @param fixArtistDoubling treat `Blink 182` and `Blink-182` as one artist — see
+     *   [mergingArtistSpellings].
      */
     suspend fun scan(
         minDurationMs: Long,
         splitCredits: Boolean,
         useAlbumArtist: Boolean,
         albumArtistOnly: Boolean,
-        preferKnownArtist: Boolean = false
+        preferKnownArtist: Boolean = false,
+        fixArtistDoubling: Boolean = true
     ): Library = withContext(Dispatchers.IO) {
         val scanned = queryTracks(minDurationMs, splitCredits, useAlbumArtist, albumArtistOnly)
         if (scanned.isEmpty()) return@withContext Library.Empty
-        val tracks = if (albumArtistOnly) scanned.underOneArtist(preferKnownArtist) else scanned
+        // Spellings first, so the count behind [underOneArtist] sees one artist where the files
+        // wrote two, and so the name that survives is chosen once for the whole library.
+        val merged = if (fixArtistDoubling) scanned.mergingArtistSpellings() else scanned
+        val tracks = if (albumArtistOnly) merged.underOneArtist(preferKnownArtist) else merged
         buildLibrary(tracks, albumArtistOnly)
     }
 

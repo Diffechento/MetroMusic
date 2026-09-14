@@ -244,6 +244,10 @@
         so “craspore; angel vox” lands under angel vox if that is whose music you have. a guess on top
         of the tags rather than what they say, which is why it is separate. turns the two settings
         above on with it.</string>
+    <string name="library_fix_artists">fix artists doubling</string>
+    <string name="library_fix_artists_explainer">treats “Blink 182”, “Blink-182” and “Blink‐182” as
+        one artist, keeping the spelling most of your files use. a space, a hyphen and a dash between
+        the same words are a difference in the tags, not in the band.</string>
     <string name="sleep_timer">sleep timer</string>
     <string name="sleep_off">off</string>
     <!-- Time left on the sleep timer, e.g. "12:30 left". -->

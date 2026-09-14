@@ -868,6 +868,19 @@ private fun LibrarySettings() {
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
+        SettingRow(
+            title = stringResource(R.string.library_fix_artists),
+            checked = settings.fixArtistDoubling,
+            onChange = { services.settings.setFixArtistDoubling(it) }
+        )
+        Text(
+            text = stringResource(R.string.library_fix_artists_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+
         Spacer(Modifier.height(18.dp))
         SettingsHeader(stringResource(R.string.section_genres))
         SettingRow(

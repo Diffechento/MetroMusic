@@ -37,6 +37,11 @@ like it, and the library still carried two artists with one track each — nothi
 you why. Names are brought to one encoding before anything is compared, so they are one artist now,
 and so are the album and genre they are on.
 
+**And a space, a hyphen or a dash between the same words is a difference in the tags, not in the
+band** — “Blink 182”, “Blink-182” and “Blink‐182” are one artist, keeping the spelling most of your
+files use. On by default, and there is a switch on settings → library beside the genre one it
+copies.
+
 **A shared track can go to the artist you have most of**, on settings → library. When a tag names
 several people the track goes to whoever is written first, which is right until your files are tagged
 “someone else; the band” — then a record you think of as the band's lands under a name you have

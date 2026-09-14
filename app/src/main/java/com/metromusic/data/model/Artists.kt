@@ -147,6 +147,68 @@ private fun fold(name: String): String =
     Normalizer.normalize(name.trim(), Normalizer.Form.NFC).lowercase().replace(Whitespace, " ")
 
 /**
+ * [fold], and the punctuation *between* the words is not part of the identity either.
+ *
+ * Only ever used to decide that two spellings are the same artist — never to build an id, because a
+ * name has to survive being written down. A hyphen, a dash and a space are the same separator as far
+ * as a tagger is concerned: the owner's library holds `Blink 182` (14 tracks), `Blink-182` (99, with
+ * the ASCII hyphen) and `Blink‐182` (13, with U+2010) as three artists.
+ *
+ * Separators collapse to one space rather than to nothing, which is the conservative half of this:
+ * `Dr. Dre` and `Dr Dre` become the same artist, `M.I.A.` and `MIA` do not.
+ */
+internal fun looseFold(name: String): String =
+    fold(name).replace(Punctuation, " ").replace(Whitespace, " ").trim()
+
+/**
+ * The same artist written two ways is one artist, and the spelling most of the files use is the one
+ * that survives.
+ *
+ * The genres section has had this since the beginning ([mergingGenres]) and artists want it for the
+ * same reason and with the same rule: if ninety-nine tracks say `Blink-182` and fourteen say
+ * `Blink 182`, the library should say what ninety-nine of them say. Names are rewritten on the
+ * *tracks*, before any index is built, so `tracksByArtistIndex` and everything downstream agree
+ * without knowing this happened — again as the genres do.
+ *
+ * The display credit is untouched, as ever: [Track.artist] still reads what the file says.
+ */
+fun List<Track>.mergingArtistSpellings(): List<Track> {
+    // Per loose key, how many tracks each original spelling accounts for. A LinkedHashMap, so the
+    // spelling seen first wins a tie rather than whichever one a hash happened to order first.
+    val spellings = mutableMapOf<String, MutableMap<String, Int>>()
+    for (track in this) {
+        for (name in track.artistNames + track.albumArtistNames) {
+            spellings.getOrPut(looseFold(name)) { LinkedHashMap() }.merge(name, 1, Int::plus)
+        }
+    }
+
+    val canonical = mutableMapOf<String, String>()
+    for (byName in spellings.values) {
+        if (byName.size == 1) continue
+        val winner = byName.maxByOrNull { it.value }?.key ?: continue
+        for (name in byName.keys) if (name != winner) canonical[name] = winner
+    }
+    if (canonical.isEmpty()) return this
+
+    fun canon(names: List<String>): List<String> =
+        names.map { canonical[it] ?: it }.distinctBy { fold(it) }
+
+    return map { track ->
+        val names = canon(track.artistNames)
+        val albumNames = canon(track.albumArtistNames)
+        if (names == track.artistNames && albumNames == track.albumArtistNames) {
+            track
+        } else {
+            track.copy(
+                artistNames = names,
+                albumArtistNames = albumNames,
+                artistId = artistIdOf(names.first())
+            )
+        }
+    }
+}
+
+/**
  * One artist per track, chosen out of the names the track is a candidate for.
  *
  * This is what [com.metromusic.data.store.Settings.artistsFromAlbumArtist] does once the scanner has
@@ -192,6 +254,9 @@ private val Separators = Regex(
 )
 
 private val Whitespace = Regex("""\s+""")
+
+/** What [looseFold] treats as one separator: the hyphens, the dashes, the underscore and the dot. */
+private val Punctuation = Regex("[-\u2010-\u2015_.]+")
 
 private val Dangling = charArrayOf(',', ';', '&')
 
