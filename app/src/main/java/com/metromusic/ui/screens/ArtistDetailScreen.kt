@@ -121,19 +121,24 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
  * once for the whole library and changing this must not mean re-running a scan. Its own order is the
  * base and this arranges it.
  *
- * **A year of 0 means the tags did not say, not the year zero**, so it sorts last under either
- * answer instead of leading a discography with the albums nobody dated. The title is the tie-break
- * in both cases — two records from one year would otherwise come out in whatever order the scan
- * happened to reach them, which is stable within a run and arbitrary between two.
+ * **A year of 0 means the tags did not say, not the year zero**, so the undated albums sort last
+ * under *both* directions rather than leading one of them. Oldest-first is where that is easy to get
+ * wrong: the natural ascending sort puts 0 at the very top, so a page ordered by "oldest first"
+ * would open with the records nobody dated, which is the one thing it is not being asked for. The
+ * `year <= 0` key is therefore the first comparison in both, and only the direction of the year
+ * itself differs between them.
+ *
+ * The title is the tie-break everywhere — two records from one year would otherwise come out in
+ * whatever order the scan happened to reach them, which is stable within a run and arbitrary
+ * between two.
  */
 private fun artistAlbumComparator(order: ArtistAlbumOrder): Comparator<Album> {
     val byTitle = compareBy(String.CASE_INSENSITIVE_ORDER, Album::title)
+    val undatedLast = compareBy<Album> { it.year <= 0 }
     return when (order) {
         ArtistAlbumOrder.Name -> byTitle
-        ArtistAlbumOrder.Year ->
-            compareBy<Album> { it.year <= 0 }
-                .thenByDescending { it.year }
-                .then(byTitle)
+        ArtistAlbumOrder.Year -> undatedLast.thenByDescending { it.year }.then(byTitle)
+        ArtistAlbumOrder.YearOldest -> undatedLast.thenBy { it.year }.then(byTitle)
     }
 }
 

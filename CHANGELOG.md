@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+**An artist's albums can be read from the start as well as from the end.** The order on an artist's
+page (settings → interface) was newest-first or the alphabet; **oldest first** is the third answer,
+for anyone who reads a discography forwards. An album whose tags carry no year still goes last under
+both directions rather than opening the page — undated is not "the year zero", and an ordinary
+ascending sort would have put those records first.
+
 ## 1.4
 
 Built on `io.github.diffechento:metro:1.0.4`.

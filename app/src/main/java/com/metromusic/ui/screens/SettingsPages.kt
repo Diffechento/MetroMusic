@@ -465,6 +465,7 @@ private fun InterfaceSettings() {
 @StringRes
 private fun artistAlbumOrderLabel(order: ArtistAlbumOrder): Int = when (order) {
     ArtistAlbumOrder.Year -> R.string.interface_artist_albums_year
+    ArtistAlbumOrder.YearOldest -> R.string.interface_artist_albums_year_oldest
     ArtistAlbumOrder.Name -> R.string.interface_artist_albums_name
 }
 

@@ -57,14 +57,18 @@ enum class ArtistSort {
  *
  * Separate from [AlbumSort], which arranges the albums *section* — a whole library of records by
  * everybody, where the question is where a title sits in the alphabet. One artist's page is the
- * other question: a discography, which is read as a run of releases in time. So this is two answers
- * rather than four, and [Year] — newest first, a year nobody tagged last — is the default because it
- * is what the page has always done and what a discography usually means.
+ * other question: a discography, which is read as a run of releases in time. Hence two directions
+ * through those releases and one through the alphabet, with [Year] — newest first — the default
+ * because it is what the page has always done and what a discography usually means.
  *
- * Persisted by name, like the sorts above.
+ * **[Year] means newest first and [YearOldest] means oldest first**, which is a clumsy pair of names
+ * and is deliberate: [Year] is written into settings files that already exist, and persistence is by
+ * name, so renaming it would silently hand everyone who chose it the default back.
+ *
+ * Persisted by name, like the sorts above; the declaration order here is the order of the picker.
  */
 enum class ArtistAlbumOrder {
-    Year, Name
+    Year, YearOldest, Name
 }
 
 /**

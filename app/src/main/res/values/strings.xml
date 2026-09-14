@@ -173,10 +173,12 @@
     <string name="interface_letter_tiles">accent square behind group letters</string>
     <string name="interface_artist_albums">albums on an artist’s page</string>
     <string name="interface_artist_albums_year">newest first</string>
+    <string name="interface_artist_albums_year_oldest">oldest first</string>
     <string name="interface_artist_albums_name">by name</string>
     <string name="interface_artist_albums_explainer">a discography reads as a run of releases, which
-        is why it is by year by default — an album with no year in its tags goes last either way.
-        by name puts it in the alphabet instead.</string>
+        is why it is by year by default — newest first, or oldest first to read it from the start.
+        by name puts it in the alphabet instead. an album with no year in its tags goes last
+        whichever you pick.</string>
     <string name="library_split_artists">split artists in a credit</string>
     <string name="library_split_artists_explainer">a track tagged “artist feat. guest” or
         “artist, other” is listed under each of them, instead of making a section of its own. turn
