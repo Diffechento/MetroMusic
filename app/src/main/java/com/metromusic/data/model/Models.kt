@@ -34,9 +34,9 @@ data class Track(
      * Artists", or the band on a record whose every track is credited "band feat. somebody" — would
      * otherwise own albums and no songs, which `artistsOf` cannot even give a page to.
      *
-     * Under [com.metromusic.data.store.Settings.artistsFromAlbumArtist] the album artist's names are
-     * the *only* ones in here, so a guest on one track is not an artist at all; a file with no album
-     * artist tag still falls back to its credit.
+     * Under [com.metromusic.data.store.Settings.artistsFromAlbumArtist] there is exactly one name in
+     * here — the first the album artist tag gives — so a guest on one track is not an artist at all;
+     * a file with no album artist tag falls back to the first name of its credit.
      */
     val artistNames: List<String>,
     /**

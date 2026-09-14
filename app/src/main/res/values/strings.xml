@@ -232,12 +232,12 @@
         an album whose every track says “band feat. someone” under the band. turn it off if a ripper
         wrote something odd in that tag. needs android 11.</string>
     <string name="library_artists_album_artist">artists from the album artist</string>
-    <string name="library_artists_album_artist_explainer">the artists section is built from the album
-        artist tag and nothing else, so a track credited “band, orchestra, guest, guest” belongs to the
-        band alone and the guests are not artists of their own. leave splitting on above: with this on
-        it reaches only the album artist tag itself, for the files that list the guests there too. a
-        track with no album artist tag still goes under its own credit. turns believing that tag on
-        with it.</string>
+    <string name="library_artists_album_artist_explainer">every track goes to one artist — the first
+        name its album artist tag gives — so a record tagged “band, orchestra, guest, guest” belongs to
+        the band and the guests are not artists of their own. the first name only, because plenty of
+        files repeat the whole guest list in that tag as well. leave splitting on above, or there is no
+        first name to take. a track with no album artist tag goes under the first name of its own
+        credit. turns believing that tag on with it.</string>
     <string name="sleep_timer">sleep timer</string>
     <string name="sleep_off">off</string>
     <!-- Time left on the sleep timer, e.g. "12:30 left". -->

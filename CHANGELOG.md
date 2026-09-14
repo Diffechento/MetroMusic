@@ -23,11 +23,13 @@ gesture pill is how you leave.
 tagged “Gorillaz, National Orchestra for Arabic Music, Bashy, Kano” is one record by one band, and
 splitting that credit files it under four artists — three of whom you have nothing else by, so the
 list fills with names that lead to a single guest appearance and the band you were looking for is
-harder to find rather than easier. With this on, the album artist tag says who a track belongs to and
-the guests are not artists at all. The credit itself is untouched, so a row still reads what the file
-says; a file with no album artist tag still goes under its own credit, split or whole as the setting
-above it says. Off by default, and it turns that setting on with it, since it is built on believing
-that tag.
+harder to find rather than easier. With this on, every track goes to **one** artist: the first name
+its album artist tag gives. The first name and not all of them, because plenty of rips write the
+guest list into that tag as well, and taking every name back out of it leaves the list this setting
+exists to get rid of — on a real library of 967 tracks that is the difference between 95 artists,
+41 of them holding a single track, and 58. The credit itself is untouched, so a row still reads what
+the file says; a file with no album artist tag goes under the first name of its own credit. Off by
+default, and it turns believing the album artist tag on with it, since it is built on that.
 
 **An artist's page is headed with the artist's name**, rather than with the first track's credit — a
 page reached by tapping a featured artist used to be titled “somebody else feat. them”.
