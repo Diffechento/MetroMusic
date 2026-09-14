@@ -1,5 +1,7 @@
 package com.metromusic.data.model
 
+import java.text.Normalizer
+
 /**
  * The artists a single credit string names.
  *
@@ -132,9 +134,17 @@ fun albumIdOf(title: String, albumArtist: String?): Long {
     return (hash and Long.MAX_VALUE) or SyntheticAlbumBit
 }
 
-/** Case and whitespace are not part of an artist's identity. */
+/**
+ * Case, whitespace and how the letters are *encoded* are not part of an artist's identity.
+ *
+ * The normalisation is the part that is easy to leave out and impossible to see afterwards. One of
+ * the owner's files spells `Молодой Платон` with a precomposed `й` (U+0439) and another with `и`
+ * followed by a combining breve (U+0438 U+0306); the two strings are not equal, so the library
+ * carried two artists with the same name, the same look and one track each. NFC is the form the rest
+ * of the world writes, so everything is brought to it before anything is compared.
+ */
 private fun fold(name: String): String =
-    name.trim().lowercase().replace(Whitespace, " ")
+    Normalizer.normalize(name.trim(), Normalizer.Form.NFC).lowercase().replace(Whitespace, " ")
 
 private val Separators = Regex(
     """\s*(?:[,;&]|\b(?:feat\.?|ft\.?|featuring|vs\.?)\s)\s*""",

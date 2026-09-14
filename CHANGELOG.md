@@ -31,6 +31,12 @@ exists to get rid of — on a real library of 967 tracks that is the difference 
 the file says; a file with no album artist tag goes under the first name of its own credit. Off by
 default, and it turns believing the album artist tag on with it, since it is built on that.
 
+**Two files that spell one name differently are one artist.** `Молодой Платон` written with a
+ready-made `й` and `Молодой Платон` written as `и` with a mark over it are the same word and looked
+like it, and the library still carried two artists with one track each — nothing on screen could tell
+you why. Names are brought to one encoding before anything is compared, so they are one artist now,
+and so are the album and genre they are on.
+
 **An artist's page is headed with the artist's name**, rather than with the first track's credit — a
 page reached by tapping a featured artist used to be titled “somebody else feat. them”.
 
