@@ -148,6 +148,26 @@ data class Library(
 
     fun albumsOfArtist(artistId: Long): List<Album> = albumsByArtist[artistId].orEmpty()
 
+    /**
+     * What to call the artist an id stands for — the name that was tapped, not a credit string.
+     *
+     * Deliberately not "the first track's [Track.artist]", which is what it used to be and which is
+     * wrong whenever a credit names more than one person: a page reached by tapping "Todd Edwards"
+     * was headed "Daft Punk feat. Todd Edwards", and under
+     * [com.metromusic.data.store.Settings.artistsFromAlbumArtist] a page is routinely reached from a
+     * credit that does not contain its own name at all. The answer is the name the id was made from,
+     * which is precisely what [artistsOf] already put in [artists]; the two fallbacks are for the
+     * moment between a rescan and the list being rebuilt.
+     */
+    fun artistName(id: Long): String? =
+        artists.firstOrNull { it.id == id }?.name
+            ?: tracksOfArtist(id).firstNotNullOfOrNull { track ->
+                track.artistNames.firstOrNull { artistIdOf(it) == id }
+            }
+            ?: albumsOfArtist(id).firstNotNullOfOrNull { album ->
+                album.artistNames.firstOrNull { artistIdOf(it) == id }
+            }
+
     fun tracksOfGenre(genre: String): List<Track> = tracks.filter { it.genre == genre }
 
     /** Resolves stored ids to tracks, silently dropping any that no longer exist. */

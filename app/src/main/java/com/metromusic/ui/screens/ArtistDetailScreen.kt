@@ -43,7 +43,7 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
 
     val albums = remember(library, artistId) { library.albumsOfArtist(artistId) }
     val tracks = remember(library, artistId) { library.tracksOfArtist(artistId) }
-    val name = tracks.firstOrNull()?.artist ?: albums.firstOrNull()?.artist
+    val name = remember(library, artistId) { library.artistName(artistId) }
 
     if (name == null) {
         MetroPage(stringResource(R.string.overline_app), stringResource(R.string.artist_title)) {

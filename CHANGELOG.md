@@ -22,6 +22,9 @@ says; a file with no album artist tag still goes under its own credit, split or 
 above it says. Off by default, and it turns that setting on with it, since it is built on believing
 that tag.
 
+**An artist's page is headed with the artist's name**, rather than with the first track's credit — a
+page reached by tapping a featured artist used to be titled “somebody else feat. them”.
+
 **Lyrics can come from the device, and they can follow the music.** A `.lrc` beside a song — the
 thirty-year-old format every other player reads — is used ahead of anything fetched from the internet,
 and when it carries timestamps the page keeps up with the track: the line being sung is the big one,
