@@ -173,6 +173,20 @@ data class Settings(
      * you are* — someone who navigates by that word rather than by what is under it wants it to stay.
      */
     val collapseTitle: Boolean = true,
+    /**
+     * Hide the status bar, so a page runs to the top edge of the screen.
+     *
+     * Off by default, and it is a mode to be asked for rather than one to find yourself in: the clock
+     * and the battery are worth their strip of screen to most people. With it on the bar is gone
+     * everywhere — the panorama, the player, a settings page — and a swipe down from the top edge
+     * brings it back for a moment, which is the platform's own behaviour for a hidden bar and the way
+     * to read the time without leaving what you are looking at.
+     *
+     * The bar is *hidden* rather than covered, so its inset goes to zero and every page grows into
+     * the strip by itself. Nothing lays out differently for this, which is the whole reason it can be
+     * one switch in one place.
+     */
+    val fullScreen: Boolean = false,
     /** Home panorama section order; missing names are appended in their declared order. */
     val sectionOrder: List<String> = emptyList(),
     /** How each section is arranged, as an enum name; anything unknown reads as the default. */
@@ -351,6 +365,8 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setLetterTiles(on: Boolean) = store.update { it.copy(letterTiles = on) }
 
     fun setCollapseTitle(on: Boolean) = store.update { it.copy(collapseTitle = on) }
+
+    fun setFullScreen(on: Boolean) = store.update { it.copy(fullScreen = on) }
 
     fun setOnlineArtwork(on: Boolean) = store.update { it.copy(onlineArtwork = on) }
 

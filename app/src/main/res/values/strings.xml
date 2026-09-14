@@ -154,6 +154,11 @@
         wraps, so the last one is also one swipe to the left of the first.</string>
     <string name="interface_move_up">▲</string>
     <string name="interface_move_down">▼</string>
+    <string name="interface_screen">screen</string>
+    <string name="interface_full_screen">full screen</string>
+    <string name="interface_full_screen_explainer">the status bar goes away everywhere and the page
+        runs to the top edge of the screen. swipe down from that edge to bring the clock back for a
+        few seconds; it leaves again by itself.</string>
     <string name="interface_strip">now playing strip</string>
     <string name="interface_strip_artwork">show the album art</string>
     <string name="interface_strip_explainer">swipe the strip sideways to change track either

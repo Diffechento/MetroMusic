@@ -378,6 +378,21 @@ private fun InterfaceSettings() {
         }
 
         Spacer(Modifier.height(18.dp))
+        SettingsHeader(stringResource(R.string.interface_screen))
+        SettingRow(
+            title = stringResource(R.string.interface_full_screen),
+            checked = settings.fullScreen,
+            onChange = { services.settings.setFullScreen(it) }
+        )
+        Text(
+            text = stringResource(R.string.interface_full_screen_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+
+        Spacer(Modifier.height(18.dp))
         SettingsHeader(stringResource(R.string.interface_strip))
         SettingRow(
             title = stringResource(R.string.interface_strip_artwork),

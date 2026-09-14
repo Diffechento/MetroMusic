@@ -12,6 +12,13 @@ others are now taken with it.
 there is a system setting for exactly this, and the edit page offers it: after that, saving an album
 just saves.
 
+**Full screen**, on settings → interface. The status bar goes away and every page — the library,
+the player, a settings page — runs to the top edge of the screen, which is a big title’s worth of
+height back on a phone. Swipe down from that edge and the clock comes back over the page for a few
+seconds, then leaves again by itself, so the time is still there when you want it. Off by default: it
+is a mode to ask for rather than one to find yourself in. The navigation bar stays where it is — the
+gesture pill is how you leave.
+
 **The artists section can be built from the album artist alone**, on settings → library. A track
 tagged “Gorillaz, National Orchestra for Arabic Music, Bashy, Kano” is one record by one band, and
 splitting that credit files it under four artists — three of whom you have nothing else by, so the

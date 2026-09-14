@@ -16,6 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.MetroTheme
 import com.metromusic.core.LocalServices
@@ -69,11 +71,25 @@ class MainActivity : ComponentActivity() {
 
                 // The bars have no background of their own, so their icons have to be told which
                 // way to contrast — light icons over a dark app, dark icons over a light one.
+                //
+                // Full screen is the status bar *hidden*, not covered: a hidden bar reports no inset,
+                // so every page grows into the strip by the insets it already answers to and nothing
+                // here lays out differently. The navigation bar stays — the gesture pill is how you
+                // leave, and the app deliberately runs its lists under it either way.
+                //
+                // `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` is what makes it a mode rather than a
+                // one-way door: a swipe down from the top edge brings the clock back over the page
+                // for a few seconds and it leaves again by itself, without the app hearing about it.
                 val view = LocalView.current
+                val fullScreen = settings.fullScreen
                 SideEffect {
                     WindowCompat.getInsetsController(window, view).apply {
                         isAppearanceLightStatusBars = !dark
                         isAppearanceLightNavigationBars = !dark
+                        systemBarsBehavior =
+                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        if (fullScreen) hide(WindowInsetsCompat.Type.statusBars())
+                        else show(WindowInsetsCompat.Type.statusBars())
                     }
                 }
 
