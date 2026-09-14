@@ -127,9 +127,10 @@ class LibraryRepository(
             observer
         )
 
-        // All four of these are read *during* the scan — the duration filter, how a credit is split
-        // into artists, whether the album artist tag is believed, and whether it is the only thing
-        // artists are built from — so changing any of them has to re-run it.
+        // Every one of these is read *during* the scan — the duration filter, how a credit is split
+        // into artists, whether the album artist tag is believed, whether it is the only thing
+        // artists are built from, and which of its names then wins — so changing any of them has to
+        // re-run it.
         scope.launch {
             settings.settings
                 .map { ScanInputs(it) }
@@ -149,7 +150,8 @@ class LibraryRepository(
                     minDurationMs = values.minTrackSeconds * 1000L,
                     splitCredits = values.splitArtistCredits,
                     useAlbumArtist = values.useAlbumArtist,
-                    albumArtistOnly = values.artistsFromAlbumArtist
+                    albumArtistOnly = values.artistsFromAlbumArtist,
+                    preferKnownArtist = values.preferKnownArtist
                 )
                 // Album ids can be reused after a media rescan; stale covers would be wrong.
                 if (scanned.albums != _library.value.albums) artwork.clear()
@@ -193,12 +195,14 @@ private data class ScanInputs(
     val minTrackSeconds: Int,
     val splitArtistCredits: Boolean,
     val useAlbumArtist: Boolean,
-    val artistsFromAlbumArtist: Boolean
+    val artistsFromAlbumArtist: Boolean,
+    val preferKnownArtist: Boolean
 ) {
     constructor(settings: Settings) : this(
         settings.minTrackSeconds,
         settings.splitArtistCredits,
         settings.useAlbumArtist,
-        settings.artistsFromAlbumArtist
+        settings.artistsFromAlbumArtist,
+        settings.preferKnownArtist
     )
 }

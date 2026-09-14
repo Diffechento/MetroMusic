@@ -14,6 +14,7 @@ import com.metromusic.data.model.artistsOf
 import com.metromusic.data.model.splitArtists
 import com.metromusic.data.model.tracksByAlbumOrdered
 import com.metromusic.data.model.tracksByArtistIndex
+import com.metromusic.data.model.underOneArtist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -67,18 +68,22 @@ class MediaStoreScanner(private val context: Context) {
      *   flagged as music. 30s is the usual cut-off.
      * @param splitCredits file a track under every artist its credit names — see [splitArtists].
      * @param useAlbumArtist read the album artist tag and let it say who a record is by.
-     * @param albumArtistOnly file a track under the *first* name its album artist tag gives, instead
-     *   of under everyone its credit names, so the guests on a track are not artists of their own —
-     *   see [com.metromusic.data.store.Settings.artistsFromAlbumArtist].
+     * @param albumArtistOnly file a track under one artist out of its album artist tag rather than
+     *   under everyone its credit names, so the guests on a track are not artists of their own — see
+     *   [com.metromusic.data.store.Settings.artistsFromAlbumArtist].
+     * @param preferKnownArtist which of those names wins: the one with the most records here rather
+     *   than the one written first. Means nothing without [albumArtistOnly].
      */
     suspend fun scan(
         minDurationMs: Long,
         splitCredits: Boolean,
         useAlbumArtist: Boolean,
-        albumArtistOnly: Boolean
+        albumArtistOnly: Boolean,
+        preferKnownArtist: Boolean = false
     ): Library = withContext(Dispatchers.IO) {
-        val tracks = queryTracks(minDurationMs, splitCredits, useAlbumArtist, albumArtistOnly)
-        if (tracks.isEmpty()) return@withContext Library.Empty
+        val scanned = queryTracks(minDurationMs, splitCredits, useAlbumArtist, albumArtistOnly)
+        if (scanned.isEmpty()) return@withContext Library.Empty
+        val tracks = if (albumArtistOnly) scanned.underOneArtist(preferKnownArtist) else scanned
         buildLibrary(tracks, albumArtistOnly)
     }
 
@@ -184,22 +189,17 @@ class MediaStoreScanner(private val context: Context) {
                 // artist's, which is how a band that plays on none of its own tracks under its own
                 // name still gets a page.
                 //
-                // With `albumArtistOnly` it is **one** name: the first the album artist tag gives, or
-                // the first of the credit where there is no such tag. That first name is the record's
-                // own artist and the rest of the tag is a co-credit — which is the whole of what this
-                // setting is for, and taking *every* name out of the tag did not deliver it. Measured
-                // against a real library of 967 tracks whose rips write the full feature list into the
-                // album artist field: every name gave 95 artists of whom 41 held a single track and 37
-                // were never any record's first name, and the first name alone gives 58, of which 33
-                // hold more than ten tracks. The names that go are `мц жесткое ограничение`, `Poly
-                // Wave`, `Марионетка` — guests, every one.
+                // With `albumArtistOnly` these are the *candidates* rather than the answer: the
+                // album artist tag's names, or the credit's where there is no such tag. Which one of
+                // them the track ends up under is [underOneArtist]'s to say, once the whole library
+                // has been read — the choice needs counts across all of it.
                 //
                 // (An album artist that merely repeats the credit leaves `albumArtistNames` empty, for
-                // the memory the common library would otherwise hold, and reaches the same name by the
-                // same route. And with `splitCredits` off there is only ever one name to take, so this
+                // the memory the common library would otherwise hold, and reaches the same names by
+                // the same route. And with `splitCredits` off there is only ever one name, so this
                 // reads as the tag itself — which is what that switch asks for.)
                 val artistNames = when {
-                    albumArtistOnly -> listOf(albumArtistNames.ifEmpty { creditNames }.first())
+                    albumArtistOnly -> albumArtistNames.ifEmpty { creditNames }
                     albumArtistNames.isEmpty() -> creditNames
                     else -> (creditNames + albumArtistNames).distinct()
                 }
@@ -256,11 +256,14 @@ class MediaStoreScanner(private val context: Context) {
                 ?.key
             val lead = albumTracks.firstOrNull { it.albumArtist == albumArtist } ?: first
             // The names the album artist splits into, or that track's own credit where the two say
-            // the same thing (which is when `albumArtistNames` is left empty) — and just the first of
-            // them under `albumArtistOnly`, so a record does not turn up on the page of a guest its
-            // tracks are no longer filed under.
-            val leadNames = lead.albumArtistNames.ifEmpty { lead.artistNames }
-                .let { if (albumArtistOnly) it.take(1) else it }
+            // the same thing (which is when `albumArtistNames` is left empty). Under `albumArtistOnly`
+            // it is the one name the track was actually filed under, so a record does not turn up on
+            // the page of a guest whose tracks it no longer shares.
+            val leadNames = if (albumArtistOnly) {
+                lead.artistNames
+            } else {
+                lead.albumArtistNames.ifEmpty { lead.artistNames }
+            }
             Album(
                 id = albumId,
                 title = first.album,

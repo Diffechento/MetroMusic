@@ -854,7 +854,20 @@ private fun LibrarySettings() {
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
-
+        // Last of the three, because it only chooses between names the two above hand it — and its
+        // setter turns both of them on, so the rows moving is what says so.
+        SettingRow(
+            title = stringResource(R.string.library_prefer_known_artist),
+            checked = settings.preferKnownArtist,
+            onChange = { services.settings.setPreferKnownArtist(it) }
+        )
+        Text(
+            text = stringResource(R.string.library_prefer_known_artist_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
         Spacer(Modifier.height(18.dp))
         SettingsHeader(stringResource(R.string.section_genres))
         SettingRow(

@@ -37,6 +37,12 @@ like it, and the library still carried two artists with one track each — nothi
 you why. Names are brought to one encoding before anything is compared, so they are one artist now,
 and so are the album and genre they are on.
 
+**A shared track can go to the artist you have most of**, on settings → library. When a tag names
+several people the track goes to whoever is written first, which is right until your files are tagged
+“someone else; the band” — then a record you think of as the band's lands under a name you have
+nothing else by. With this on the track goes to whichever of the names has the most records here
+instead. Off by default: it is a guess on top of the tags rather than what they say.
+
 **An artist's page is headed with the artist's name**, rather than with the first track's credit — a
 page reached by tapping a featured artist used to be titled “somebody else feat. them”.
 

@@ -89,15 +89,6 @@ data class Settings(
      * three genres, and nobody wants to be asked about it before it is fixed.
      */
     val fixGenreDoubling: Boolean = true,
-    /**
-     * File a track under every artist its credit names, rather than under the credit as one string.
-     *
-     * On by default: "Artist", "Artist feat. Guest" and "Artist, Other" in the tags is one performer
-     * and three sections otherwise, and the section you were looking for is whichever of them you did
-     * not tap. A switch, because the separators it splits on are also punctuation inside band names —
-     * "Earth, Wind & Fire" becomes two artists — and the only way to know that has happened to *your*
-     * library is to be able to turn it off. See `splitArtists`.
-     */
     val splitArtistCredits: Boolean = true,
     /**
      * Let the album artist tag say who a record is by, instead of its first track's credit.
@@ -142,6 +133,23 @@ data class Settings(
      * scanning, so changing it re-runs the scan.
      */
     val artistsFromAlbumArtist: Boolean = false,
+    /**
+     * Where a tag names several artists, file the track under the one with the most records here
+     * rather than under whoever is written first.
+     *
+     * Off by default, and a switch of its own, because it is a guess *on top of* the tags rather than
+     * what they say. It is worth having because real tags are not written to one rule: a library
+     * where `angel vox` is the first name on 47 tracks also holds ten tagged `"CRASPORE; angel vox"`,
+     * `"niteboi; angel vox"`, `"Sibewest; angel vox"` — the same collaborations written the other way
+     * round, which the first-name rule files under ten artists of one track each. Asking which of the
+     * names the library is actually about sends all ten to angel vox: 58 artists become 40, and the
+     * ones holding a single track go from 16 to 3.
+     *
+     * Only ever chooses *between* the names a track already carries, so it does nothing at all
+     * without [artistsFromAlbumArtist] — and turning it on turns that on, as that one turns on
+     * [useAlbumArtist]. Read while scanning, so changing it re-runs the scan.
+     */
+    val preferKnownArtist: Boolean = false,
     val sleepTimerMinutes: Int = 0,
     /**
      * Even out the loudness between tracks, from the ReplayGain tags the files carry.
@@ -386,12 +394,33 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
      * rather than merely done.
      */
     fun setUseAlbumArtist(on: Boolean) = store.update {
-        it.copy(useAlbumArtist = on, artistsFromAlbumArtist = it.artistsFromAlbumArtist && on)
+        it.copy(
+            useAlbumArtist = on,
+            artistsFromAlbumArtist = it.artistsFromAlbumArtist && on,
+            preferKnownArtist = it.preferKnownArtist && on
+        )
     }
 
-    /** Turns [Settings.useAlbumArtist] on with it, for the reason on [setUseAlbumArtist]. */
+    /**
+     * Turns [Settings.useAlbumArtist] on with it, for the reason on [setUseAlbumArtist] — and takes
+     * [Settings.preferKnownArtist] down with it, which chooses between names this one stops handing
+     * out.
+     */
     fun setArtistsFromAlbumArtist(on: Boolean) = store.update {
-        it.copy(artistsFromAlbumArtist = on, useAlbumArtist = it.useAlbumArtist || on)
+        it.copy(
+            artistsFromAlbumArtist = on,
+            useAlbumArtist = it.useAlbumArtist || on,
+            preferKnownArtist = it.preferKnownArtist && on
+        )
+    }
+
+    /** The whole chain on at once: it chooses between the names the two settings above hand it. */
+    fun setPreferKnownArtist(on: Boolean) = store.update {
+        it.copy(
+            preferKnownArtist = on,
+            artistsFromAlbumArtist = it.artistsFromAlbumArtist || on,
+            useAlbumArtist = it.useAlbumArtist || on
+        )
     }
 
     fun setVolumeNormalization(on: Boolean) = store.update { it.copy(volumeNormalization = on) }

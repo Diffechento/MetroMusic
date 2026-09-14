@@ -146,6 +146,46 @@ fun albumIdOf(title: String, albumArtist: String?): Long {
 private fun fold(name: String): String =
     Normalizer.normalize(name.trim(), Normalizer.Form.NFC).lowercase().replace(Whitespace, " ")
 
+/**
+ * One artist per track, chosen out of the names the track is a candidate for.
+ *
+ * This is what [com.metromusic.data.store.Settings.artistsFromAlbumArtist] does once the scanner has
+ * worked out who a track *could* be filed under. Two ways to choose, and the difference between them
+ * is the whole of the second setting:
+ *
+ *  - **the first name**, which is what the tag says. A tag is written primary-first, so
+ *    `"Gorillaz, National Orchestra for Arabic Music, Bashy, Kano"` is a Gorillaz record.
+ *  - **[byCatalogue]: the name with the most records of its own**, counted over the whole library by
+ *    the first rule. Real tags are not as disciplined as the first rule needs: a library where
+ *    `angel vox` is the first name on 47 tracks also has ten tagged `CRASPORE; angel vox`,
+ *    `niteboi; angel vox`, `Sibewest; angel vox` — collaborations written the other way round, which
+ *    the first rule files under ten artists with one track each. Asking who the library is actually
+ *    *about* sends all ten to angel vox. It is a guess on top of the tags rather than what they say,
+ *    which is why it is a switch of its own and why it is off.
+ *
+ * Ties go to the earlier name, so with nothing to choose between them the tag's own order decides.
+ */
+fun List<Track>.underOneArtist(byCatalogue: Boolean): List<Track> {
+    if (isEmpty()) return this
+    val chosen: (Track) -> String = if (!byCatalogue) {
+        { it.artistNames.first() }
+    } else {
+        // First pass: how many tracks each name is the *first* name of. Second pass reads it, so the
+        // answer does not depend on the order the tracks happen to be in.
+        val primaries = mutableMapOf<String, Int>()
+        for (track in this) primaries.merge(fold(track.artistNames.first()), 1, Int::plus)
+        ({ track -> track.artistNames.maxByOrNull { primaries[fold(it)] ?: 0 } ?: track.artistNames.first() })
+    }
+    return map { track ->
+        val name = chosen(track)
+        if (track.artistNames.size == 1 && track.artistNames.first() == name) {
+            track
+        } else {
+            track.copy(artistNames = listOf(name), artistId = artistIdOf(name))
+        }
+    }
+}
+
 private val Separators = Regex(
     """\s*(?:[,;&]|\b(?:feat\.?|ft\.?|featuring|vs\.?)\s)\s*""",
     RegexOption.IGNORE_CASE

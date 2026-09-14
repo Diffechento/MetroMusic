@@ -238,6 +238,12 @@
         files repeat the whole guest list in that tag as well. leave splitting on above, or there is no
         first name to take. a track with no album artist tag goes under the first name of its own
         credit. turns believing that tag on with it.</string>
+    <string name="library_prefer_known_artist">give a shared track to the artist you have most of</string>
+    <string name="library_prefer_known_artist_explainer">when a tag names several artists, the track
+        goes to whichever of them has the most records here instead of to whoever is written first —
+        so “craspore; angel vox” lands under angel vox if that is whose music you have. a guess on top
+        of the tags rather than what they say, which is why it is separate. turns the two settings
+        above on with it.</string>
     <string name="sleep_timer">sleep timer</string>
     <string name="sleep_off">off</string>
     <!-- Time left on the sleep timer, e.g. "12:30 left". -->
