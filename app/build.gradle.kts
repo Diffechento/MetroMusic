@@ -54,8 +54,8 @@ android {
         applicationId = "com.metromusic"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.4"
+        versionCode = 7
+        versionName = "1.4.1"
 
         // The date this version was released, shown on the about page. A literal beside the version
         // rather than the moment of the build: `Date()` here would change on every configure, so no

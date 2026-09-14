@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.4.1
+
+Built on `io.github.diffechento:metro:1.0.4`, unchanged from 1.4.
 
 **An artist's albums can be read from the start as well as from the end.** The order on an artist's
 page (settings → interface) was newest-first or the alphabet; **oldest first** is the third answer,

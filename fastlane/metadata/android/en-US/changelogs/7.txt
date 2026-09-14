@@ -1,0 +1,1 @@
+The albums on an artist's page can be ordered oldest first, alongside newest first and by name — on settings → interface. An album with no year in its tags stays at the end whichever you pick.
