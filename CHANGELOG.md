@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Editing an album's tags works on files that carry the same field twice.** A rip that has been
+through more than one tagger often has the album artist written under two or three names at once —
+`ALBUMARTIST`, `ALBUM ARTIST`, `ALBUM_ARTIST` — and only one of them was being rewritten, so the
+album went on showing the old artist and the edit looked as though it had not saved at all. The
+others are now taken with it.
+
 **Lyrics can come from the device, and they can follow the music.** A `.lrc` beside a song — the
 thirty-year-old format every other player reads — is used ahead of anything fetched from the internet,
 and when it carries timestamps the page keeps up with the track: the line being sung is the big one,

@@ -115,16 +115,16 @@ class MetadataWriter(private val context: Context) {
 
             val audio = AudioFileIO.read(temp)
             val tag = audio.tagOrCreateAndSetDefault
-            tags.title?.let { tag.setField(FieldKey.TITLE, it) }
+            tags.title?.let { tag.put(FieldKey.TITLE, it) }
             tags.artist?.let {
-                tag.setField(FieldKey.ARTIST, it)
+                tag.put(FieldKey.ARTIST, it)
                 // Album artist too: a compilation edited by album would otherwise keep grouping by
                 // whatever the old artist was in players that read that field first.
-                tag.setField(FieldKey.ALBUM_ARTIST, it)
+                tag.put(FieldKey.ALBUM_ARTIST, it)
             }
-            tags.album?.let { tag.setField(FieldKey.ALBUM, it) }
-            tags.year?.let { tag.setField(FieldKey.YEAR, it) }
-            tags.genre?.let { tag.setField(FieldKey.GENRE, it) }
+            tags.album?.let { tag.put(FieldKey.ALBUM, it) }
+            tags.year?.let { tag.put(FieldKey.YEAR, it) }
+            tags.genre?.let { tag.put(FieldKey.GENRE, it) }
             audio.commit()
 
             // "rwt" truncates, which matters: the tagged file is a different length, and writing a
@@ -138,6 +138,56 @@ class MetadataWriter(private val context: Context) {
         } finally {
             temp.delete()
         }
+    }
+
+    /**
+     * Writes one field, and takes the file's *other* spellings of that same field with it.
+     *
+     * A tagging library writes each field under one canonical key — for a Vorbis comment (FLAC, Ogg)
+     * the album artist is `ALBUMARTIST` — and leaves alone any other key the file happens to carry.
+     * Real files carry plenty: taggers have written `ALBUM ARTIST` and `ALBUM_ARTIST` for as long as
+     * there have been taggers, and a file that has been through two of them has both. Nothing is
+     * wrong with that until something writes one of them.
+     *
+     * **And the stale one wins.** MediaStore walks the comment list and lets each recognised key
+     * overwrite the last, so whichever spelling sits later in the file is the one the media database
+     * ends up with. Measured on an API 33 emulator, one file per row, the canonical key written
+     * first:
+     *
+     * | also in the file | what the store reports |
+     * |---|---|
+     * | `ENSEMBLE` | the canonical one — `ENSEMBLE` is not read at all |
+     * | `ALBUM ARTIST` | **the stale one** |
+     * | `ALBUM_ARTIST` | **the stale one** |
+     * | `YEAR` beside `DATE` | **the stale one** |
+     *
+     * So an edit of such a file wrote the right value into the right key and *nothing on screen
+     * changed* — reported from a real library as "the album's metadata will not edit, the changes
+     * simply are not saved", against a FLAC rip whose files carried `ENSEMBLE`, `ALBUM ARTIST` and
+     * `ALBUMARTIST` at once. The artist line changed (`ARTIST` has no rival spelling) while the album
+     * artist did not, which is the giveaway.
+     *
+     * The rivals are therefore deleted rather than left to disagree: they are the same field under an
+     * older spelling, and the value they held is the one being replaced. Only spellings that are
+     * unambiguously the same field are listed — `ENSEMBLE` is a Vorbis field of its own (an orchestra
+     * is not an album artist), and it is not read by the store anyway, so it is left where it is.
+     *
+     * Matching ignores case because Vorbis comment keys do, and the delete is by the id as the file
+     * spells it. A tag format with no such key — every ID3 and MP4 field is addressed by a four-byte
+     * id — simply has nothing to match.
+     */
+    private fun org.jaudiotagger.tag.Tag.put(key: FieldKey, value: String) {
+        setField(key, value)
+        val rivals = Shadowing[key] ?: return
+        // Collected before anything is deleted: the iterator is over the tag's own field list.
+        val doomed = buildSet {
+            val fields = getFields()
+            while (fields.hasNext()) {
+                val id = fields.next().id
+                if (rivals.any { it.equals(id, ignoreCase = true) }) add(id)
+            }
+        }
+        doomed.forEach { runCatching { deleteField(it) } }
     }
 
     /**
@@ -194,5 +244,11 @@ class MetadataWriter(private val context: Context) {
 
     private companion object {
         const val Tag = "MetadataWriter"
+
+        /** Other spellings of a field that would otherwise outlive — and outrank — the one written. */
+        val Shadowing: Map<FieldKey, List<String>> = mapOf(
+            FieldKey.ALBUM_ARTIST to listOf("ALBUM ARTIST", "ALBUM_ARTIST"),
+            FieldKey.YEAR to listOf("YEAR")
+        )
     }
 }
