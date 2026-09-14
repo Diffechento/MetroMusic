@@ -12,6 +12,16 @@ others are now taken with it.
 there is a system setting for exactly this, and the edit page offers it: after that, saving an album
 just saves.
 
+**The artists section can be built from the album artist alone**, on settings → library. A track
+tagged “Gorillaz, National Orchestra for Arabic Music, Bashy, Kano” is one record by one band, and
+splitting that credit files it under four artists — three of whom you have nothing else by, so the
+list fills with names that lead to a single guest appearance and the band you were looking for is
+harder to find rather than easier. With this on, the album artist tag says who a track belongs to and
+the guests are not artists at all. The credit itself is untouched, so a row still reads what the file
+says; a file with no album artist tag still goes under its own credit, split or whole as the setting
+above it says. Off by default, and it turns that setting on with it, since it is built on believing
+that tag.
+
 **Lyrics can come from the device, and they can follow the music.** A `.lrc` beside a song — the
 thirty-year-old format every other player reads — is used ahead of anything fetched from the internet,
 and when it carries timestamps the page keeps up with the track: the line being sung is the big one,

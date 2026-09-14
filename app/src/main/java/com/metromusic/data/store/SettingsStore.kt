@@ -114,6 +114,29 @@ data class Settings(
      * Needs API 30 for `ALBUM_ARTIST`, like genres; below that it reads as off.
      */
     val useAlbumArtist: Boolean = true,
+    /**
+     * Build the artists section out of the **album artist** tag alone, ignoring what each track
+     * credits.
+     *
+     * Off by default, and it is the other answer to the problem [splitArtistCredits] solves rather
+     * than a refinement of it. A track tagged
+     * `"Gorillaz, National Orchestra for Arabic Music, Bashy, Kano"` is one record by one band, and
+     * splitting that credit files it under four artists — three of whom have nothing else in the
+     * library, so the list fills with names that lead to a single guest appearance and the band you
+     * were looking for is harder to find rather than easier. The album artist tag already says which
+     * of those four the record is by, so where a file carries one, that is who it is filed under and
+     * the guests are not artists at all.
+     *
+     * The credit itself is untouched — a row still reads what the file says — and a file with **no**
+     * album artist tag still files under its own credit, split or whole as [splitArtistCredits] says:
+     * the alternative is a library where every badly tagged track is missing from the artists section
+     * altogether.
+     *
+     * Needs the album artist tag to be believed at all, so turning it on turns [useAlbumArtist] on
+     * and turning that off turns this off — see [SettingsStore.setArtistsFromAlbumArtist]. Read while
+     * scanning, so changing it re-runs the scan.
+     */
+    val artistsFromAlbumArtist: Boolean = false,
     val sleepTimerMinutes: Int = 0,
     /**
      * Even out the loudness between tracks, from the ReplayGain tags the files carry.
@@ -335,7 +358,20 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
 
     fun setSplitArtistCredits(on: Boolean) = store.update { it.copy(splitArtistCredits = on) }
 
-    fun setUseAlbumArtist(on: Boolean) = store.update { it.copy(useAlbumArtist = on) }
+    /**
+     * Believing the album artist tag is what [Settings.artistsFromAlbumArtist] is built on, so
+     * switching it off switches that off too rather than leaving a switch that says "on" and does
+     * nothing. Both rows are on the same page, next to each other, so the second toggle is seen
+     * rather than merely done.
+     */
+    fun setUseAlbumArtist(on: Boolean) = store.update {
+        it.copy(useAlbumArtist = on, artistsFromAlbumArtist = it.artistsFromAlbumArtist && on)
+    }
+
+    /** Turns [Settings.useAlbumArtist] on with it, for the reason on [setUseAlbumArtist]. */
+    fun setArtistsFromAlbumArtist(on: Boolean) = store.update {
+        it.copy(artistsFromAlbumArtist = on, useAlbumArtist = it.useAlbumArtist || on)
+    }
 
     fun setVolumeNormalization(on: Boolean) = store.update { it.copy(volumeNormalization = on) }
 

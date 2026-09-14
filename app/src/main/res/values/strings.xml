@@ -226,6 +226,13 @@
         than under whoever its first track credits — which is what keeps a compilation together, and
         an album whose every track says “band feat. someone” under the band. turn it off if a ripper
         wrote something odd in that tag. needs android 11.</string>
+    <string name="library_artists_album_artist">artists from the album artist</string>
+    <string name="library_artists_album_artist_explainer">the artists section is built from the album
+        artist tag and nothing else, so a track credited “band, orchestra, guest, guest” belongs to the
+        band alone and the guests are not artists of their own. leave splitting on above: with this on
+        it reaches only the album artist tag itself, for the files that list the guests there too. a
+        track with no album artist tag still goes under its own credit. turns believing that tag on
+        with it.</string>
     <string name="sleep_timer">sleep timer</string>
     <string name="sleep_off">off</string>
     <!-- Time left on the sleep timer, e.g. "12:30 left". -->

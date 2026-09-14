@@ -67,13 +67,17 @@ class MediaStoreScanner(private val context: Context) {
      *   flagged as music. 30s is the usual cut-off.
      * @param splitCredits file a track under every artist its credit names — see [splitArtists].
      * @param useAlbumArtist read the album artist tag and let it say who a record is by.
+     * @param albumArtistOnly file a track under its album artist *instead of* its credit, so the
+     *   guests on a track are not artists of their own — see
+     *   [com.metromusic.data.store.Settings.artistsFromAlbumArtist].
      */
     suspend fun scan(
         minDurationMs: Long,
         splitCredits: Boolean,
-        useAlbumArtist: Boolean
+        useAlbumArtist: Boolean,
+        albumArtistOnly: Boolean
     ): Library = withContext(Dispatchers.IO) {
-        val tracks = queryTracks(minDurationMs, splitCredits, useAlbumArtist)
+        val tracks = queryTracks(minDurationMs, splitCredits, useAlbumArtist, albumArtistOnly)
         if (tracks.isEmpty()) return@withContext Library.Empty
         buildLibrary(tracks)
     }
@@ -95,7 +99,8 @@ class MediaStoreScanner(private val context: Context) {
     private fun queryTracks(
         minDurationMs: Long,
         splitCredits: Boolean,
-        useAlbumArtist: Boolean
+        useAlbumArtist: Boolean,
+        albumArtistOnly: Boolean
     ): List<Track> {
         val cursor: Cursor = context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -172,12 +177,25 @@ class MediaStoreScanner(private val context: Context) {
                 } else {
                     emptyList()
                 }
-                // Filed under both. The credit's names come first, so `artistNames.first()` is still
-                // the performer the row shows and [Track.artistId] means what it always meant.
-                val artistNames = if (albumArtistNames.isEmpty()) {
-                    creditNames
-                } else {
-                    (creditNames + albumArtistNames).distinct()
+                // Who the track is filed under.
+                //
+                // Normally both: the credit's names first — so `artistNames.first()` is the performer
+                // the row shows and [Track.artistId] means what it always meant — and then the album
+                // artist's, which is how a band that plays on none of its own tracks under its own
+                // name still gets a page.
+                //
+                // With `albumArtistOnly`, the album artist *replaces* the credit: a track credited
+                // "Gorillaz, National Orchestra for Arabic Music, Bashy, Kano" on a Gorillaz record is
+                // filed under Gorillaz and nobody else, so three guests with one appearance each never
+                // become three artists to scroll past. A file with no album artist tag has nothing to
+                // put in its place and keeps its credit — the alternative is a badly tagged track
+                // missing from the artists section altogether. (An album artist that merely repeats
+                // the credit leaves `albumArtistNames` empty for the memory the common library would
+                // otherwise hold, and falls through to the same names by the same route.)
+                val artistNames = when {
+                    albumArtistOnly -> albumArtistNames.ifEmpty { creditNames }
+                    albumArtistNames.isEmpty() -> creditNames
+                    else -> (creditNames + albumArtistNames).distinct()
                 }
                 val albumTitle = c.getString(albumCol)?.trim()
                     ?.takeUnless { it.isEmpty() || it == MediaStoreUnknown }
@@ -186,7 +204,7 @@ class MediaStoreScanner(private val context: Context) {
                     id = id,
                     title = c.getString(titleCol) ?: UnknownTitle,
                     artist = credit,
-                    artistId = artistIdOf(creditNames.first()),
+                    artistId = artistIdOf(artistNames.first()),
                     artistNames = artistNames,
                     albumArtist = albumArtist,
                     albumArtistNames = albumArtistNames,

@@ -13,6 +13,7 @@ import com.metromusic.data.model.hiding
 import com.metromusic.data.model.mergingGenres
 import com.metromusic.data.store.GenreStore
 import com.metromusic.data.store.HiddenStore
+import com.metromusic.data.store.Settings
 import com.metromusic.data.store.SettingsStore
 import com.metromusic.data.store.StatsStore
 import kotlinx.coroutines.CoroutineScope
@@ -126,12 +127,12 @@ class LibraryRepository(
             observer
         )
 
-        // All three of these are read *during* the scan — the duration filter, how a credit is split
-        // into artists, and whether the album artist tag is believed — so changing any of them has to
-        // re-run it.
+        // All four of these are read *during* the scan — the duration filter, how a credit is split
+        // into artists, whether the album artist tag is believed, and whether it is the only thing
+        // artists are built from — so changing any of them has to re-run it.
         scope.launch {
             settings.settings
-                .map { Triple(it.minTrackSeconds, it.splitArtistCredits, it.useAlbumArtist) }
+                .map { ScanInputs(it) }
                 .distinctUntilChanged()
                 .collect { rescan(debounce = false) }
         }
@@ -147,7 +148,8 @@ class LibraryRepository(
                 val scanned = scanner.scan(
                     minDurationMs = values.minTrackSeconds * 1000L,
                     splitCredits = values.splitArtistCredits,
-                    useAlbumArtist = values.useAlbumArtist
+                    useAlbumArtist = values.useAlbumArtist,
+                    albumArtistOnly = values.artistsFromAlbumArtist
                 )
                 // Album ids can be reused after a media rescan; stale covers would be wrong.
                 if (scanned.albums != _library.value.albums) artwork.clear()
@@ -178,4 +180,25 @@ class LibraryRepository(
         /** MediaStore fires a burst of notifications during a sweep; wait for it to settle. */
         const val DebounceMs = 1500L
     }
+}
+
+/**
+ * The settings a scan reads, so that a change to one of them — and nothing else — re-runs it.
+ *
+ * A data class rather than a tuple because there is no `Quadruple`, and because the next setting the
+ * scanner comes to read should be added here rather than turning this into a list of anonymous
+ * booleans nobody can tell apart.
+ */
+private data class ScanInputs(
+    val minTrackSeconds: Int,
+    val splitArtistCredits: Boolean,
+    val useAlbumArtist: Boolean,
+    val artistsFromAlbumArtist: Boolean
+) {
+    constructor(settings: Settings) : this(
+        settings.minTrackSeconds,
+        settings.splitArtistCredits,
+        settings.useAlbumArtist,
+        settings.artistsFromAlbumArtist
+    )
 }

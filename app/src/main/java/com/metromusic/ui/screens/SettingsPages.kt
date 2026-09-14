@@ -825,6 +825,20 @@ private fun LibrarySettings() {
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
+        // Under the album artist row, because it is the other half of that answer and because the
+        // setter turns that one on with it — the switch above moving is the explanation for why.
+        SettingRow(
+            title = stringResource(R.string.library_artists_album_artist),
+            checked = settings.artistsFromAlbumArtist,
+            onChange = { services.settings.setArtistsFromAlbumArtist(it) }
+        )
+        Text(
+            text = stringResource(R.string.library_artists_album_artist_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
 
         Spacer(Modifier.height(18.dp))
         SettingsHeader(stringResource(R.string.section_genres))
