@@ -126,7 +126,7 @@ fun AlbumDetailScreen(albumId: Long, onNavigate: (Screen) -> Unit) {
                     services.player.play(tracks, 0)
                 }
                 AppBarButton(Glyphs.Shuffle, stringResource(R.string.action_shuffle)) {
-                    services.player.play(tracks.shuffled(), 0)
+                    services.player.shuffleAll(tracks)
                 }
                 // A plus, as WP8's own "add to now playing" was: ⏭ is already the transport's "skip
                 // this", which is close to the opposite of what queueing means, and the caption

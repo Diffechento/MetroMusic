@@ -83,7 +83,7 @@ fun PlaylistDetailScreen(playlistId: String) {
                     if (tracks.isNotEmpty()) services.player.play(tracks, 0)
                 }
                 AppBarButton(Glyphs.Shuffle, stringResource(R.string.action_shuffle)) {
-                    if (tracks.isNotEmpty()) services.player.play(tracks.shuffled(), 0)
+                    services.player.shuffleAll(tracks)
                 }
             }
 

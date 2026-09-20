@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+**"Play next" puts it next.** It used to remember where it had put the last thing you queued and add
+the next one behind it, so a song and then an album played in the order you picked them — which
+meant the album you had just asked to hear next waited for the song, and the second tap onwards the
+button did not do what it is called. Whatever you queue now goes directly after the track that is
+playing, and anything queued earlier moves along behind it. Queueing several albums in a deliberate
+order is what the queue screen is for: the rows drag.
+
+**Shuffle shuffles the queue.** It used to leave the queue exactly as it was and read it out in a
+random order instead, which is what Android's own player offers underneath — so the list on screen
+stayed in album order while "next" jumped to something unrelated, and whenever that hidden order
+happened to put the track you were on last, the album stopped there with nothing on screen to say
+why. Turning shuffle on now rearranges the queue itself: what is playing goes to the front and
+everything else falls in behind it in a random order, so the queue screen shows what will really
+play and there is always a whole queue ahead of you. Turning it off puts the record's own order
+back, including anything queued in the meantime. Tapping a song while shuffle is on gives you that
+song and then the rest of the album shuffled behind it, and the shuffle button on an album, a genre
+or a playlist now starts somewhere random in it rather than always on its first track.
+
 ## 1.4.1
 
 Built on `io.github.diffechento:metro:1.0.4`, unchanged from 1.4.

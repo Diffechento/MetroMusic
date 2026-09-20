@@ -31,9 +31,10 @@ data class PlayerState(
      * The player's swipe lays the neighbouring tracks out beside the current one and drags all three
      * together, so it needs to *draw* them — a name and a cover, not just whether they exist. The
      * indices are media3's own `previousMediaItemIndex` / `nextMediaItemIndex`, which is the important
-     * part: they already account for shuffle and for repeat, so the track shown coming is the track
-     * that will actually play, and on the last track of a repeating queue the next index is the first
-     * one rather than a number past the end.
+     * part: they account for repeat, so the track shown coming is the track that will actually play,
+     * and on the last track of a repeating queue the next index is the first one rather than a number
+     * past the end. Shuffle needs no allowance here — it rearranges the queue itself, so the next
+     * track is simply the next one.
      */
     val queueIndex: Int = -1,
     val previousIndex: Int? = null,

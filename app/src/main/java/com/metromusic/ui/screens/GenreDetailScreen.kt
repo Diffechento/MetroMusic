@@ -42,7 +42,7 @@ fun GenreDetailScreen(genre: String) {
             AppBar(Modifier.padding(bottom = 8.dp)) {
                 AppBarButton("▶", stringResource(R.string.action_play)) { services.player.play(tracks, 0) }
                 AppBarButton(Glyphs.Shuffle, stringResource(R.string.action_shuffle)) {
-                services.player.play(tracks.shuffled(), 0)
+                services.player.shuffleAll(tracks)
             }
             }
             LazyColumn(Modifier.fillMaxSize()) {

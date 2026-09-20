@@ -28,9 +28,14 @@ data class SavedQueue(
     val trackIds: List<Long> = emptyList(),
     val index: Int = 0,
     val shuffle: Boolean = false,
-    val repeatMode: Int = 0,
-    /** The "play next" cursor ([com.metromusic.playback.PlayerController]), so it survives too. */
-    val queueTailId: Long? = null
+    /**
+     * The order [trackIds] was in before it was shuffled, so the toggle is still reversible after a
+     * relaunch. Null whenever there is nothing to go back to — see
+     * [com.metromusic.playback.PlayerController], where shuffling means rearranging the queue rather
+     * than reading it out of order.
+     */
+    val unshuffledIds: List<Long>? = null,
+    val repeatMode: Int = 0
 ) {
     val isEmpty: Boolean get() = trackIds.isEmpty()
 

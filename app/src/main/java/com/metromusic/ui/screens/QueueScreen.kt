@@ -203,8 +203,8 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
         }
     }
 
-    // The order as it is on screen, which is the order the user just made — not the player's idea of
-    // what plays next, and not the shuffle. Anything the library does not have an id for is left out
+    // The order as it is on screen, which is the order the user just made. Anything the library does
+    // not have an id for is left out
     // rather than written down as a number that will resolve to nothing (see `PlayerController
     // .ExternalTrackId`); a playlist is ids, and an id that means nothing is a row that never draws.
     MetroInputBox(

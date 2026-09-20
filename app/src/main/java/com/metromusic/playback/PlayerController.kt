@@ -84,9 +84,9 @@ class PlayerController(
      * rebuilt only when the queue itself changes, which [publish] decides by comparing the ids it has
      * already collected for the saved session.
      *
-     * With shuffle on this stays the *timeline* order, which is the order the queue was built in and the
-     * one a move or a removal is addressed in — what plays next comes from `nextMediaItemIndex` and is
-     * shown by the player, not here.
+     * Shuffle does not complicate this: shuffling means rearranging the queue itself ([shuffled]), so
+     * the order here is always the order things will play in, and a move or a removal is addressed in
+     * the order you can see.
      */
     val queue: StateFlow<List<TrackFace>> = _queue.asStateFlow()
 
@@ -114,18 +114,31 @@ class PlayerController(
     private var noticeCount = 0L
 
     /**
-     * Where the next "play next" block goes, as the media id it must land behind.
+     * Whether the queue is shuffled — the flag the transport draws.
      *
-     * An index would be wrong within one track: everything shifts as items are added and the user is
-     * free to skip in the middle of it. Held as an id and looked up each time, so a cursor that no
-     * longer makes sense — its track played and gone, the queue replaced — simply isn't found and the
-     * insert falls back to "right after what is playing".
-     *
-     * This is what makes "queue up three albums" mean what it says. Inserting each one directly after
-     * the current track puts the *last* album you picked first and leaves the others behind it in
-     * reverse, which reads as the feature being broken rather than as a policy.
+     * media3's own `shuffleModeEnabled` is deliberately left off, and this is the whole of why. It
+     * does not touch the queue: it lays a random *traversal* over the order the queue is in, so the
+     * list on screen stays as it was while "next" jumps to something unrelated — and when that random
+     * order happens to put the current track last, there is no next at all and playback simply stops
+     * part way through an album, for no reason anything on screen can explain. Shuffling a queue
+     * means shuffling the queue, so that is what this does and the flag is ours to keep.
      */
-    private var queueTailId: String? = null
+    private var shuffled = false
+
+    /**
+     * The order the queue was in before it was shuffled, as track ids, so the toggle comes back.
+     *
+     * Ids rather than the queue's own items, for two reasons. A `MediaItem` read back from the
+     * session is a *copy* of the one that was put in — the timeline travels as a bundle — so there is
+     * no identity to compare; and ids are what survives the process, which is how the order to come
+     * back to is still there after a restore. Two entries for one track are interchangeable, being
+     * the same track, so matching them up greedily is exact rather than approximate.
+     *
+     * Null means there is nothing to go back to — the queue was not shuffled, or it has been taken
+     * apart since — and turning shuffle off then leaves the order where it is rather than inventing
+     * one.
+     */
+    private var unshuffledIds: List<Long>? = null
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish(player)
@@ -142,6 +155,19 @@ class PlayerController(
             // play count to be about and nothing the history section could show — see [playFile].
             if (trackId <= 0) return
             stats.recordPlay(trackId, queueAlbumIds[trackId] ?: -1L)
+        }
+
+        /**
+         * Somebody outside the app asking the session to shuffle — a system control, a car, an
+         * assistant. Nothing in the app does this; media3's flag is the one thing here that another
+         * process can reach. The request is answered the way the app answers it, by shuffling the
+         * queue, and the flag is put straight back down so the two shuffles cannot compound.
+         */
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            if (!shuffleModeEnabled) return
+            val player = controller ?: return
+            player.shuffleModeEnabled = false
+            if (!shuffled) shuffle(player)
         }
     }
 
@@ -187,11 +213,18 @@ class PlayerController(
         command { player ->
             if (player.mediaItemCount > 0) return@command
             queueAlbumIds = tracks.associate { it.id to it.albumId }
-            queueTailId = saved.queueTailId?.toString()
+            shuffled = saved.shuffle
+            // The queue comes back in the order it was left in, shuffled or not. The order to come
+            // *back* to only comes with it if the library still holds exactly the tracks it names:
+            // one deleted file and there is nothing to restore to, which is worth saying by leaving
+            // the order alone rather than by half-sorting it.
+            val savedOrder = saved.unshuffledIds
+            unshuffledIds = savedOrder?.takeIf { order ->
+                order.sorted() == tracks.map { track -> track.id }.sorted()
+            }
             // From the top of the track, not from where it was cut off: nobody wants a song
             // handed back to them from the middle.
             player.setMediaItems(tracks.map { it.toMediaItem() }, startIndex, 0L)
-            player.shuffleModeEnabled = saved.shuffle
             player.repeatMode = saved.repeatMode
             // prepare() and *not* play(): buffered, seekable and on the strip, but silent until
             // something is pressed.
@@ -220,9 +253,9 @@ class PlayerController(
             SavedQueue(
                 trackIds = ids,
                 index = player.currentMediaItemIndex.coerceIn(0, ids.lastIndex),
-                shuffle = player.shuffleModeEnabled,
-                repeatMode = player.repeatMode,
-                queueTailId = queueTailId?.toLongOrNull()
+                shuffle = shuffled,
+                unshuffledIds = unshuffledIds,
+                repeatMode = player.repeatMode
             )
         )
     }
@@ -230,19 +263,52 @@ class PlayerController(
     /**
      * Replaces the queue with [tracks] and starts at [startIndex]. This is what every "play"
      * affordance in the app funnels into — a track row, an album, a playlist, shuffle-all.
+     *
+     * [shuffle] says what the queue should arrive in; left out, it keeps whatever the transport is
+     * already set to. That is the answer to "shuffle is on and I tapped a song": you get that song,
+     * and the rest of the album behind it in a random order, rather than the mode quietly turning
+     * itself off or the tap landing on something else.
      */
-    fun play(tracks: List<Track>, startIndex: Int = 0) {
+    fun play(tracks: List<Track>, startIndex: Int = 0, shuffle: Boolean? = null) {
         if (tracks.isEmpty()) return
         queueAlbumIds = tracks.associate { it.id to it.albumId }
-        queueTailId = null
         command { player ->
-            player.setMediaItems(tracks.map { it.toMediaItem() }, startIndex, 0L)
+            val start = startIndex.coerceIn(0, tracks.lastIndex)
+            val on = shuffle ?: shuffled
+            shuffled = on
+            unshuffledIds = if (on) tracks.map { it.id } else null
+            val ordered = if (on) shuffleAround(tracks, start) else tracks
+            player.setMediaItems(ordered.map { it.toMediaItem() }, if (on) 0 else start, 0L)
             player.prepare()
             player.play()
             // onMediaItemTransition doesn't fire for the very first item of a new queue.
-            val first = tracks.getOrNull(startIndex)
-            if (first != null) stats.recordPlay(first.id, first.albumId)
+            val first = ordered.first()
+            stats.recordPlay(first.id, first.albumId)
         }
+    }
+
+    /**
+     * The whole of an album, a genre or a playlist in a random order, starting on a random one of
+     * them — the shuffle-all button.
+     *
+     * The random *start* is the point of it. "What is playing first, the rest shuffled behind it" is
+     * what shuffling a queue means everywhere else in here, and applied to a list nothing has been
+     * played out of yet it would open every shuffled album on that album's own first track. Shuffle
+     * is turned on rather than the list being shuffled on the way in, so the transport says what the
+     * queue is and turning it off brings the record's own order back.
+     */
+    fun shuffleAll(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        play(tracks, tracks.indices.random(), shuffle = true)
+    }
+
+    /** [items] with the [start]-th first and everything else behind it in a random order. */
+    private fun <T> shuffleAround(items: List<T>, start: Int): List<T> {
+        if (items.size < 2) return items
+        val rest = items.toMutableList()
+        val first = rest.removeAt(start)
+        rest.shuffle()
+        return listOf(first) + rest
     }
 
     /**
@@ -270,7 +336,7 @@ class PlayerController(
             }
             externalName = withContext(Dispatchers.IO) { displayName(uri) }
             queueAlbumIds = emptyMap()
-            queueTailId = null
+            unshuffledIds = null
             command { player ->
                 player.setMediaItems(listOf(externalItem(uri)), 0, 0L)
                 player.prepare()
@@ -327,9 +393,15 @@ class PlayerController(
     fun playNext(track: Track) = playNext(listOf(track), track.title)
 
     /**
-     * The same for a whole album, artist or genre: everything lands after the current track, in
-     * order — and behind anything queued just before it, so several albums queued one after another
-     * play in the order they were picked.
+     * The same for a whole album, artist or genre: the lot lands directly after the current track,
+     * in its own order.
+     *
+     * *Directly* after, and not behind whatever was queued before it. "Play next" is a promise about
+     * the next track, and a queue that honours the order things were picked in cannot keep that
+     * promise for anything but the first tap. So queueing a song and then an album plays the album
+     * first and the song after it — the earlier pick is not lost, it is one album further on. The
+     * queue screen is where an order picked over several taps gets rearranged, and it can do it by
+     * dragging rows, which is a better answer than a rule nobody can see.
      *
      * [label] is what the confirmation banner names; the album's title where there is one, since "14
      * songs" on its own does not say which fourteen.
@@ -337,36 +409,39 @@ class PlayerController(
     fun playNext(tracks: List<Track>, label: String? = null) = command { player ->
         if (tracks.isEmpty()) return@command
         queueAlbumIds = queueAlbumIds + tracks.associate { it.id to it.albumId }
-        val items = tracks.map { it.toMediaItem() }
         if (player.mediaItemCount == 0) {
-            player.setMediaItems(items, 0, 0L)
+            // Nothing playing, so there is no "next" to land after: this is a play, and it answers
+            // to the shuffle the transport is set to like every other one.
+            val ordered = if (shuffled) shuffleAround(tracks, 0) else tracks
+            unshuffledIds = if (shuffled) tracks.map { it.id } else null
+            player.setMediaItems(ordered.map { it.toMediaItem() }, 0, 0L)
             player.prepare()
             player.play()
-            tracks.first().let { stats.recordPlay(it.id, it.albumId) }
+            ordered.first().let { stats.recordPlay(it.id, it.albumId) }
         } else {
-            player.addMediaItems(insertionPoint(player), items)
+            val at = (player.currentMediaItemIndex + 1).coerceIn(0, player.mediaItemCount)
+            player.addMediaItems(at, tracks.map { it.toMediaItem() })
+            rememberQueuedNext(player, tracks)
         }
-        queueTailId = tracks.last().id.toString()
         notify(label ?: tracks.first().title, tracks.size)
     }
 
     /**
-     * The index the next queued block goes at: behind the last one if it is still ahead of us,
-     * otherwise directly after the current track.
+     * Puts a block that was just queued into the order the queue would come back to, so that turning
+     * shuffle off afterwards does not drop what you queued while it was on.
      *
-     * Only positions at or after the current one count. A cursor left behind by a block that has
-     * already played would insert *into the past* of the queue, where the tracks would never be
-     * reached — which is indistinguishable from the tap having done nothing at all.
+     * It goes where it went in the queue itself: behind the track playing now. There is nowhere more
+     * truthful to put it — the unshuffled order has no idea what was queued after what, and the end
+     * of the list is the one place the tracks are certainly not wanted, "play next" being the whole
+     * request.
      */
-    private fun insertionPoint(player: MediaController): Int {
-        val current = player.currentMediaItemIndex
-        val tail = queueTailId
-        if (tail != null) {
-            for (i in current until player.mediaItemCount) {
-                if (player.getMediaItemAt(i).mediaId == tail) return i + 1
-            }
-        }
-        return (current + 1).coerceIn(0, player.mediaItemCount)
+    private fun rememberQueuedNext(player: MediaController, tracks: List<Track>) {
+        val order = unshuffledIds ?: return
+        val ids = tracks.map { it.id }
+        val currentId = player.currentMediaItem?.mediaId?.toLongOrNull()
+        val at = if (currentId == null) -1 else order.indexOf(currentId)
+        unshuffledIds = if (at < 0) order + ids
+        else order.subList(0, at + 1) + ids + order.subList(at + 1, order.size)
     }
 
     private fun notify(label: String, count: Int) {
@@ -410,7 +485,89 @@ class PlayerController(
         if (duration > 0) player.seekTo((duration * fraction.coerceIn(0f, 1f)).toLong())
     }
 
-    fun toggleShuffle() = command { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+    /**
+     * Shuffles the queue, or puts it back in the order it came in.
+     *
+     * See [shuffled] for why this rearranges the queue rather than setting media3's own shuffle
+     * mode. What is playing keeps playing and goes to the front, so there is always a full queue
+     * ahead of it however far through the album the button was pressed.
+     */
+    fun toggleShuffle() = command { player ->
+        if (shuffled) unshuffle(player) else shuffle(player)
+    }
+
+    /** What is playing now, and everything else behind it in a random order. */
+    private fun shuffle(player: MediaController) {
+        shuffled = true
+        val count = player.mediaItemCount
+        if (count < 2) {
+            unshuffledIds = null
+            return
+        }
+        val items = (0 until count).map { player.getMediaItemAt(it) }
+        val ids = items.map { it.mediaId.toLongOrNull() }
+        // A queue holding a file from outside the library has no id to come back by — see [playFile]
+        // — so there is no order to remember and the shuffle is simply one way.
+        unshuffledIds = if (ids.all { it != null }) ids.filterNotNull() else null
+        reorder(player, shuffleAround(items, player.currentMediaItemIndex.coerceIn(0, count - 1)), 0)
+    }
+
+    /**
+     * The order the queue was in before [shuffle], as far as it still exists.
+     *
+     * Entries are matched to the remembered ids in order, so two copies of one track come back to
+     * the two places that track held — they are the same track, so which copy goes where is not a
+     * question. Anything that does not line up exactly leaves the queue where it is: a queue that
+     * has been taken apart since has no order to be put back into, and inventing one would move
+     * tracks the user placed by hand.
+     */
+    private fun unshuffle(player: MediaController) {
+        shuffled = false
+        val order = unshuffledIds ?: return
+        unshuffledIds = null
+        val count = player.mediaItemCount
+        if (order.size != count) return
+        val waiting = HashMap<Long, ArrayDeque<MediaItem>>()
+        for (i in 0 until count) {
+            val item = player.getMediaItemAt(i)
+            val id = item.mediaId.toLongOrNull() ?: return
+            waiting.getOrPut(id) { ArrayDeque() }.addLast(item)
+        }
+        val target = ArrayList<MediaItem>(count)
+        for (id in order) target.add(waiting[id]?.removeFirstOrNull() ?: return)
+        val currentId = player.currentMediaItem?.mediaId?.toLongOrNull() ?: return
+        val at = order.indexOf(currentId)
+        if (at < 0) return
+        reorder(player, target, at)
+    }
+
+    /**
+     * Rearranges the queue into [target], whose [currentTarget]-th entry is where the track playing
+     * now belongs.
+     *
+     * Three calls rather than a move per track, and none of them touches the current item: it is
+     * *moved* to its new place and the two runs either side of it are replaced wholesale. Replacing
+     * the item that is playing would tear the player down and build it again — a gap in the sound
+     * for a button that was only asked to reorder a list — and a move per track is a session command
+     * per track, which for an album is fine and for a shuffled library is not.
+     */
+    private fun reorder(player: MediaController, target: List<MediaItem>, currentTarget: Int) {
+        val count = player.mediaItemCount
+        if (target.size != count || count == 0) return
+        val current = player.currentMediaItemIndex
+        if (current !in 0 until count || currentTarget !in 0 until count) {
+            // Nothing is playing, so there is nothing to protect.
+            player.replaceMediaItems(0, count, target)
+            return
+        }
+        if (currentTarget != current) player.moveMediaItem(current, currentTarget)
+        if (currentTarget > 0) {
+            player.replaceMediaItems(0, currentTarget, target.subList(0, currentTarget))
+        }
+        if (currentTarget + 1 < count) {
+            player.replaceMediaItems(currentTarget + 1, count, target.subList(currentTarget + 1, count))
+        }
+    }
 
     fun cycleRepeat() = command { player ->
         player.repeatMode = when (player.repeatMode) {
@@ -423,7 +580,7 @@ class PlayerController(
     fun stop() = command { player ->
         player.stop()
         player.clearMediaItems()
-        queueTailId = null
+        unshuffledIds = null
         // Emptying the queue on purpose is the one thing that must not come back next launch.
         savedQueue.clear()
     }
@@ -530,7 +687,7 @@ class PlayerController(
             isPlaying = player.isPlaying,
             isBuffering = player.playbackState == Player.STATE_BUFFERING,
             durationMs = player.duration.coerceAtLeast(0L),
-            shuffle = player.shuffleModeEnabled,
+            shuffle = shuffled,
             repeatMode = player.repeatMode,
             hasNext = player.hasNextMediaItem(),
             hasPrevious = player.hasPreviousMediaItem(),
@@ -578,8 +735,10 @@ class PlayerController(
      * Moves one queue entry to another position — the queue screen's drag, one place at a time.
      *
      * media3 does the rest: what is playing keeps playing whether it was the thing moved or something
-     * moved around it, and `currentMediaItemIndex` follows it. The "play next" cursor is held as an id
-     * and looked up, so it survives this without being told.
+     * moved around it, and `currentMediaItemIndex` follows it.
+     *
+     * A move made while the queue is shuffled is not carried back into the order shuffle came from:
+     * that order is the record's own, and it is what turning shuffle off is asking for.
      */
     fun moveQueueItem(from: Int, to: Int) = command { player ->
         val count = player.mediaItemCount
@@ -599,10 +758,15 @@ class PlayerController(
      */
     fun removeQueueItem(index: Int) = command { player ->
         if (index !in 0 until player.mediaItemCount) return@command
-        if (player.getMediaItemAt(index).mediaId == queueTailId) queueTailId = null
+        val removed = player.getMediaItemAt(index)
+        // Out of the order shuffle would come back to as well, or that order would no longer
+        // describe this queue and turning shuffle off would quietly do nothing.
+        removed.mediaId.toLongOrNull()?.let { id ->
+            unshuffledIds = unshuffledIds?.toMutableList()?.apply { remove(id) }
+        }
         player.removeMediaItem(index)
         if (player.mediaItemCount == 0) {
-            queueTailId = null
+            unshuffledIds = null
             savedQueue.clear()
         }
     }
