@@ -52,6 +52,9 @@ class MediaStoreScanner(private val context: Context) {
             add(MediaStore.Audio.Media.YEAR)
             add(MediaStore.Audio.Media.DATE_ADDED)
             add(MediaStore.Audio.Media.IS_MUSIC)
+            add(MediaStore.Audio.Media.MIME_TYPE)
+            add(MediaStore.Audio.Media.DATE_MODIFIED)
+            add(MediaStore.Audio.Media.SIZE)
             if (hasGenreColumn) add(MediaStore.Audio.Media.GENRE)
             if (hasAlbumArtistColumn) add(MediaStore.Audio.Media.ALBUM_ARTIST)
         }.toTypedArray()
@@ -85,8 +88,15 @@ class MediaStoreScanner(private val context: Context) {
         preferKnownArtist: Boolean = false,
         fixArtistDoubling: Boolean = true
     ): Library = withContext(Dispatchers.IO) {
-        val scanned = queryTracks(minDurationMs, splitCredits, useAlbumArtist, albumArtistOnly)
-        if (scanned.isEmpty()) return@withContext Library.Empty
+        val undated = ArrayList<TrackYear.Request>()
+        val queried = queryTracks(minDurationMs, splitCredits, useAlbumArtist, albumArtistOnly, undated)
+        if (queried.isEmpty()) return@withContext Library.Empty
+        val scanned = if (undated.isEmpty()) {
+            queried
+        } else {
+            val years = TrackYear.resolve(context, undated)
+            queried.map { track -> years[track.id]?.let { track.copy(year = it) } ?: track }
+        }
         // Spellings first, so the count behind [underOneArtist] sees one artist where the files
         // wrote two, and so the name that survives is chosen once for the whole library.
         val merged = if (fixArtistDoubling) scanned.mergingArtistSpellings() else scanned
@@ -112,7 +122,8 @@ class MediaStoreScanner(private val context: Context) {
         minDurationMs: Long,
         splitCredits: Boolean,
         useAlbumArtist: Boolean,
-        albumArtistOnly: Boolean
+        albumArtistOnly: Boolean,
+        undated: MutableList<TrackYear.Request>
     ): List<Track> {
         val cursor: Cursor = context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -133,6 +144,9 @@ class MediaStoreScanner(private val context: Context) {
             val yearCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
             val addedCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
             val musicCol = c.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC)
+            val mimeCol = c.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
+            val modifiedCol = c.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED)
+            val sizeCol = c.getColumnIndex(MediaStore.Audio.Media.SIZE)
             val genreCol = if (hasGenreColumn) {
                 c.getColumnIndex(MediaStore.Audio.Media.GENRE)
             } else {
@@ -213,6 +227,22 @@ class MediaStoreScanner(private val context: Context) {
                 val albumTitle = c.getString(albumCol)?.trim()
                     ?.takeUnless { it.isEmpty() || it == MediaStoreUnknown }
                 val mediaAlbumId = c.getLong(albumIdCol)
+                // The store reads `YEAR` and not `DATE` out of a Vorbis comment, and not `TDRC` out
+                // of ID3v2.4 — the standard field in both — so a FLAC library tagged by the book has
+                // no years at all. Where it left 0 and the format is one of those, the tag header is
+                // read after the cursor is closed, from a cache where it can be: see [TrackYear].
+                val year = c.getInt(yearCol)
+                if (year <= 0) {
+                    val mime = if (mimeCol >= 0) c.getString(mimeCol) else null
+                    if (TrackYear.handles(mime)) {
+                        undated += TrackYear.Request(
+                            id = id,
+                            mime = mime!!,
+                            modified = if (modifiedCol >= 0) c.getLong(modifiedCol) else 0L,
+                            size = if (sizeCol >= 0) c.getLong(sizeCol) else 0L
+                        )
+                    }
+                }
                 result += Track(
                     id = id,
                     title = c.getString(titleCol) ?: UnknownTitle,
@@ -233,7 +263,7 @@ class MediaStoreScanner(private val context: Context) {
                     mediaAlbumId = mediaAlbumId,
                     durationMs = duration,
                     trackNo = c.getInt(trackCol),
-                    year = c.getInt(yearCol),
+                    year = year,
                     dateAdded = c.getLong(addedCol),
                     genre = if (genreCol >= 0) c.getString(genreCol)?.takeIf { it.isNotBlank() } else null
                 )

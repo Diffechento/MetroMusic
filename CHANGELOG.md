@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+**Years in FLAC, Ogg, Opus and ID3v2.4 files are read.** Android's media database only reads a
+Vorbis comment called `YEAR` and ignores `DATE`, which is the field the format actually defines and
+the one every tagger writes; it likewise ignores `TDRC`, the ID3v2.4 year. So a FLAC library tagged
+properly had no years at all, and sorting an artist's albums by year put all of them under "year
+unknown". Where the database leaves the year empty, the app now reads it from the file's own tags.
+It reads only the header, never the audio, and remembers what it found, so the price is paid once
+per file.
+
 **Long tracks come back where you left them.** A restored queue has always started its track from
 the top, which is right for a song and loses an hour of a podcast. Settings → playback → resuming
 now takes a length (5 minutes to an hour, off by default): a track at least that long keeps the
