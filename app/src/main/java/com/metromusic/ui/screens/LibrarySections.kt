@@ -31,6 +31,7 @@ import com.metromusic.data.model.Library
 import com.metromusic.data.model.Track
 import com.metromusic.ui.components.CollectionRowWithActions
 import com.metromusic.ui.components.EmptyNote
+import com.metromusic.ui.components.PlaylistPicker
 import com.metromusic.ui.components.rememberCollectionActions
 import com.metromusic.ui.components.TrackActions
 import com.metromusic.ui.components.TrackRowWithActions
@@ -95,6 +96,7 @@ fun ArtistsSection(
     library: Library,
     modifier: Modifier,
     onNavigate: (Screen) -> Unit,
+    picker: PlaylistPicker? = null,
     search: String? = null,
     onSearchChange: (String) -> Unit = {}
 ) {
@@ -129,7 +131,10 @@ fun ArtistsSection(
             onPlayNext = {
                 services.player.playNext(library.tracksOfArtist(artist.id), artist.name)
             },
-            onHide = { services.hidden.hideArtist(artist.name) }
+            onHide = { services.hidden.hideArtist(artist.name) },
+            onAddToPlaylist = picker?.let { panel ->
+                { panel.open(library.tracksOfArtist(artist.id).map { it.id }) }
+            }
         ) {
             ListRow(
                 primary = artist.name,
@@ -148,6 +153,7 @@ fun AlbumsSection(
     library: Library,
     modifier: Modifier,
     onNavigate: (Screen) -> Unit,
+    picker: PlaylistPicker? = null,
     search: String? = null,
     onSearchChange: (String) -> Unit = {}
 ) {
@@ -182,6 +188,9 @@ fun AlbumsSection(
             onPlay = { services.player.play(library.tracksOf(album)) },
             onPlayNext = { services.player.playNext(library.tracksOf(album), album.title) },
             onHide = { services.hidden.hideAlbum(album.artist, album.title) },
+            onAddToPlaylist = picker?.let { panel ->
+                { panel.open(library.tracksOf(album).map { it.id }) }
+            },
             onEdit = { onNavigate(Screen.AlbumEdit(album.id)) }
         ) {
             WideTile(
@@ -270,7 +279,12 @@ fun SongsSection(
  * other section along. An empty note is the cheaper honesty.
  */
 @Composable
-fun GenresSection(library: Library, modifier: Modifier, onNavigate: (Screen) -> Unit) {
+fun GenresSection(
+    library: Library,
+    modifier: Modifier,
+    onNavigate: (Screen) -> Unit,
+    picker: PlaylistPicker? = null
+) {
     if (library.genres.isEmpty()) {
         EmptyNote(stringResource(R.string.empty_no_genres), modifier)
         return
@@ -301,20 +315,28 @@ fun GenresSection(library: Library, modifier: Modifier, onNavigate: (Screen) -> 
     LazyColumn(Modifier.fillMaxSize(), state = listState) {
         items(library.genres, key = { it }) { genre ->
             val tracks = remember(library, genre) { library.tracksOfGenre(genre) }
+            // Label and action together rather than a `when` over indices, for the reason
+            // [CollectionRowWithActions] gives: one of the entries is conditional.
+            val entries = buildList<Pair<String, () -> Unit>> {
+                add(stringResource(R.string.action_play) to { services.player.play(tracks) })
+                add(
+                    stringResource(R.string.menu_play_next) to
+                        { services.player.playNext(tracks, genre) }
+                )
+                if (picker != null) {
+                    add(
+                        stringResource(R.string.menu_add_to_playlist) to
+                            { picker.open(tracks.map { it.id }) }
+                    )
+                }
+                add(stringResource(R.string.menu_merge_genre) to { mergeSource = genre })
+            }
             MetroContextMenu(
                 expanded = actions.isOpen(genre),
-                items = listOf(
-                    stringResource(R.string.action_play),
-                    stringResource(R.string.menu_play_next),
-                    stringResource(R.string.menu_merge_genre)
-                ),
+                items = entries.map { it.first },
                 onSelect = { index ->
                     actions.close()
-                    when (index) {
-                        0 -> services.player.play(tracks)
-                        1 -> services.player.playNext(tracks, genre)
-                        else -> mergeSource = genre
-                    }
+                    entries.getOrNull(index)?.second?.invoke()
                 },
                 onDismiss = { actions.close() }
             ) {

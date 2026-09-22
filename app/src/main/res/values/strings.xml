@@ -405,6 +405,16 @@
     <string name="gesture_explainer">tapping always works and is not listed here. turn a gesture off
         if it fires when you did not mean it to.</string>
 
+    <!-- ==== playlists (library settings) ==== -->
+    <string name="playlists_heading">playlists</string>
+    <string name="playlist_folder">playlist folder</string>
+    <string name="playlist_folder_explainer">playlists are plain .m3u files, so other players and
+        your computer can read them. by default they go in Music/Playlists; point this somewhere
+        else if you keep them on a card or in a synced folder.</string>
+    <string name="playlist_folder_clear">use the default folder</string>
+    <string name="playlist_folder_private">the app\'s own folder — nothing else on the device can
+        see these. the shared Music folder refused.</string>
+
     <!-- ==== genres ==== -->
     <string name="library_fix_genres">fix genres doubling</string>
     <string name="library_fix_genres_explainer">treats “Electro”, “electro” and “electro.” as one
@@ -442,8 +452,8 @@
     <string name="genre_gone">nothing tagged with this genre any more</string>
     <string name="playlist_not_found">not found</string>
     <string name="playlist_gone">this playlist was deleted</string>
-    <string name="playlist_empty">nothing here yet — hold a song anywhere and choose “add to
-        playlist”</string>
+    <string name="playlist_empty">nothing here yet — tap “add songs”, or hold an album, an
+        artist or a song anywhere in the app</string>
     <string name="playlists_empty">no playlists yet — tap + to make one</string>
     <string name="playlists_favorites">favorites</string>
     <string name="playlist_rename_title">rename playlist</string>
@@ -452,6 +462,33 @@
     <string name="playlist_delete_message">“%1$s” will be removed. The songs themselves stay on your
         device.</string>
     <string name="playlist_reorder">≡</string>
+    <!-- A line of the .m3u file pointing at something the library does not have. -->
+    <string name="playlist_entry_missing">not in your library</string>
+    <!-- %1$d is how many lines of the file point at files this device does not have. Short,
+         because it shares one grey line under a playlist's name with two other things. -->
+    <plurals name="playlist_missing">
+        <item quantity="one">%1$d missing</item>
+        <item quantity="other">%1$d missing</item>
+    </plurals>
+    <string name="playlist_read_only">needs permission</string>
+    <string name="playlist_import">import</string>
+    <string name="playlist_export">export</string>
+    <string name="playlist_add_songs">add songs</string>
+    <!-- The app-bar caption for "add to playlist"; the long form is menu_add_to_playlist. -->
+    <string name="playlist_add_to_short">playlist</string>
+    <string name="playlist_add_title">add songs</string>
+    <string name="playlist_add_empty">nothing matches</string>
+    <string name="playlist_select_all">all</string>
+    <string name="playlist_select_none">none</string>
+    <!-- %1$d is how many songs are ticked. -->
+    <plurals name="playlist_selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="playlist_add_done">add</string>
+    <string name="playlist_problem_save">could not save that playlist file</string>
+    <string name="playlist_problem_import">could not read that playlist</string>
+    <string name="playlist_problem_export">could not write that file</string>
 
     <!-- ==== permission gate ==== -->
     <string name="permission_title">no access</string>

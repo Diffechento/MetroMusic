@@ -24,6 +24,7 @@ import com.metromusic.core.LocalServices
 import com.metromusic.core.Services
 import com.metromusic.ui.PermissionGate
 import com.metromusic.ui.nav.Screen
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -108,6 +109,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Leaving the app writes any playlist edit that is still waiting.
+     *
+     * The edit is debounced so that dragging a row down a playlist is one write and not one per
+     * step, and the window that buys is the window in which the process can be killed with the
+     * change only in memory. Everything else the app keeps is debounced too and is written into a
+     * private file it can rewrite at any time; a playlist is a file somebody else may be about to
+     * read, so this one is worth closing properly.
+     */
+    override fun onStop() {
+        super.onStop()
+        services.scope.launch { services.playlists.flush() }
     }
 
     /**

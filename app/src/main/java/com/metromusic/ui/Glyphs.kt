@@ -24,6 +24,15 @@ object Glyphs {
     const val RepeatOne = "↻¹"
     const val Heart = "♥︎"
     const val Note = "♪"
+
     const val Add = "+"
     const val Grip = "≡"
+
+    /** Ticking every row of a list, and clearing the lot. */
+    const val SelectAll = "✓"
+    const val SelectNone = "✕"
+
+    /** Bringing a file in from elsewhere on the device, and sending one out. */
+    const val Import = "↓"
+    const val Export = "↑"
 }

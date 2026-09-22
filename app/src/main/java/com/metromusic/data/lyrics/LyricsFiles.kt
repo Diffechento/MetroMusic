@@ -5,8 +5,8 @@ import android.content.Intent
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.provider.MediaStore
 import android.util.Log
+import com.metromusic.data.media.AudioPaths
 import com.metromusic.data.model.Track
 import com.metromusic.data.store.SettingsStore
 import java.io.File
@@ -49,17 +49,17 @@ import org.jaudiotagger.tag.FieldKey
  *
  * Everything in here blocks; call it from IO.
  */
-class LyricsFiles(private val context: Context, private val settings: SettingsStore) {
+class LyricsFiles(
+    private val context: Context,
+    private val settings: SettingsStore,
+    private val paths: AudioPaths
+) {
 
     private val resolver get() = context.contentResolver
 
     /** The tree listing, rebuilt when the folder changes rather than per lookup. */
     private var indexedFolder: String? = null
     private var folderIndex: Map<String, Uri> = emptyMap()
-
-    /** Track id to file path, read in one cursor — see [audioPath]. */
-    @Volatile
-    private var paths: Map<Long, String>? = null
 
     // ---- reading ----
 
@@ -131,48 +131,17 @@ class LyricsFiles(private val context: Context, private val settings: SettingsSt
     }
 
     /**
-     * The file's own path, from the one column MediaStore is still right about.
-     *
-     * `DATA` is deprecated and still the only way to ask "where does this actually live", which is
-     * the question a sidecar is an answer to. It is not carried on [Track] because the scan holds
-     * thousands of those and only this needs it — but it is read for the whole volume in **one**
-     * cursor all the same: the background probe walks the entire library, and a query per song is
-     * the N+1 the scanner exists to avoid. A track the map has never heard of (added since the map
-     * was built) is asked about on its own rather than rebuilding it.
+     * The file's own path, from the one column MediaStore is still right about — see [AudioPaths],
+     * which reads the whole volume in one cursor and is shared with the playlist files for exactly
+     * that reason.
      */
-    private fun audioPath(track: Track): String? =
-        (paths ?: readPaths().also { paths = it })[track.id]?.takeIf { it.isNotBlank() }
-            ?: queryPath(track.uri)
+    private fun audioPath(track: Track): String? = paths.pathOf(track.id)
 
     /** Drops what was read off the volume, so the next lookup reads it again. Called per scan. */
     fun refresh() {
-        paths = null
+        paths.refresh()
         invalidate()
     }
-
-    @Suppress("DEPRECATION")
-    private fun readPaths(): Map<Long, String> = runCatching {
-        val found = mutableMapOf<Long, String>()
-        resolver.query(
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-            arrayOf(MediaStore.Audio.Media._ID, MediaStore.MediaColumns.DATA),
-            null,
-            null,
-            null
-        )?.use { cursor ->
-            while (cursor.moveToNext()) {
-                val path = cursor.getString(1) ?: continue
-                found[cursor.getLong(0)] = path
-            }
-        }
-        found
-    }.onFailure { Log.w(Tag, "Cannot read the file paths", it) }.getOrDefault(emptyMap())
-
-    @Suppress("DEPRECATION")
-    private fun queryPath(uri: Uri): String? = runCatching {
-        resolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)
-            ?.use { if (it.moveToFirst()) it.getString(0) else null }
-    }.getOrNull()?.takeIf { it.isNotBlank() }
 
     // ---- the words inside the file ----
 

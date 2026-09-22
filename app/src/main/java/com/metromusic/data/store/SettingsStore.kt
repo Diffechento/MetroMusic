@@ -404,7 +404,16 @@ data class Settings(
      * text file next to them. Pointing this at the music folder is what makes the traditional layout
      * work again on a modern phone.
      */
-    val lyricsFolderUri: String? = null
+    val lyricsFolderUri: String? = null,
+    /**
+     * The folder `.m3u` playlists are kept in, as a persisted document-tree uri.
+     *
+     * Null is the normal case and means `Music/Playlists`, which an app may create files in without
+     * asking for anything — see [com.metromusic.data.playlist.PlaylistFiles]. This is for somebody
+     * who keeps their playlists somewhere else on purpose: on a card, in a synced folder, or beside
+     * the music rather than in a folder of their own.
+     */
+    val playlistFolderUri: String? = null
 ) {
     /** Section order as the enum, filling in anything the saved list doesn't mention. */
     val sections: List<LibrarySection>
@@ -606,6 +615,9 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
 
     fun setLyricsFolder(uri: String?) =
         store.update { it.copy(lyricsFolderUri = uri?.takeIf(String::isNotBlank)) }
+
+    fun setPlaylistFolder(uri: String?) =
+        store.update { it.copy(playlistFolderUri = uri?.takeIf(String::isNotBlank)) }
 
     suspend fun flush() = store.flush()
 }

@@ -35,8 +35,10 @@ import com.metromusic.core.LocalServices
 import com.metromusic.ui.Glyphs
 import com.metromusic.ui.components.AlbumArt
 import com.metromusic.ui.components.EmptyNote
+import com.metromusic.ui.components.PlaylistPickerHost
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions
+import com.metromusic.ui.components.rememberPlaylistPicker
 import com.metromusic.ui.components.rememberTrackActions
 import com.metromusic.ui.formatDuration
 import com.metromusic.ui.formatTrackCount
@@ -54,6 +56,7 @@ fun AlbumDetailScreen(albumId: Long, onNavigate: (Screen) -> Unit) {
     val library by services.library.library.collectAsStateWithLifecycle()
     val playerState by services.player.state.collectAsStateWithLifecycle()
     val actions = rememberTrackActions()
+    val picker = rememberPlaylistPicker()
 
     val album = library.album(albumId)
     if (album == null) {
@@ -134,6 +137,12 @@ fun AlbumDetailScreen(albumId: Long, onNavigate: (Screen) -> Unit) {
                 AppBarButton(Glyphs.Add, stringResource(R.string.action_play_next)) {
                     services.player.playNext(tracks, album.title)
                 }
+                // Adding a record to a playlist a track at a time was the thing the issue named.
+                // The caption is the short form: four captions across a phone is as many as the
+                // bar can spell out.
+                AppBarButton(Glyphs.Grip, stringResource(R.string.playlist_add_to_short)) {
+                    picker.open(tracks.map { it.id })
+                }
             }
             Spacer(Modifier.height(6.dp))
         }
@@ -153,6 +162,7 @@ fun AlbumDetailScreen(albumId: Long, onNavigate: (Screen) -> Unit) {
         }
         }
         TrackActionsHost(actions)
+        PlaylistPickerHost(picker)
     }
 }
 

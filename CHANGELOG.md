@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+**Playlists are `.m3u` files now.** They used to be a list of MediaStore ids inside
+`playlists.json`, which nothing but this app could read and which the media database invalidates
+every time it rebuilds itself. A playlist is now a plain `.m3u` in `Music/Playlists` — the one
+format every player and every desktop program agrees on — naming *files* rather than database rows,
+with the song's name and length on each line so it still reads as a playlist somewhere that has none
+of the music. Anything already in that folder is simply there when you open the app, whoever wrote
+it; playlists you had before are converted on the first launch and the old file is kept beside them.
+Editing one another app owns asks the system once and then works. If the shared folder is refused,
+they go in the app's own and settings says so rather than pretending; a folder of your own can be
+pointed at instead (settings → library → playlists).
+
+**Import and export.** A `.m3u` from anywhere on the device — a download, a card, a synced folder —
+can be brought in from the playlists page, and any playlist can be written back out to wherever you
+want it, with full paths so the file stands on its own once it leaves. Paths inside the playlist
+folder are written relative, so copying the whole music folder to another phone or a computer takes
+the playlists with it.
+
+**Adding songs in bulk, which was the thing that made playlists tedious.** A whole album, artist or
+genre goes in from its own long-press menu, an album from the button on its page, and any number of
+individual songs from **add songs** on the playlist itself — a list with a search box, where
+selecting an album is typing its name and tapping *all*. Songs already in the playlist are ticked
+and stay that way.
+
+**No more black rectangle behind a playlist.** Its rows painted the page colour over the app's
+backdrop — every row, all the time — which is there so that a row being dragged covers the ones it
+passes rather than showing through them. It only needs to be there while something is being
+dragged, and while playlists were a few rows long nobody saw the difference.
+
+**Lines that point at nothing are kept and said so.** A playlist written on a computer, or one whose
+files have moved, has rows this device cannot match to anything; they are drawn with whatever the
+file claims they are, marked as not being in your library, and carried through every edit into the
+file that gets written back.
+
 **The player can show the words instead of the cover**, switched from the player itself — the button
 beside the star, the shuffle and the repeat, which changes what you are looking at without leaving
 the song. The two faces pass each other when you do: the cover slides out of the bottom while the

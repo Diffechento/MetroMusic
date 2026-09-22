@@ -21,6 +21,7 @@ concurrentFutures = "1.2.0"
 # Reads and writes the tags inside audio files. MediaStore refuses metadata writes, so this is the
 # only way an edit survives — see MetadataWriter.
 jaudiotagger = "3.0.1"
+junit = "4.13.2"
 
 [libraries]
 # The framework, from Maven Central — a plain clone builds with no local checkout of it. mavenLocal()
@@ -52,6 +53,9 @@ androidx-concurrent-futures-ktx = { group = "androidx.concurrent", name = "concu
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jaudiotagger" }
+
+# Unit tests, for the parts that are plain Kotlin and can be checked without a device.
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

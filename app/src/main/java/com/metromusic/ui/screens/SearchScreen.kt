@@ -29,7 +29,7 @@ import com.metromusic.data.model.Album
 import com.metromusic.data.model.Artist
 import com.metromusic.data.model.Library
 import com.metromusic.data.model.Track
-import com.metromusic.data.store.Playlist
+import com.metromusic.data.playlist.Playlist
 import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions

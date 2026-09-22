@@ -50,6 +50,7 @@ import com.metrocompose.MetroTheme
 import com.metrocompose.SettingRow
 import com.metromusic.R
 import com.metromusic.core.LocalServices
+import com.metromusic.data.playlist.playlistFolderName
 import com.metromusic.data.lastfm.lastFmConfigured
 import com.metromusic.data.lyrics.lyricsFolderName
 import com.metromusic.data.store.ArtistAlbumOrder
@@ -949,6 +950,45 @@ private fun LibrarySettings() {
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
+
+        Spacer(Modifier.height(18.dp))
+        SettingsHeader(stringResource(R.string.playlists_heading))
+        // The system's own folder picker, as for the lyrics folder below — and for the same reason:
+        // it is the only way an app is handed a directory it can both read and write from Android 10
+        // onwards, and the grant has to be taken as persistable to outlive the process.
+        val pickPlaylistFolder = rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocumentTree()
+        ) { uri -> if (uri != null) services.playlists.setFolder(uri) }
+        val chosen = settings.playlistFolderUri?.let { playlistFolderName(Uri.parse(it)) }
+        ListRow(
+            primary = stringResource(R.string.playlist_folder),
+            // Where they *actually* are, not where they were asked to be. The shared folder can be
+            // refused, in which case the files land where nothing else can read them — which is the
+            // one thing somebody choosing this format needs to be told without having to find out.
+            secondary = chosen ?: services.playlists.folderLabel,
+            onClick = { pickPlaylistFolder.launch(null) }
+        )
+        Text(
+            text = stringResource(
+                if (services.playlists.folderIsPrivate && chosen == null) {
+                    R.string.playlist_folder_private
+                } else {
+                    R.string.playlist_folder_explainer
+                }
+            ),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        if (chosen != null) {
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.padding(horizontal = 24.dp)) {
+                MetroButton(stringResource(R.string.playlist_folder_clear)) {
+                    services.playlists.setFolder(null)
+                }
+            }
+        }
 
         Spacer(Modifier.height(18.dp))
         SettingsHeader(stringResource(R.string.lyrics_heading))

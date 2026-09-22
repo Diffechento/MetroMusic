@@ -1,6 +1,10 @@
 package com.metromusic
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +43,7 @@ import com.metrocompose.rememberMetroBackStack
 import com.metrocompose.rememberMetroRisingPage
 import com.metromusic.R
 import com.metromusic.core.LocalServices
+import com.metromusic.data.playlist.PlaylistProblem
 import com.metromusic.ui.components.AppBackdrop
 import com.metromusic.ui.components.LocalOpenLyrics
 import com.metromusic.ui.components.LocalOpenPlayer
@@ -49,6 +54,7 @@ import com.metromusic.ui.components.rememberPlayingBackdrop
 import com.metromusic.ui.formatTrackCount
 import com.metromusic.ui.nav.Screen
 import com.metromusic.playback.QueueNotice
+import com.metromusic.ui.screens.AddToPlaylistScreen
 import com.metromusic.ui.screens.AlbumDetailScreen
 import com.metromusic.ui.screens.AlbumEditScreen
 import com.metromusic.ui.screens.ArtistDetailScreen
@@ -182,6 +188,25 @@ fun MetroMusicRoot(
     val library by services.library.library.collectAsStateWithLifecycle()
     LaunchedEffect(library.tracks.size) {
         if (library.tracks.isNotEmpty()) services.lyrics.probe(library.tracks)
+        // The playlists are files full of paths and the ids those resolve to are MediaStore's, so a
+        // scan that hands out new ones leaves every line pointing at nothing until they are read
+        // again. This is also what picks up a `.m3u` dropped into the folder from somewhere else.
+        services.playlists.refresh()
+    }
+
+    // Editing a playlist file another app owns needs the user to say so once. The store hands the
+    // system dialog up here rather than to a screen, because the edit can be started from the
+    // playlists list, from one playlist's page or from a long-press menu three screens away — and
+    // the answer has to reach the operation that was refused wherever it came from.
+    val playlistConsent by services.playlists.consent.collectAsStateWithLifecycle()
+    val playlistConsentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result -> services.playlists.consentAnswered(result.resultCode == Activity.RESULT_OK) }
+    LaunchedEffect(playlistConsent) {
+        val request = playlistConsent ?: return@LaunchedEffect
+        runCatching {
+            playlistConsentLauncher.launch(IntentSenderRequest.Builder(request).build())
+        }.onFailure { services.playlists.consentAnswered(granted = false) }
     }
 
     // Nothing to show the player about, so don't let it linger — losing the queue while it is
@@ -230,7 +255,10 @@ fun MetroMusicRoot(
                         is Screen.ArtistDetail ->
                             ArtistDetailScreen(screen.artistId, onNavigate = nav::push)
                         is Screen.GenreDetail -> GenreDetailScreen(screen.genre)
-                        is Screen.PlaylistDetail -> PlaylistDetailScreen(screen.playlistId)
+                        is Screen.PlaylistDetail ->
+                            PlaylistDetailScreen(screen.playlistId, onNavigate = nav::push)
+                        is Screen.PlaylistAdd ->
+                            AddToPlaylistScreen(screen.playlistId, onDone = { nav.pop() })
                         is Screen.Lyrics -> LyricsScreen(screen.trackId)
                     }
                 }
@@ -354,6 +382,31 @@ fun MetroMusicRoot(
         }
     }
 
+    // And when the filesystem refuses something outright — a folder that cannot be written, a file
+    // that will not parse — the same strip says so. A playlist edit has nothing else on screen to
+    // report with: the list has already changed, because the change is real in memory and only the
+    // file is behind.
+    val playlistProblem by services.playlists.problem.collectAsStateWithLifecycle()
+    MetroTopBanner(
+        visible = playlistProblem != null && notice == null && !volume.showing,
+        onHide = { services.playlists.problemSeen() },
+        resetKey = playlistProblem,
+        lingerMillis = ProblemHintMillis
+    ) {
+        Text(
+            text = stringResource(
+                when (playlistProblem) {
+                    PlaylistProblem.Import -> R.string.playlist_problem_import
+                    PlaylistProblem.Export -> R.string.playlist_problem_export
+                    else -> R.string.playlist_problem_save
+                }
+            ),
+            color = MetroTheme.colors.fg,
+            fontFamily = MetroRegular,
+            fontSize = 16.sp
+        )
+    }
+
     // Composed after the nav host, so while the player is open this takes Back first and the
     // back stack underneath keeps its place.
     BackHandler(enabled = playerOpen) { playerOpen = false }
@@ -386,3 +439,6 @@ private const val LeaveHintMillis = 2200
 
 /** Shorter than that: it is a receipt, not a question, and the next album is one tap away. */
 private const val QueuedHintMillis = 1600
+
+/** Longer than a receipt: this one is bad news and is worth reading. */
+private const val ProblemHintMillis = 3000

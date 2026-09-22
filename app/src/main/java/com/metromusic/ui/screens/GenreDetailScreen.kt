@@ -19,8 +19,10 @@ import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.ui.Glyphs
 import com.metromusic.ui.components.EmptyNote
+import com.metromusic.ui.components.PlaylistPickerHost
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions
+import com.metromusic.ui.components.rememberPlaylistPicker
 import com.metromusic.ui.components.rememberTrackActions
 
 /** Everything tagged with one genre. */
@@ -30,6 +32,7 @@ fun GenreDetailScreen(genre: String) {
     val library by services.library.library.collectAsStateWithLifecycle()
     val playerState by services.player.state.collectAsStateWithLifecycle()
     val actions = rememberTrackActions()
+    val picker = rememberPlaylistPicker()
 
     val tracks = remember(library, genre) { library.tracksOfGenre(genre) }
 
@@ -40,10 +43,15 @@ fun GenreDetailScreen(genre: String) {
                 return@MetroPage
             }
             AppBar(Modifier.padding(bottom = 8.dp)) {
-                AppBarButton("▶", stringResource(R.string.action_play)) { services.player.play(tracks, 0) }
+                AppBarButton(Glyphs.Play, stringResource(R.string.action_play)) {
+                    services.player.play(tracks, 0)
+                }
                 AppBarButton(Glyphs.Shuffle, stringResource(R.string.action_shuffle)) {
-                services.player.shuffleAll(tracks)
-            }
+                    services.player.shuffleAll(tracks)
+                }
+                AppBarButton(Glyphs.Grip, stringResource(R.string.playlist_add_to_short)) {
+                    picker.open(tracks.map { it.id })
+                }
             }
             LazyColumn(Modifier.fillMaxSize()) {
                 items(tracks, key = { it.id }) { track ->
@@ -57,5 +65,6 @@ fun GenreDetailScreen(genre: String) {
             }
         }
         TrackActionsHost(actions)
+        PlaylistPickerHost(picker)
     }
 }

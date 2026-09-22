@@ -34,9 +34,17 @@ Latin and Cyrillic. Hold a group header and songs, albums or artists rearrange �
 length, by year, by how often you have played them — and every arrangement keeps headings you can zoom
 out over, so a list ordered by a number you cannot see still says where you are. Tapping a section
 header searches inside that section. A long press on any album,
-artist or genre plays it, queues it after what you already queued, or hides it — and hiding takes
-effect in every list at once. Album metadata is edited into the tags inside the files, which is the
-only level where a change sticks. Playlists, favourites, play counts and history are yours and local.
+artist or genre plays it, queues it after what you already queued, adds the whole of it to a
+playlist, or hides it — and hiding takes effect in every list at once. Album metadata is edited into
+the tags inside the files, which is the only level where a change sticks. Favourites, play counts
+and history are yours and local.
+
+**Playlists are `.m3u` files** in `Music/Playlists`, not rows in a private database — so the ones
+another player or your computer wrote are already here, and the ones you make here can be copied
+anywhere. Import a playlist from wherever it is and export one to wherever you want it. Build one a
+song at a time, a whole album or artist at a time from its long-press menu, or by ticking songs on
+a page with a search box in it. A line pointing at a file this device does not have is shown as
+such and kept, so editing somebody's playlist never quietly throws the rest of it away.
 
 **Playing.** Media3 in a media session: notification, lock screen, headset and Bluetooth, and playback
 that outlives the screen. Pull the strip up for the player and up again for the queue, where a row is

@@ -204,9 +204,9 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
     }
 
     // The order as it is on screen, which is the order the user just made. Anything the library does
-    // not have an id for is left out
-    // rather than written down as a number that will resolve to nothing (see `PlayerController
-    // .ExternalTrackId`); a playlist is ids, and an id that means nothing is a row that never draws.
+    // not have an id for is left out rather than written down (see `PlayerController
+    // .ExternalTrackId`): a playlist is a file of paths, and a track the library never heard of has
+    // no path to write.
     MetroInputBox(
         visible = saving,
         title = stringResource(R.string.queue_save),

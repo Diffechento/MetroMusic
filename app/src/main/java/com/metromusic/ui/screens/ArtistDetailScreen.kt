@@ -25,11 +25,13 @@ import com.metromusic.core.LocalServices
 import com.metromusic.data.model.Album
 import com.metromusic.data.store.ArtistAlbumOrder
 import com.metromusic.ui.components.CollectionRowWithActions
+import com.metromusic.ui.components.PlaylistPickerHost
 import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions
 import com.metromusic.ui.components.WideTile
 import com.metromusic.ui.components.rememberCollectionActions
+import com.metromusic.ui.components.rememberPlaylistPicker
 import com.metromusic.ui.components.rememberTrackActions
 import com.metromusic.ui.formatTrackCount
 import com.metromusic.ui.nav.Screen
@@ -43,6 +45,7 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
     val playerState by services.player.state.collectAsStateWithLifecycle()
     val actions = rememberTrackActions()
     val albumActions = rememberCollectionActions()
+    val picker = rememberPlaylistPicker()
 
     val order = settings.artistAlbumOrder
     val albums = remember(library, artistId, order) {
@@ -79,6 +82,9 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
                                 services.player.playNext(library.tracksOf(album), album.title)
                             },
                             onHide = { services.hidden.hideAlbum(album.artist, album.title) },
+                            onAddToPlaylist = {
+                                picker.open(library.tracksOf(album).map { it.id })
+                            },
                             onEdit = { onNavigate(Screen.AlbumEdit(album.id)) }
                         ) {
                             WideTile(
@@ -111,6 +117,7 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
             }
         }
         TrackActionsHost(actions)
+        PlaylistPickerHost(picker)
     }
 }
 

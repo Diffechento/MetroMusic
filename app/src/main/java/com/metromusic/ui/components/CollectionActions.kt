@@ -43,6 +43,13 @@ fun rememberCollectionActions(): CollectionActions = remember { CollectionAction
  * "hide" is the one that isn't obvious: it takes the artist or album out of every list in the app
  * until you put it back from settings. That is what a library full of ringtones, podcasts ripped as
  * albums and "Unknown artist" needs, and deleting the files is not an acceptable substitute.
+ *
+ * "add to playlist" is here because the alternative was holding thirteen rows in turn: a record is
+ * the unit people add, and the menu that already knows which record was held is where to say so.
+ *
+ * The entries are built as label-and-action pairs rather than a list of strings and a `when` over
+ * indices. That is not tidiness — an index is what the old version got wrong the moment an entry
+ * became conditional, and there are two conditional entries now.
  */
 @Composable
 fun CollectionRowWithActions(
@@ -51,29 +58,27 @@ fun CollectionRowWithActions(
     onPlay: () -> Unit,
     onPlayNext: () -> Unit,
     onHide: () -> Unit,
+    onAddToPlaylist: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
-    // "edit" only where there is something to edit: an album has metadata of its own, an artist is
-    // only the name its tracks carry.
-    val editable = onEdit != null
-    val items = buildList {
-        add(stringResource(R.string.action_play))
-        add(stringResource(R.string.menu_play_next))
-        if (editable) add(stringResource(R.string.menu_edit))
-        add(stringResource(R.string.menu_hide))
+    val entries = buildList<Pair<String, () -> Unit>> {
+        add(stringResource(R.string.action_play) to onPlay)
+        add(stringResource(R.string.menu_play_next) to onPlayNext)
+        if (onAddToPlaylist != null) {
+            add(stringResource(R.string.menu_add_to_playlist) to onAddToPlaylist)
+        }
+        // "edit" only where there is something to edit: an album has metadata of its own, an artist
+        // is only the name its tracks carry.
+        if (onEdit != null) add(stringResource(R.string.menu_edit) to onEdit)
+        add(stringResource(R.string.menu_hide) to onHide)
     }
     MetroContextMenu(
         expanded = actions.isOpen(key),
-        items = items,
+        items = entries.map { it.first },
         onSelect = { index ->
             actions.close()
-            when {
-                index == 0 -> onPlay()
-                index == 1 -> onPlayNext()
-                editable && index == 2 -> onEdit()
-                else -> onHide()
-            }
+            entries.getOrNull(index)?.second?.invoke()
         },
         onDismiss = { actions.close() },
         content = content

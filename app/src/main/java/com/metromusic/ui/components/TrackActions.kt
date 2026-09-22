@@ -11,8 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.MetroContextMenu
-import com.metrocompose.MetroInputBox
-import com.metrocompose.MetroListBox
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.lyrics.LyricsStatus
@@ -31,11 +29,11 @@ class TrackActions internal constructor() {
     internal var menuFor by mutableStateOf<Track?>(null)
         private set
 
-    internal var pickPlaylistFor by mutableStateOf<Track?>(null)
-        private set
-
-    internal var namingPlaylistFor by mutableStateOf<Track?>(null)
-        private set
+    /**
+     * "Add to playlist" is [PlaylistPicker]'s, not this class's, because the same panel answers for
+     * a whole album and for a screenful of ticked songs. What is left here is the menu itself.
+     */
+    internal val picker = PlaylistPicker()
 
     fun openMenu(track: Track) {
         menuFor = track
@@ -49,18 +47,7 @@ class TrackActions internal constructor() {
 
     internal fun startPickPlaylist(track: Track) {
         menuFor = null
-        pickPlaylistFor = track
-    }
-
-    internal fun startNamePlaylist(track: Track?) {
-        pickPlaylistFor = null
-        namingPlaylistFor = track
-    }
-
-    internal fun dismissAll() {
-        menuFor = null
-        pickPlaylistFor = null
-        namingPlaylistFor = null
+        picker.open(listOf(track.id))
     }
 }
 
@@ -85,41 +72,7 @@ private const val LyricsIndex = 3
 /** Include once per screen that shows tracks. Renders nothing until a menu is opened. */
 @Composable
 fun TrackActionsHost(actions: TrackActions) {
-    val services = LocalServices.current
-    val playlists by services.playlists.playlists.collectAsStateWithLifecycle()
-
-    val pickTarget = actions.pickPlaylistFor
-    MetroListBox(
-        visible = pickTarget != null,
-        title = stringResource(R.string.menu_add_to_playlist),
-        items = playlists.items.map { it.name } + stringResource(R.string.playlist_new_option),
-        onSelect = { index ->
-            val track = pickTarget ?: return@MetroListBox
-            if (index in playlists.items.indices) {
-                services.playlists.add(playlists.items[index].id, listOf(track.id))
-                actions.dismissAll()
-            } else {
-                actions.startNamePlaylist(track)
-            }
-        },
-        onDismiss = { actions.dismissAll() }
-    )
-
-    val nameTarget = actions.namingPlaylistFor
-    MetroInputBox(
-        visible = nameTarget != null,
-        title = stringResource(R.string.playlist_new_title),
-        placeholder = stringResource(R.string.label_name),
-        onConfirm = { name ->
-            services.playlists.create(
-                name = name,
-                trackIds = listOfNotNull(nameTarget?.id),
-                now = System.currentTimeMillis()
-            )
-            actions.dismissAll()
-        },
-        onDismiss = { actions.dismissAll() }
-    )
+    PlaylistPickerHost(actions.picker)
 }
 
 /**

@@ -7,12 +7,14 @@ import com.metromusic.data.lastfm.Scrobbler
 import com.metromusic.data.library.LibraryRepository
 import com.metromusic.data.lyrics.LyricsRepository
 import com.metromusic.data.media.ArtworkLoader
+import com.metromusic.data.media.AudioPaths
 import com.metromusic.data.media.MediaStoreScanner
 import com.metromusic.data.media.OnlineArtwork
 import com.metromusic.data.store.GenreStore
 import com.metromusic.data.store.HiddenStore
 import com.metromusic.data.store.PlaybackStateStore
-import com.metromusic.data.store.PlaylistStore
+import com.metromusic.data.playlist.PlaylistStore
+import com.metromusic.data.playlist.PlaylistTrackInfo
 import com.metromusic.data.store.SettingsStore
 import com.metromusic.data.store.StatsStore
 import com.metromusic.playback.AudioEffects
@@ -42,7 +44,27 @@ class Services(context: Context) {
     /** Whether the network is usable, so the scrobble queue can go up the moment it is. */
     val connectivity: Connectivity by lazy { Connectivity(appContext) }
 
-    val playlists: PlaylistStore by lazy { PlaylistStore(appContext, scope) }
+    /**
+     * Where every track's file is, read once off the volume. Shared rather than built twice: both
+     * the `.lrc` sidecar and the `.m3u` line are questions about paths, and the answer is one cursor
+     * over the whole library.
+     */
+    val paths: AudioPaths by lazy { AudioPaths(appContext) }
+
+    /**
+     * Playlists, as `.m3u` files. Pointed back at the library for the `#EXTINF` lines rather than
+     * handed it, for the reason [ArtworkLoader.albumNames] is: the library is built on top of the
+     * stores and cannot be a constructor argument to one of them.
+     */
+    val playlists: PlaylistStore by lazy {
+        PlaylistStore(appContext, scope, settings, paths).also { store ->
+            store.trackInfo = { id ->
+                library.library.value.track(id)?.let {
+                    PlaylistTrackInfo(it.title, it.artist, it.durationMs)
+                }
+            }
+        }
+    }
 
     val stats: StatsStore by lazy { StatsStore(appContext, scope) }
 
@@ -95,7 +117,7 @@ class Services(context: Context) {
     val volume: VolumeController by lazy { VolumeController(appContext) }
 
     val lyrics: LyricsRepository by lazy {
-        LyricsRepository(appContext, scope, settings, connectivity)
+        LyricsRepository(appContext, scope, settings, paths, connectivity)
     }
 
     val scrobbler: Scrobbler by lazy { Scrobbler(appContext, scope, settings, connectivity) }

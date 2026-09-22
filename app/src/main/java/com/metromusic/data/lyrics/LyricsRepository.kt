@@ -2,6 +2,7 @@ package com.metromusic.data.lyrics
 
 import android.content.Context
 import android.net.Uri
+import com.metromusic.data.media.AudioPaths
 import com.metromusic.data.model.Track
 import com.metromusic.data.store.JsonStore
 import com.metromusic.data.store.LyricsSource
@@ -83,11 +84,12 @@ class LyricsRepository(
     context: Context,
     private val scope: CoroutineScope,
     private val settings: SettingsStore,
+    paths: AudioPaths,
     connectivity: Connectivity
 ) {
     private val cacheDir = File(context.filesDir, "lyrics")
 
-    private val files = LyricsFiles(context, settings)
+    private val files = LyricsFiles(context, settings, paths)
 
     private val index = JsonStore(
         file = File(context.filesDir, "lyrics-index.json"),

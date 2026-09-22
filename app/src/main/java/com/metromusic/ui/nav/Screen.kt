@@ -42,6 +42,16 @@ sealed interface Screen {
     data class ArtistDetail(val artistId: Long) : Screen
     data class GenreDetail(val genre: String) : Screen
     data class PlaylistDetail(val playlistId: String) : Screen
+
+    /**
+     * Ticking songs to add to one playlist.
+     *
+     * A destination rather than a panel over the playlist: choosing twenty songs out of a library
+     * needs a search box and a list that scrolls, which is a page. [playlistId] is a file — see
+     * [com.metromusic.data.playlist.Playlist] — so it may contain anything a file name may, which
+     * [encode] copes with by putting it last.
+     */
+    data class PlaylistAdd(val playlistId: String) : Screen
     data class Lyrics(val trackId: Long) : Screen
 
     companion object {
@@ -57,6 +67,7 @@ sealed interface Screen {
             is ArtistDetail -> "artist:${screen.artistId}"
             is GenreDetail -> "genre:${screen.genre}"
             is PlaylistDetail -> "playlist:${screen.playlistId}"
+            is PlaylistAdd -> "playlist-add:${screen.playlistId}"
             is Lyrics -> "lyrics:${screen.trackId}"
         }
 
@@ -82,6 +93,7 @@ sealed interface Screen {
                 "artist" -> argument.toLongOrNull()?.let(::ArtistDetail) ?: Collection
                 "genre" -> GenreDetail(argument)
                 "playlist" -> PlaylistDetail(argument)
+                "playlist-add" -> PlaylistAdd(argument)
                 "lyrics" -> argument.toLongOrNull()?.let(::Lyrics) ?: Collection
                 else -> Collection
             }

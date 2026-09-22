@@ -29,8 +29,10 @@ import com.metromusic.data.model.Album
 import com.metromusic.data.store.LibrarySection
 import com.metromusic.ui.components.AppBackdrop
 import com.metromusic.ui.components.EmptyNote
+import com.metromusic.ui.components.PlaylistPickerHost
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.WideTile
+import com.metromusic.ui.components.rememberPlaylistPicker
 import com.metromusic.ui.components.rememberTrackActions
 import com.metromusic.ui.nav.Screen
 import com.metromusic.ui.nav.SettingsPage
@@ -58,6 +60,10 @@ fun CollectionScreen(onNavigate: (Screen) -> Unit) {
     val scanning by services.library.scanning.collectAsStateWithLifecycle()
     val loaded by services.library.loaded.collectAsStateWithLifecycle()
     val actions = rememberTrackActions()
+
+    // One panel for the whole panorama rather than one per section: a section is a column inside a
+    // scrolling row, which is no place to put a modal, and only one of them can be open anyway.
+    val picker = rememberPlaylistPicker()
 
     // Which section's header was tapped, and what has been typed into it. One query at a time: the
     // box belongs to a section, and swiping away from that section puts it away with its filter.
@@ -132,6 +138,7 @@ fun CollectionScreen(onNavigate: (Screen) -> Unit) {
                             library = library,
                             modifier = modifier,
                             onNavigate = ::leave,
+                            picker = picker,
                             search = searchFor(section),
                             onSearchChange = { query = it }
                         )
@@ -139,6 +146,7 @@ fun CollectionScreen(onNavigate: (Screen) -> Unit) {
                             library = library,
                             modifier = modifier,
                             onNavigate = ::leave,
+                            picker = picker,
                             search = searchFor(section),
                             onSearchChange = { query = it }
                         )
@@ -159,7 +167,8 @@ fun CollectionScreen(onNavigate: (Screen) -> Unit) {
                             search = searchFor(section),
                             onSearchChange = { query = it }
                         )
-                        LibrarySection.Genres -> GenresSection(library, modifier, onNavigate)
+                        LibrarySection.Genres ->
+                            GenresSection(library, modifier, onNavigate, picker)
                         LibrarySection.More -> MoreSection(
                             modifier = modifier,
                             playlistCount = playlists.items.size,
@@ -179,6 +188,7 @@ fun CollectionScreen(onNavigate: (Screen) -> Unit) {
             }
         )
         TrackActionsHost(actions)
+        PlaylistPickerHost(picker)
     }
 }
 

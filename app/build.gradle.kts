@@ -142,4 +142,10 @@ dependencies {
     // Playlists, favorites and settings are small JSON files in filesDir.
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
+
+    // Plain JVM tests, for the pieces that have no Android in them. The playlist format and the
+    // path arithmetic around it are the first of those: a `.m3u` rule that is one `..` out turns a
+    // playlist into rows that resolve to nothing, which is invisible until somebody's file opens
+    // empty. Nothing here needs a device, so nothing here is checked on one.
+    testImplementation(libs.junit)
 }
