@@ -293,9 +293,10 @@
         given here is searched, and written to when the one beside the track cannot be.</string>
     <string name="lyrics_folder_clear">forget this folder</string>
     <string name="lyrics_save_lrc">save fetched lyrics as .lrc</string>
-    <string name="lyrics_save_lrc_explainer">writes what genius answers into a .lrc next to the song,
-        in the format every other player reads — so the words outlive this app. genius publishes text
-        and not timings, so a saved file is not a synced one.</string>
+    <string name="lyrics_save_lrc_explainer">writes what the service answers into a .lrc next to the
+        song — same folder, same name, the format every other player reads — so the words outlive
+        this app. one saved from lrclib carries its timings; genius publishes text and no timings, so
+        one saved from there does not.</string>
 
     <!-- The banner that confirms something was queued; the title of what was added follows it. -->
     <string name="queued_heading">ADDED TO QUEUE</string>
@@ -415,6 +416,8 @@
     <string name="playlist_new_title">new playlist</string>
 
     <!-- ==== player ==== -->
+    <string name="player_face_words">show the words</string>
+    <string name="player_face_cover">show the album art</string>
     <string name="player_nothing">nothing is playing</string>
     <string name="player_shuffle_on">shuffle on</string>
     <string name="player_repeat_off">repeat off</string>

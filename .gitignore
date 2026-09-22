@@ -17,7 +17,10 @@ local.jar
 local.properties
 
 # Release signing. keystore.properties names the keystore and holds both passwords.
-keystore.properties
+# The wildcard is not decoration: building a release signed with the debug key means moving this
+# file aside for the length of the build, and `keystore.properties.aside` is not `keystore.properties`
+# as far as a bare rule is concerned. A passwords file is not something to leave to whoever remembers.
+keystore.properties*
 *.jks
 *.keystore
 # The keystore again, in the form GitHub Actions takes it: base64 in a text file is still the key.

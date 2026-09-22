@@ -39,13 +39,23 @@ import com.metromusic.data.model.Track
  * rectangle. Any disagreement between the two shows up as the picture jumping at the start of every
  * gesture, which is worth more than the convenience of tuning them separately.
  *
- * **The cover is drawn at the screen's width, square, with its top at the top of the page.** Not
- * cropped to fill the page: a square stretched over a 2340px-tall screen is magnified two and a half
- * times, and the band of it that shows behind a 300px strip is then an unrecognisable enlargement of
- * some corner of the artwork — which is what "the cover shrivels up in the mini player" and "the
- * backdrop changes as you pull" both were. At the screen's width the strip shows the *top of the
- * cover*, pulling the page up draws the rest of it out from underneath, and the magnification is the
- * same everywhere. Below the square the page is its own flat colour, which the scrim fades into.
+ * **The cover fills the page, cropped**, and the strip draws that same rendering — the top band of
+ * it — so the two agree and nothing changes scale when the page is pulled up.
+ *
+ * It was briefly a *square at the screen's width* instead, hung from the top of the page, on the
+ * reasoning that a square stretched over a 2400px screen is magnified two and a half times and the
+ * 300px the strip shows is then a fragment of some detail rather than the cover. That is true, and
+ * it is the lesser of the two problems: the square ends a little under half way down the page, and
+ * what is below it is flat colour, so the *player* — the thing looked at for three minutes — had a
+ * straight horizontal line across the middle of it. With a cover in the middle of the page that line
+ * only showed as a short piece either side of the artwork; with the song's words there instead it
+ * runs clean across what is being read, and the owner reported it as the backdrop drawing on half
+ * the screen, which is exactly what it looks like. A square into a tall box under `Crop` shows the
+ * cover's **whole height** with its sides cut off, which is a picture; the strip's band is the price.
+ *
+ * What must not change is that both surfaces draw the *same* rendering in the same place. That is
+ * what four rounds of this were about, and it is why the strip is handed the page's height rather
+ * than measuring one of its own.
  *
  * There is no overscale left, and so no sideways parallax on the backdrop either: at this scale the
  * picture is exactly as wide as the screen, so any horizontal travel would expose an edge. The
@@ -57,6 +67,7 @@ import com.metromusic.data.model.Track
 const val BackdropAlpha = 0.30f
 const val BackdropScrimTop = 0.1f
 const val BackdropScrimBottom = 0.95f
+
 
 /**
  * One decode for the backdrop, shared by the strip and the player, and deliberately smaller than the

@@ -2,6 +2,93 @@
 
 ## Unreleased
 
+**The player can show the words instead of the cover**, switched from the player itself — the button
+beside the star, the shuffle and the repeat, which changes what you are looking at without leaving
+the song. The two faces pass each other when you do: the cover slides out of the bottom while the
+words come in over the top, the position bar and the track's name travel to where they now
+belong, and the artist and album move up out of the way. The
+artwork is already the player's whole backdrop, so the square in the middle of it was a second,
+smaller copy of the same picture; with this on it carries the song's words instead. Where the words
+are timed — an `.lrc` beside the file, the tags inside it, anything LRCLIB answers — the line being
+sung is picked out and the verse moves up under it as the song goes, and tapping a line jumps to
+that moment exactly. Words with no timings are a block you read and scroll; a song with nothing to
+show keeps its cover, so the slot is never empty and nothing has to be switched back for the one
+record in a library that has no words anywhere.
+
+The whole player is laid out for it. The words are **not** square — a cover has a shape and words do
+not — so they take the entire height the screen has left over: the artist and the album are set half
+again as large and come up under the clock, and the position bar and the track's name travel down
+until the name sits against the transport buttons, where a third of a screen of blank page used to
+be. **The line being sung is larger still, and nearly twice the size of the ones around it**, which
+is how a phone of this era says what you are meant to be reading rather than by tinting it. It takes
+its place over an unhurried handover, arriving from the right; the lines at the top and bottom of
+the slot fade away rather than being cut off by it; a drag inside the words scrolls the verse and
+stops the page chasing the song for six seconds; and a drag they have nothing left to scroll still
+pushes the player away.
+
+**Words that could not be fetched are fetched when the network comes back.** A lookup made with no
+signal left the player showing the cover for the rest of that song — and it stayed that way however
+long the connection had been back, because nothing asked a second time. It looked exactly like the app
+having decided the song has no words, and the next song was no better off if it was already playing.
+Any lookup that could not be made is now made again the moment there is a usable network, on the
+player and on the lyrics page alike, and the background sweep that fills in the rest of the library
+picks up where it gave up instead of waiting for the next scan. Nothing it could not ask about was
+ever written down as an answer, so nothing has to be cleared for this to take effect.
+
+**Songs already written off as having no timed words get asked once more.** The rule above was wrong
+before this release, so the answers it wrote down cannot be trusted — and nothing in them says which
+were earned and which were a lost request. They are dropped, once, on the first launch of this
+version: a song that really has no timed words costs one more question and is then quiet again, while
+a song that was written off in a tunnel gets its words. What was learnt about songs that *have* words
+is kept.
+
+**And a half-answered lookup is no longer remembered as a final one.** The search for *timed* words is
+several requests, so flat words could be in hand while the request that would have found timestamped
+ones was the one that failed — and that was written down as "this song has no timings", permanently,
+on the strength of one tunnel. Only an answer that really got through counts now.
+
+**The words flow with the song instead of following it.** A line only began growing into the sung
+one when its first word arrived, and took a third of a second more to get there — so the emphasis
+spent every song a beat behind the music, and on top of that it could not start until the next
+quarter-second tick noticed. The file says exactly when each line begins, so the handover is started
+*early enough to land on it*: at the moment the line is sung it is already where it was going. Each
+one is also given the room there is between its own line and the one before rather than a fixed
+length, so a slow verse changes over unhurriedly and a fast one keeps up instead of overlapping
+itself — the movement takes its speed from the song. Both the lyrics page and the player's window.
+
+**No more cover flashing up when the player is pulled out of the strip.** In the words mode the
+slot used to show the artwork while the song's words were being read, which made sense when it also
+answered for songs that have none — those get the ordinary player back now, so all that was left was
+a square appearing for as long as a read took and then vanishing. The slot stays empty until there
+are words, and the wait is mostly gone as well: whatever is already on the device goes up at once,
+and a timed version from lrclib replaces it when it arrives rather than holding the page up.
+
+**The playing cover is behind the whole player again.** It had come to be drawn as a square the
+width of the screen, hung from the top — which ends a little under half way down and leaves a
+straight edge across the page with flat colour below it. With a cover in the middle of the player
+that edge showed only as a short piece either side of the artwork; with the words there instead it
+runs across the middle of what you are reading. The backdrop fills the page as it used to, and the
+strip draws the top of the same picture so nothing changes scale when the player is pulled up.
+
+**One act, two spellings of its name.** LRCLIB wants the artist to match, and the same performer is
+filed under more than one spelling of their name all the time — the timed words for *DenDerty —
+Чёрная дыра* sit under **Den Derty**, with a space, so asking for the name the file carries answered
+with three untimed copies and nothing else. When nothing timed has been found, the title is now
+searched on its own and the artist matched here instead: names are compared by their letters and
+digits alone, which makes those two one name. A title by itself answers with twenty other people's
+songs, so the artist, the title *and* the length all have to agree before a record is believed. And
+because that database does not read `е` and `ё` as the same letter, a title carrying either is asked
+about both ways.
+
+**Timed words win wherever they come from.** A song whose audio file carries a flat `LYRICS` tag
+— which is most of what taggers write — showed those words and never asked LRCLIB, even when LRCLIB
+had the same song timestamped, so the page sat there refusing to follow the music with nothing to
+say why. Whatever is already on the device is still shown first, but if it has no timings the
+service is asked once for something better; a song it has no timings for either is remembered, so
+nothing is asked twice. An exact LRCLIB hit that turns out to be flat also goes on to the search
+now, because the same song is routinely in that database twice — once from a tagger that carried
+the timings over and once from one that did not.
+
 **"Play next" puts it next.** It used to remember where it had put the last thing you queued and add
 the next one behind it, so a song and then an album played in the order you picked them — which
 meant the album you had just asked to hear next waited for the song, and the second tap onwards the

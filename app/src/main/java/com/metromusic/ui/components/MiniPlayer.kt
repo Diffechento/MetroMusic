@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -87,28 +88,30 @@ private const val StripScrim = 0.15f
  * from underneath without the magnification changing anywhere.
  */
 @Composable
-fun MiniPlayerBackdrop(artwork: Bitmap?) {
+fun MiniPlayerBackdrop(artwork: Bitmap?, pageHeight: Dp) {
     val colors = MetroTheme.colors
 
-    // The square hangs from the top of the strip, which is where the page rests, so the strip shows
-    // the top of the cover and pulling the page up draws the rest of it out from underneath at one
-    // magnification. Cropping the cover to the page's *height* instead is what made the strip show an
-    // unrecognisable enlargement of one corner: a square stretched over a whole screen is magnified
-    // two and a half times, and 300px of that is a fragment of some detail.
+    // **[pageHeight] and not this bar's own size, and not the screen's width either.** What the strip
+    // draws has to be the top band of exactly what the *page* draws, because at rest the page's top
+    // edge is this bar's top edge — so the instant a finger starts to pull, the picture the strip was
+    // showing is the picture the page carries on with. Any disagreement between the two is a zoom at
+    // the moment of touching, which is what "the backdrop changes as you pull" was.
+    //
+    // It was the screen's *width* for a while, which made this band a recognisable top-of-the-cover
+    // and cost the page a straight edge across its middle. The page won that argument; see the note
+    // on [BackdropAlpha]. The band is a magnified slice of the top of the artwork now, which is the
+    // known price.
     //
     // The wrapper box is not decoration. A child taller than its parent is placed by that parent's
     // alignment, and the bar's own background box does something unhelpful with one — measured, the
     // square came out with its *bottom* on the bar's top edge, which on screen is a two-pixel line of
     // cover and then black. Owning the parent makes the placement ordinary again: this box is exactly
     // the bar, and an oversized child of it hangs downward from its top.
-    // `requiredHeight` and not `aspectRatio`, which is the whole bug this went through four rounds of.
-    // `aspectRatio` obeys the constraints it is handed: asked for 1080x1080 inside a bar 300px tall it
-    // cannot satisfy the ratio, so it falls back to the constrained size — 1080x300 — and `Crop` then
-    // centre-crops the cover into that band. The strip showed the *middle* of the artwork while the
-    // page, whose constraint is a whole screen, satisfied the ratio and showed the top. Two different
-    // parts of one picture, swapped the instant a drag began. Requiring the height makes the square a
-    // square wherever it is put, and it is cut off by the bar rather than squashed into it.
-    val coverEdge = LocalConfiguration.current.screenWidthDp.dp
+    // `requiredHeight` and not `aspectRatio` or a plain height, which is the bug this went through
+    // four rounds of: a size *constraint* is negotiable and a bar 300px tall will win the negotiation,
+    // leaving `Crop` to centre-crop the cover into that band — the strip then showed the middle of the
+    // artwork while the page showed what it was actually asked for. Requiring the height makes the
+    // node the page's height wherever it is put, and the bar cuts it off rather than squashing it.
     Box(Modifier.fillMaxSize()) {
         MetroCrossfade(
             target = artwork,
@@ -119,7 +122,7 @@ fun MiniPlayerBackdrop(artwork: Bitmap?) {
                 // 405px high, which is (1080-270)/2, so the strip showed the middle of the cover
                 // while the page showed the top.
                 .wrapContentHeight(align = Alignment.Top, unbounded = true)
-                .requiredHeight(coverEdge)
+                .requiredHeight(pageHeight)
         ) { cover ->
             if (cover != null) {
                 Image(

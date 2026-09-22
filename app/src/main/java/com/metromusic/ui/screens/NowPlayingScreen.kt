@@ -1,8 +1,11 @@
 package com.metromusic.ui.screens
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,12 +17,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -33,15 +39,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +61,7 @@ import com.metrocompose.MetroCrossfade
 import com.metrocompose.MetroIcon
 import com.metrocompose.MetroLineIcon
 import com.metrocompose.MetroRegular
+import com.metrocompose.MetroSlideInEasing
 import com.metrocompose.MetroPageSwipeState
 import com.metrocompose.MetroRisingPageState
 import com.metrocompose.MetroSwap
@@ -57,15 +69,21 @@ import com.metrocompose.MetroSlider
 import com.metrocompose.MetroTheme
 import com.metrocompose.TransportButton
 import com.metrocompose.metroRiseDrag
+import com.metrocompose.metroRiseOverscroll
 import com.metrocompose.metroSlideIn
 import com.metrocompose.rememberMetroPageSwipe
 import com.metromusic.R
 import com.metromusic.core.LocalServices
+import com.metromusic.data.store.PlayerFace
 import com.metromusic.ui.components.AlbumArt
 import com.metromusic.ui.components.BackdropAlpha
 import com.metromusic.ui.components.BackdropScrimBottom
 import com.metromusic.ui.components.BackdropScrimTop
 import com.metromusic.ui.components.EmptyNote
+import com.metromusic.ui.components.LyricTickMs
+import com.metromusic.ui.components.PlayerLyrics
+import com.metromusic.ui.components.rememberWordsAvailable
+import com.metromusic.ui.components.rememberPlayerWords
 import com.metromusic.ui.components.rememberAlbumArt
 import com.metromusic.ui.formatDuration
 
@@ -75,6 +93,51 @@ import com.metromusic.ui.formatDuration
  * button row. The cover gets whatever the window has left over.
  */
 private val ChromeHeight = 424.dp
+
+/** How often the position is asked for when the square is showing a cover rather than words. */
+private const val SliderTickMs = 500L
+
+/**
+ * What the title keeps between itself and the transport once the words have taken the slack.
+ *
+ * There is no such number in the cover mode and there does not need to be: whatever height the square
+ * leaves over is a weighted spacer between the title and the buttons, and on a tall phone that is a
+ * good deal of blank page. The words take that page, so this is what is left of it — enough that the
+ * title is not jammed against the rings.
+ */
+private val TransportGap = 20.dp
+
+/**
+ * What the artist's name keeps between itself and the status bar in the words mode.
+ *
+ * The cover mode starts the page 106dp down, which is the phone's own idea of where a page begins
+ * and is most of why the player reads as a Windows Phone one. With the words in the slot that same
+ * 106dp is 70dp of blank page above a name, so the header is brought up to sit just under the clock
+ * instead — cleared by the status bar's own **inset** rather than by a number, the lesson the
+ * panorama's title already paid for, so that a hidden bar (full screen) or a cutout both come out
+ * right without anything here knowing about them.
+ */
+private val LyricsHeaderGap = 16.dp
+
+/**
+ * How long the player takes to change face.
+ *
+ * It is a whole page rearranging itself — the cover leaves, the words come in over it, the position
+ * bar and the name travel to where they now belong — so it is nearer the framework's own
+ * `MetroSlideInMillis` than to a line of lyrics changing. Short of it all the same: this is one
+ * screen turning into another, not a page being navigated to.
+ */
+private const val FaceSwapMillis = 420
+
+/**
+ * The artist and the album above the face, the same in both modes.
+ *
+ * They were briefly half again as large in the words mode and are not any more: the header is not
+ * what is being read on that screen, and at 45sp it both crowded the words and ellipsised most real
+ * artists' names.
+ */
+private val ArtistSize = 30.sp
+private val AlbumSize = 19.sp
 
 /** The strip to the right of the cover that carries the toggles. */
 private val ToggleColumnWidth = 68.dp
@@ -133,7 +196,6 @@ fun NowPlayingScreen(
     val state by services.player.state.collectAsStateWithLifecycle()
     val stats by services.stats.stats.collectAsStateWithLifecycle()
     val settings by services.settings.settings.collectAsStateWithLifecycle()
-    val position by services.player.positionFlow().collectAsStateWithLifecycle(0L)
 
     if (!state.hasTrack) {
         Box(Modifier.fillMaxSize().background(colors.bg)) {
@@ -143,6 +205,28 @@ fun NowPlayingScreen(
     }
 
     val trackId = state.trackId ?: -1L
+
+    // What goes in the square: the cover, or the song's words following the music in its place.
+    //
+    // **The whole screen is laid out for the answer, so the answer has to be settled before it is
+    // used** — hence [rememberPlayerWords] rather than a lookup inside the slot. A song with no
+    // words at all gets the ordinary player back, which is the mode the setting is asking to be
+    // departed from only where there is something to depart for.
+    //
+    // It decides the position tick too — words need asking four times a second, the hairline under
+    // them is happy with two — and the flow is remembered rather than rebuilt, or every
+    // recomposition would hand `collectAsStateWithLifecycle` a new flow and restart the poll it is
+    // already running.
+    val wordsChosen = settings.playerFace == PlayerFace.Lyrics
+    val words = if (wordsChosen) rememberPlayerWords(trackId) else null
+    val facingLyrics = words?.showWords == true
+
+    // Whether this song has anything to switch *to*, for the toggle beside the cover. Asked of the
+    // index, which is free; see [rememberWordsAvailable].
+    val wordsAvailable = rememberWordsAvailable(trackId)
+    val tickMs = if (facingLyrics) LyricTickMs else SliderTickMs
+    val positions = remember(services, tickMs) { services.player.positionFlow(tickMs) }
+    val position by positions.collectAsStateWithLifecycle(0L)
 
     // Sideways drags page between the tracks of the queue, and the neighbours are on screen the whole
     // time: what arrives is what was visibly coming, and letting go only finishes a movement already
@@ -198,9 +282,50 @@ fun NowPlayingScreen(
         // The box now runs edge to edge, so the gesture bar's height has to come out of the sum by
         // hand — the column that holds the chrome is inset by it.
         val navigationInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val statusInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val coverSize = (maxHeight - ChromeHeight - navigationInset)
             .coerceIn(120.dp, maxWidth - 24.dp - ToggleColumnWidth)
         val loading = rememberAlbumArt(state.albumId, trackId, coverSize)
+
+        // How far through the change of face we are: 0 the cover, 1 the words. One number drives all
+        // of it — the slot's height, the header's inset and the two pictures sliding past each other
+        // — which is what makes them read as one movement instead of four things starting together.
+        val swap by animateFloatAsState(
+            targetValue = if (facingLyrics) 1f else 0f,
+            animationSpec = tween(FaceSwapMillis, easing = MetroSlideInEasing),
+            label = "player-face"
+        )
+
+        val coverTopPad = 106.dp
+        val wordsTopPad = statusInset + LyricsHeaderGap
+
+        // **What the slot is worth in the words mode, learnt from the layout rather than worked out.**
+        //
+        // A weight cannot be animated — "whatever is left over" is not a number to travel towards — so
+        // the height has to be stated, and the last time this file stated it from [ChromeHeight] it was
+        // 80dp out, because that constant is a generous estimate rather than a measurement. So the
+        // column keeps a weighted spacer under the title and *this reads it*: what the slot could have
+        // is what it has now plus whatever that spacer is holding, less the gap the title keeps above
+        // the transport, plus the inset the header gives back on the way into the words.
+        //
+        // Read only when nothing is moving, so the animation cannot chase its own target, and the two
+        // resting states agree — measuring in the words mode gives the same number back, which is what
+        // makes it stable rather than a guess that drifts.
+        var facePx by remember { mutableIntStateOf(0) }
+        var slackPx by remember { mutableIntStateOf(0) }
+        var wordsFace by remember { mutableStateOf(Dp.Unspecified) }
+        val density = LocalDensity.current
+        LaunchedEffect(swap, facePx, slackPx, coverSize, wordsTopPad) {
+            if (facePx <= 0 || (swap != 0f && swap != 1f)) return@LaunchedEffect
+            val reclaimed = if (swap == 0f) coverTopPad - wordsTopPad else 0.dp
+            wordsFace = with(density) { (facePx + slackPx).toDp() } - TransportGap + reclaimed
+        }
+
+        // Until that has been measured once, the two modes lay out exactly as they did before any of
+        // this: a weight for the words, the square for the cover. A first switch without the travel is
+        // better than a first switch to the wrong place.
+        val measured = wordsFace != Dp.Unspecified
+        val faceHeight = if (measured) lerp(coverSize, wordsFace, swap) else coverSize
 
         // The neighbours' covers, decoded before a finger asks for them. They are composed only while
         // a swipe is in flight, so without this the first frames of every drag would carry a blank
@@ -211,6 +336,15 @@ fun NowPlayingScreen(
         LaunchedEffect(state.previous?.albumId, state.next?.albumId, coverPx) {
             state.previous?.let { services.artwork.load(it.albumId, it.trackId, coverPx) }
             state.next?.let { services.artwork.load(it.albumId, it.trackId, coverPx) }
+        }
+
+        // Hoisted, and it has to be: `metroRiseOverscroll` is a `composed` modifier, so building it
+        // inline would hand the square a fresh instance on every position tick and rebuild the words
+        // with it. What it does is give the page whatever downward drag the list inside the square
+        // cannot use, the way the queue screen's list does — without it a song whose words fit in the
+        // square would be a third of the player that could not be pushed away.
+        val lyricsListModifier = remember(rising, settings.gesturePlayerDown) {
+            Modifier.metroRiseOverscroll(rising, enabled = settings.gesturePlayerDown)
         }
 
         // Layer 1 — the backdrop, overscaled so panning never exposes an edge, at a third of the
@@ -229,19 +363,17 @@ fun NowPlayingScreen(
                         bitmap = artwork.asImageBitmap(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        // A node that *is* the square: as wide as the screen, as tall as it is wide,
-                        // at the top of the page — see the note on [BackdropAlpha]. Cropped to fill
-                        // the whole page it was magnified two and a half times, which is invisible
-                        // here and unrecognisable in the strip that shows one band of it. Expressed
-                        // as layout rather than as a painter's alignment, because the strip has to
-                        // put the same square in the same place and that has to be exact.
+                        // The whole page — see the note on [BackdropAlpha] for what this was
+                        // instead for a while and why it came back. `Crop` on a square in a tall box
+                        // shows the cover's full *height* with its sides cut off, so the picture is
+                        // a picture rather than a band with flat colour under it. The strip is
+                        // handed this page's height and draws the same thing, which is the one
+                        // property here that is not allowed to slip.
                         //
-                        // No sideways parallax any more: at this scale the picture is exactly as wide
-                        // as the screen and any travel would expose an edge. The vertical parallax
-                        // went earlier, when the page itself started doing the whole travel.
+                        // No sideways parallax: the drag would expose an edge, and the vertical
+                        // parallax went earlier, when the page itself started doing the whole travel.
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
+                            .fillMaxSize()
                             .graphicsLayer { alpha = BackdropAlpha }
                     )
                 }
@@ -268,7 +400,7 @@ fun NowPlayingScreen(
             Modifier
                 .fillMaxSize()
                 .navigationBarsPadding()
-                .padding(top = 106.dp, bottom = 52.dp)
+                .padding(top = lerp(coverTopPad, wordsTopPad, swap), bottom = 52.dp)
         ) {
             // The words wait for the artwork to land before they start turning over, then go in
             // sequence down the screen rather than all at once — both measured off the phone, and
@@ -282,12 +414,13 @@ fun NowPlayingScreen(
                 next = state.next?.artist,
                 modifier = Modifier.padding(horizontal = 24.dp)
             ) { artist, slot ->
+                val size = ArtistSize
                 if (slot == 0) {
                     key(slideEpoch) {
-                        MetroSwap(target = artist, delayMillis = TextLead) { FaceLine(it, 30.sp, colors.fg) }
+                        MetroSwap(target = artist, delayMillis = TextLead) { FaceLine(it, size, colors.fg) }
                     }
                 } else {
-                    FaceLine(artist, 30.sp, colors.fg)
+                    FaceLine(artist, size, colors.fg)
                 }
             }
             PagedFace(
@@ -297,21 +430,37 @@ fun NowPlayingScreen(
                 next = state.next?.album,
                 modifier = Modifier.padding(horizontal = 24.dp)
             ) { album, slot ->
+                val size = AlbumSize
                 if (slot == 0) {
                     key(slideEpoch) {
                         MetroSwap(target = album, delayMillis = TextLead + TextStagger) {
-                            FaceLine(it, 19.sp, colors.subtle)
+                            FaceLine(it, size, colors.subtle)
                         }
                     }
                 } else {
-                    FaceLine(album, 19.sp, colors.subtle)
+                    FaceLine(album, size, colors.subtle)
                 }
             }
 
             Spacer(Modifier.height(10.dp))
 
-            Row(Modifier.padding(start = 24.dp)) {
-                Column(Modifier.width(coverSize)) {
+            // **How tall the face is, which is the one thing the two modes do not agree about.**
+            //
+            // A cover is artwork and is square. The words are not, and on a phone that square is
+            // limited by the *width* — it has to leave the toggle strip its 68dp — so on a tall
+            // screen a third of the page went into the weighted spacer under the title and was
+            // simply blank. In this mode the face takes it: a weight rather than the arithmetic,
+            // because [ChromeHeight] is a stated constant and the column knows the real answer.
+            // The position bar, the title and the toggles all travel down with the face, which is
+            // how the title ends up against the transport — where it is read from anyway.
+            Row(
+                (if (measured) Modifier.height(faceHeight)
+                else if (facingLyrics) Modifier.weight(1f)
+                else Modifier.height(coverSize))
+                    .onSizeChanged { facePx = it.height }
+                    .padding(start = 24.dp)
+            ) {
+                Box(Modifier.width(coverSize).fillMaxHeight()) {
                     // No continuum key: the player is an overlay over the navigation host, not a
                     // page inside it, so there is no element on the page below for a shared
                     // element to pair with. `metroSlideIn` is keyed on the album, not the track,
@@ -322,56 +471,119 @@ fun NowPlayingScreen(
                         pager = pager,
                         current = state.face,
                         previous = state.previous,
-                        next = state.next
+                        next = state.next,
+                        modifier = Modifier.fillMaxHeight()
                     ) { face, slot ->
-                        if (slot == 0) {
-                            key(slideEpoch) {
-                                AlbumArt(
-                                    albumId = face.albumId,
-                                    representativeTrackId = face.trackId,
-                                    size = coverSize,
-                                    modifier = Modifier.metroSlideIn(face.albumId)
-                                )
-                            }
-                        } else {
-                            AlbumArt(
+                        when {
+                            // The neighbours either side of a swipe are covers whichever face this
+                            // screen is wearing. Their words are not known — asking for them would
+                            // be a lookup per drag, half of them in a direction the finger never
+                            // commits to — and a record coming in under the thumb is how you see
+                            // which record it is. The words take over once it has landed.
+                            slot != 0 -> FaceCover(
                                 albumId = face.albumId,
-                                representativeTrackId = face.trackId,
-                                size = coverSize
+                                trackId = face.trackId,
+                                width = coverSize
                             )
+                            // **The two faces pass each other**, both moving down, with the slot
+                            // clipping them: the words come in over the top edge and push the cover
+                            // out of the bottom, and going back the cover comes up from underneath.
+                            // A slide and not a cross-fade, because a fade through the page reads as
+                            // two pictures being swapped while this is one thing replacing another.
+                            //
+                            // Translation and not layout: each face is laid out once at the slot's
+                            // full size and *drawn* moving, so the list of words is not re-measured
+                            // on any frame of this. The only thing that really changes size is the
+                            // slot, and the column around it.
+                            else -> Box(
+                                Modifier.fillMaxSize().clipToBounds(),
+                                contentAlignment = Alignment.BottomStart
+                            ) {
+                                if (swap < 1f) {
+                                    Box(
+                                        Modifier
+                                            // **Its own height, not the slot's.** `requiredHeight`
+                                            // ignores the constraint the animating slot hands down,
+                                            // so each face is measured once at the size it has when
+                                            // it is the one being shown and is only *drawn* moving.
+                                            // Without it the list of words is re-measured on every
+                                            // frame of the change, which is the one thing this
+                                            // screen has already been taught not to do.
+                                            .requiredHeight(coverSize)
+                                            .graphicsLayer { translationY = swap * size.height }
+                                    ) {
+                                        // No `metroSlideIn` while the faces are changing: the cover
+                                        // is already travelling, and two movements at once on one
+                                        // square is a shuffle rather than an arrival.
+                                        key(slideEpoch) {
+                                            FaceCover(
+                                                albumId = face.albumId,
+                                                trackId = face.trackId,
+                                                width = coverSize,
+                                                modifier = if (swap == 0f) {
+                                                    Modifier.metroSlideIn(face.albumId)
+                                                } else {
+                                                    Modifier
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                if (swap > 0f) {
+                                    Box(
+                                        Modifier
+                                            .then(
+                                                if (measured) Modifier.requiredHeight(wordsFace)
+                                                else Modifier.fillMaxHeight()
+                                            )
+                                            .graphicsLayer {
+                                                translationY = -(1f - swap) * size.height
+                                            }
+                                    ) {
+                                        PlayerLyrics(
+                                            lyrics = words?.lyrics,
+                                            width = coverSize,
+                                            listModifier = lyricsListModifier
+                                        )
+                                    }
+                                }
+                            }
                         }
-                    }
-
-                    // A hairline against the bottom edge of the cover, and the time the track has
-                    // left rather than a second copy of its duration.
-                    MetroSlider(
-                        value = playedFraction,
-                        onValueChange = { scrubbing = it },
-                        onValueChangeFinished = {
-                            scrubbing?.let { services.player.seekToFraction(it) }
-                            scrubbing = null
-                        },
-                        trackHeight = 2.dp,
-                        thumbSize = null,
-                        height = 18.dp
-                    )
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        TimeLabel(formatDuration(shownPosition))
-                        TimeLabel("-" + formatDuration(state.durationMs - shownPosition))
                     }
                 }
 
-                // The toggles stack down the strip beside the cover, gathered at the bottom of it
+                // The toggles stack down the strip beside the face, gathered at the bottom of it
                 // rather than spread over the whole edge — as a cluster they read as one group of
-                // switches instead of three unrelated marks.
+                // switches instead of three unrelated marks. The row is exactly the face's height,
+                // which is what keeps them level with its bottom edge in both modes; the position
+                // bar sits *under* the row for the same reason.
                 Column(
-                    Modifier.width(ToggleColumnWidth).height(coverSize),
+                    Modifier.width(ToggleColumnWidth).fillMaxHeight(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom)
                 ) {
+                    // **The words are switched on from here, not from a settings page.** It is a
+                    // way of looking at what is playing rather than a preference — it changes with
+                    // the song, and the song is on this screen. The choice is still remembered
+                    // (`Settings.playerFace`), so the player opens the way it was left.
+                    //
+                    // Lit by the *chosen* face rather than by what is on screen, because those come
+                    // apart: a song with no words shows its cover whatever the mode is, and a button
+                    // that went dark for it would read as the mode having switched itself off. It
+                    // greys out only where there is nothing to switch to — a song the index has
+                    // already written off, and only while the cover is what is being shown, so the
+                    // mode can always be turned off again from wherever you are.
+                    FaceToggle(
+                        contentDescription = stringResource(
+                            if (wordsChosen) R.string.player_face_cover else R.string.player_face_words
+                        ),
+                        enabled = wordsChosen || wordsAvailable,
+                        active = wordsChosen
+                    ) {
+                        services.settings.setPlayerFace(
+                            if (wordsChosen) PlayerFace.Cover else PlayerFace.Lyrics
+                        )
+                    }
                     val favorite = trackId in stats.favorites
                     TransportButton(
                         icon = if (favorite) MetroIcon.StarFilled else MetroIcon.Star,
@@ -405,6 +617,29 @@ fun NowPlayingScreen(
                 }
             }
 
+            // A hairline against the bottom edge of the face, and the time the track has left
+            // rather than a second copy of its duration.
+            Column(Modifier.padding(start = 24.dp).width(coverSize)) {
+                MetroSlider(
+                    value = playedFraction,
+                    onValueChange = { scrubbing = it },
+                    onValueChangeFinished = {
+                        scrubbing?.let { services.player.seekToFraction(it) }
+                        scrubbing = null
+                    },
+                    trackHeight = 2.dp,
+                    thumbSize = null,
+                    height = 18.dp
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TimeLabel(formatDuration(shownPosition))
+                    TimeLabel("-" + formatDuration(state.durationMs - shownPosition))
+                }
+            }
+
             Spacer(Modifier.height(6.dp))
 
             PagedFace(
@@ -425,7 +660,18 @@ fun NowPlayingScreen(
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            // Whatever the face did not take, and **the one thing that says how much that is**: with
+            // the slot's height stated rather than weighted, this is the slack, and reading it is how
+            // the words' height above is learnt. In the cover mode it is most of the page under the
+            // title; in the words mode it comes out at the [TransportGap] the title keeps above the
+            // rings, which is the arithmetic agreeing with itself.
+            if (measured) {
+                Spacer(Modifier.weight(1f).onSizeChanged { slackPx = it.height })
+            } else if (facingLyrics) {
+                Spacer(Modifier.height(TransportGap).onSizeChanged { slackPx = it.height })
+            } else {
+                Spacer(Modifier.weight(1f).onSizeChanged { slackPx = it.height })
+            }
 
             // Left-aligned on the text gutter with room to breathe between the rings, low enough
             // that a thumb reaches them without shifting grip.
@@ -500,6 +746,102 @@ fun NowPlayingScreen(
  * [content] is given the slot it is drawing so that the current one can keep the choreography a track
  * change has when nobody swiped for it, and the neighbours — which are already sliding — can do without.
  */
+/**
+ * The button that changes the player's face, and the one icon this app draws for itself.
+ *
+ * `TransportButton` takes either a [MetroIcon] or a character, and neither would do: the framework
+ * has no mark for this and is not this app's to grow for one button, and the character that was here
+ * first — a pilcrow — is a typographer's mark for a paragraph rather than an icon, sitting in a row
+ * of drawn shapes looking like a stray letter. So the geometry and the tint rules are copied from
+ * `TransportButton` (dim when it can do nothing, accent when the words are chosen, foreground
+ * otherwise) and the middle is [LyricLinesIcon].
+ */
+@Composable
+private fun FaceToggle(
+    contentDescription: String,
+    enabled: Boolean,
+    active: Boolean,
+    onClick: () -> Unit
+) {
+    val colors = MetroTheme.colors
+    val tint = when {
+        !enabled -> colors.dim
+        active -> colors.accent
+        else -> colors.fg
+    }
+    Box(
+        Modifier
+            .size(52.dp)
+            .clickable(enabled = enabled, onClickLabel = contentDescription) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        LyricLinesIcon(tint, Modifier.size(23.dp))
+    }
+}
+
+/**
+ * Lines of words with one of them lit: the thing the button does, drawn rather than named.
+ *
+ * Four strokes at the weight every other mark on this screen is drawn at, of **unequal length** —
+ * which is the whole difference between a page of writing and a menu icon, and three equal bars is
+ * exactly what a menu icon is. The second stroke is full width where the others fall short, so what
+ * the eye picks out is a line standing proud of the ones around it: the sung line, which is what the
+ * face this button turns on is *for*.
+ *
+ * The lengths are ragged on purpose and in no particular pattern. Set them tidily — long, short,
+ * long, short — and it reads as a graph.
+ */
+@Composable
+private fun LyricLinesIcon(color: Color, modifier: Modifier = Modifier) {
+    val stroke = with(LocalDensity.current) { 2.dp.toPx() }
+    Canvas(modifier) {
+        val lengths = floatArrayOf(0.72f, 1f, 0.58f, 0.86f)
+        // Inset by half the stroke at both ends so the outer strokes sit *inside* the icon's box
+        // rather than half out of it, which is what makes it the same visual size as its neighbours.
+        val top = stroke / 2f
+        val span = size.height - stroke
+        lengths.forEachIndexed { index, length ->
+            val y = top + span * index / (lengths.size - 1)
+            drawLine(
+                color = color,
+                start = Offset(0f, y),
+                end = Offset(size.width * length, y),
+                strokeWidth = stroke
+            )
+        }
+    }
+}
+
+/**
+ * A cover in the face's slot, sitting on the slot's **bottom** edge.
+ *
+ * In the cover mode the slot is exactly the cover and this is a wrapper around nothing. In the words
+ * mode the slot is taller than it is wide, and a cover — a track that has no words, or a neighbour
+ * sliding in under a swipe — is still square: aligning it to the bottom is what keeps the position
+ * bar hugging the artwork's own edge and the toggles gathered beside it, which is the one
+ * relationship this layout is built on. The room it leaves is above it, where the backdrop — the
+ * same cover, at the screen's width — is already showing through.
+ */
+@Composable
+private fun FaceCover(
+    albumId: Long,
+    trackId: Long,
+    width: Dp,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        Modifier.width(width).fillMaxHeight(),
+        contentAlignment = Alignment.BottomStart
+    ) {
+        AlbumArt(
+            albumId = albumId,
+            representativeTrackId = trackId,
+            size = width,
+            modifier = modifier
+        )
+    }
+}
+
 /** One line of the face, so the three slots of a [PagedFace] cannot drift apart in style. */
 @Composable
 private fun FaceLine(text: String, size: TextUnit, color: Color) {

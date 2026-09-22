@@ -66,9 +66,77 @@ data class Lyrics(
         return if (found < 0) -1 else timed[found].first
     }
 
+    /**
+     * Which line the emphasis belongs to at [positionMs], and what the screen needs to move it.
+     *
+     * **It is not simply the line being sung.** A handover takes time, and a line that only starts
+     * growing when its first word arrives is at its full size a third of a second after it — the
+     * emphasis spends the whole song chasing the music. The timings say when the next line begins,
+     * so the handover is started *early enough to land on it*: [leadMs] before the line's own
+     * timestamp, and at that timestamp the line is exactly where it was going.
+     *
+     * The lead is cut to **half the gap** where there is not that much room, which is what keeps the
+     * anticipation honest in a fast song: it can never run more than half a line ahead of the voice,
+     * and two lines 300ms apart hand over in 150ms rather than overlapping each other. That clamped
+     * value comes back as [LeadingLine.handoverMs] so the growth and the scroll can take exactly as
+     * long as the lead they were given — a fixed duration against a clamped lead would finish late
+     * again, which is the whole thing being fixed.
+     */
+    fun leadingAt(positionMs: Long, leadMs: Long): LeadingLine {
+        if (timed.isEmpty()) return LeadingLine(-1, leadMs, null)
+        val entry = leadingEntryAt(positionMs, leadMs)
+        val next = entry + 1
+        val nextAt = if (next < timed.size) boundaryOf(next, leadMs) else null
+        if (entry < 0) return LeadingLine(-1, leadMs, nextAt)
+        return LeadingLine(
+            index = timed[entry].first,
+            handoverMs = timed[entry].second - boundaryOf(entry, leadMs),
+            nextAtMs = nextAt
+        )
+    }
+
+    /**
+     * When the emphasis should move on to [entry] — before its own first word, by the lead.
+     *
+     * Strictly increasing, which is what makes the search below sound: the clamp to half the gap
+     * puts every boundary past the previous line's start.
+     */
+    private fun boundaryOf(entry: Int, leadMs: Long): Long {
+        val start = timed[entry].second
+        val previous = if (entry == 0) 0L else timed[entry - 1].second
+        return start - minOf(leadMs, (start - previous) / 2)
+    }
+
+    /** The last entry whose boundary has been passed, or -1 before the first. */
+    private fun leadingEntryAt(positionMs: Long, leadMs: Long): Int {
+        var low = 0
+        var high = timed.size - 1
+        var found = -1
+        while (low <= high) {
+            val mid = (low + high) / 2
+            if (boundaryOf(mid, leadMs) <= positionMs) {
+                found = mid
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+        return found
+    }
+
     /** Where the line at [index] starts, for seeking to a line that was tapped. */
     fun startOf(index: Int): Long? = lines.getOrNull(index)?.timeMs
 }
+
+/**
+ * Which line is lit at a moment, how long its handover was given, and when the next one begins.
+ *
+ * The third field is what lets a caller **sleep until exactly the right moment** instead of noticing
+ * on its next poll: a quarter of a second of quantisation is a quarter of a second of the emphasis
+ * arriving late, and it is free to avoid when the timings are sitting right there.
+ */
+@Immutable
+data class LeadingLine(val index: Int, val handoverMs: Long, val nextAtMs: Long?)
 
 /**
  * Reading and writing `.lrc`.

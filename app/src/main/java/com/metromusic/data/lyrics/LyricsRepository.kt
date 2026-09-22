@@ -5,12 +5,14 @@ import android.net.Uri
 import com.metromusic.data.model.Track
 import com.metromusic.data.store.JsonStore
 import com.metromusic.data.store.LyricsSource
+import com.metromusic.core.Connectivity
 import com.metromusic.data.store.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -29,7 +31,30 @@ enum class LyricsStatus { Unknown, Available, Missing }
  * every time the media database is rebuilt.
  */
 @Serializable
-data class LyricsIndex(val known: Map<String, Boolean> = emptyMap())
+data class LyricsIndex(
+    val known: Map<String, Boolean> = emptyMap(),
+    /**
+     * Songs the online service has already been asked about *timings* for, and had none.
+     *
+     * Without it, a song whose words are flat everywhere would cost a request every time it is
+     * opened — see [LyricsRepository.lyrics], which now goes and asks whenever what it has to show
+     * does not follow the music. With it, that question is asked once per song, ever.
+     *
+     * A new field with a default, so an index written by an older build still loads.
+     */
+    val noTimings: Set<String> = emptySet(),
+    /**
+     * Which generation of the rule above wrote [noTimings], so that entries written by a rule that
+     * was wrong can be dropped once.
+     *
+     * "Never ask twice" is only honest while the first answer was an answer. Builds before this one
+     * wrote a song off as having no timings when the request that would have found them was the one
+     * that failed — an incomplete lookup reported as a settled fact — and nothing in the file says
+     * which entries those were. The verdicts cost one request each to earn again and a wrong one
+     * costs a song that can never follow its music, so they go, once.
+     */
+    val noTimingsEpoch: Int = 0
+)
 
 /**
  * Finds, caches and remembers song lyrics.
@@ -57,7 +82,8 @@ data class LyricsIndex(val known: Map<String, Boolean> = emptyMap())
 class LyricsRepository(
     context: Context,
     private val scope: CoroutineScope,
-    private val settings: SettingsStore
+    private val settings: SettingsStore,
+    connectivity: Connectivity
 ) {
     private val cacheDir = File(context.filesDir, "lyrics")
 
@@ -75,6 +101,42 @@ class LyricsRepository(
 
     private val probeMutex = Mutex()
     private var probeJob: Job? = null
+
+    /**
+     * The last list [probe] was given, so that a network arriving can make it pick up where it gave
+     * up. It stops after [MaxFailures] in a row, and without this nothing would look again until the
+     * library itself were rebuilt — which is a rescan, not a reconnection.
+     */
+    private var probed: List<Track> = emptyList()
+
+    /**
+     * How many times a usable network has arrived, for anything that could not ask.
+     *
+     * The screens key their lookups on it: a player showing a cover because the request failed asks
+     * again the moment there is a network, rather than sitting there until the song is changed. It
+     * costs nothing for a song whose words are already in hand or already written off — both short
+     * circuit before the network — so the only request it can produce is the one that was missed.
+     */
+    val retries: StateFlow<Int> = connectivity.arrivals
+
+    init {
+        // The probe gave up quietly; this is what makes that recoverable. Dropping the first value is
+        // what makes it an *arrival* rather than a description of the network at startup.
+        scope.launch {
+            connectivity.arrivals.drop(1).collect {
+                if (probed.isNotEmpty()) probe(probed, localPasses = false)
+            }
+        }
+        // After the store's own read, not before it: [JsonStore.state] answers with the default until
+        // the file has been read, and clearing a set that has not loaded yet writes the epoch down
+        // against nothing and the stale entries survive. The same reason the queue's restore waits.
+        scope.launch {
+            index.awaitLoaded()
+            if (index.state.value.noTimingsEpoch < NoTimingsEpoch) {
+                index.update { it.copy(noTimings = emptySet(), noTimingsEpoch = NoTimingsEpoch) }
+            }
+        }
+    }
 
     fun status(track: Track): LyricsStatus = statusIn(verdicts.value, track)
 
@@ -106,7 +168,7 @@ class LyricsRepository(
      */
     fun setLyricsFolder(uri: Uri?) {
         files.rememberFolder(uri)
-        index.update { LyricsIndex(it.known.filterValues { known -> known }) }
+        index.update { LyricsIndex(it.known.filterValues { known -> known }, it.noTimings) }
     }
 
     // ---- which service is asked ----
@@ -128,6 +190,8 @@ class LyricsRepository(
     fun setLyricsSource(source: LyricsSource) {
         if (settings.settings.value.lyricsSource == source) return
         settings.setLyricsSource(source)
+        // The noes go, and so does every "this one has no timings": that was the *old* service's
+        // answer, and the new one is being asked precisely because it may answer differently.
         index.update { LyricsIndex(it.known.filterValues { known -> known }) }
         scope.launch(Dispatchers.IO) {
             runCatching { cacheDir.listFiles()?.forEach { it.delete() } }
@@ -142,41 +206,97 @@ class LyricsRepository(
      * Returns null when there is nothing to show — no file, no match, or no network. The index is
      * updated either way, but a network failure deliberately leaves the entry alone so the next probe
      * tries again instead of writing "no lyrics" because a train went into a tunnel.
+     *
+     * **A timed answer beats a near one, across all three places and not only within the first.**
+     * [LyricsFiles.read] has always preferred a synced source among the files on the device; this
+     * did not, so a flat `LYRICS` tag inside an audio file — which is what half the rips in the
+     * world carry — was returned and LRCLIB was never asked, even when LRCLIB had the song
+     * timestamped. On screen that is a page of words that refuses to follow the music with nothing
+     * anywhere to say why, and it was reported exactly that way. So: whatever is already here is
+     * shown if it is synced, and if it is not, the service is asked once for something better.
+     *
+     * "Once" is the load-bearing word. Only LRCLIB can answer with timings at all, so Genius is
+     * never asked a second time; and a song LRCLIB has no timings for is written into
+     * [LyricsIndex.noTimings] so the next play does not ask again. Without that this would be one
+     * request per play, for ever, against a volunteer-run database.
      */
+    /**
+     * What is **already on this device** for [track] — a file beside it, its own tags, the cache —
+     * and nothing that has to be asked for.
+     *
+     * Exists so that a screen can show something in the frame it opens in. [lyrics] may go to the
+     * network now, to see whether a flat set of words can be bettered, and a caller that waits for
+     * that has an empty slot for as long as the round trip takes. The player asks for this first,
+     * puts it up, and replaces it if [lyrics] comes back with something timed.
+     */
+    suspend fun localLyrics(track: Track): Lyrics? = withContext(Dispatchers.IO) {
+        val key = keyOf(track)
+        val local = files.read(track)
+        if (local != null) mark(key, true)
+        bestOf(local, cached(key))
+    }
+
+    /** The *timed* one wherever it came from, and the more specific one when neither is. */
+    private fun bestOf(local: Lyrics?, stored: Lyrics?): Lyrics? = when {
+        local != null && local.synced -> local
+        stored != null && stored.synced -> stored
+        else -> local ?: stored
+    }
+
     suspend fun lyrics(track: Track): Lyrics? = withContext(Dispatchers.IO) {
         val key = keyOf(track)
 
-        // A file on the device wins over anything remembered, every time it is asked for rather than
-        // once: dropping a synced `.lrc` next to a song has to take effect on the next time you open
-        // it, not after the next scan.
-        files.read(track)?.let {
-            mark(key, true)
-            return@withContext it
-        }
+        // A file on the device is read every time rather than once: dropping a synced `.lrc` next to
+        // a song has to take effect the next time you open it, not after the next scan.
+        val local = files.read(track)
+        if (local != null) mark(key, true)
+        val best = bestOf(local, cached(key))
+        if (best != null && best.synced) return@withContext best
 
-        cached(key)?.let { return@withContext it }
         val current = settings.settings.value
-        if (!current.lyricsEnabled) return@withContext null
+        if (!current.lyricsEnabled) return@withContext best
+        val canBeTimed = current.lyricsSource == LyricsSource.LrcLib
+        if (best != null && (!canBeTimed || key in verdicts.value.noTimings)) return@withContext best
 
         when (val answer = lookUpLyrics(current.lyricsSource, track)) {
             is LyricsAnswer.Found -> {
-                val lyrics = Lrc.parse(answer.text, originOf(current.lyricsSource))
-                    ?: return@withContext null.also { mark(key, false) }
+                val fetched = Lrc.parse(answer.text, originOf(current.lyricsSource))
+                if (fetched == null) {
+                    if (best == null) mark(key, false)
+                    return@withContext best
+                }
+                // Asked for timings and got flat words again: keep what was already being shown,
+                // which is at least the copy that belongs to this file, and stop asking — but only
+                // when the service really did answer. An incomplete answer is flat because a request
+                // was lost, and writing that down would make one tunnel permanent.
+                if (best != null && !fetched.synced) {
+                    if (answer.complete) noteNoTimings(key)
+                    return@withContext best
+                }
                 store(key, answer.text)
                 mark(key, true)
+                if (!fetched.synced && answer.complete) noteNoTimings(key)
                 // The whole reason the setting exists: the words leave the app, into a file in the
                 // format every other player reads, so they are still there when this one is not. What
                 // LRCLIB answers is already `.lrc`, so a file saved from it is a *timed* one.
-                if (current.lyricsSaveLrc) files.save(track, lyrics)
-                lyrics
+                if (current.lyricsSaveLrc) files.save(track, fetched)
+                fetched
             }
             LyricsAnswer.NotFound -> {
-                mark(key, false)
-                null
+                if (best == null) mark(key, false) else noteNoTimings(key)
+                best
             }
-            LyricsAnswer.Unavailable -> null
+            LyricsAnswer.Unavailable -> best
         }
     }
+
+    /** Remembers that the service has been asked for timings for this song and had none. */
+    private fun noteNoTimings(key: String) {
+        if (key in verdicts.value.noTimings) return
+        index.update { it.copy(noTimings = it.noTimings + key) }
+    }
+
+    /** Anything written into [LyricsIndex.noTimings] before this is dropped once; see the field. */
 
     /**
      * Settles the availability of every track this has never looked at.
@@ -192,26 +312,34 @@ class LyricsRepository(
      * treats "unknown" as clickable, so the only cost of not having probed a song yet is that opening
      * its lyrics has to go and look.
      */
-    fun probe(tracks: List<Track>) {
+    fun probe(tracks: List<Track>, localPasses: Boolean = true) {
+        probed = tracks
         probeJob?.cancel()
         probeJob = scope.launch(Dispatchers.IO) {
             probeMutex.withLock {
-                // One cursor for the whole volume's file paths, and one listing of the folder, rather
-                // than a query per song — see [LyricsFiles.audioPath].
-                files.refresh()
-                for (track in tracks) {
-                    val key = keyOf(track)
-                    if (verdicts.value.known[key] == true) continue
-                    if (files.has(track)) mark(key, true)
-                }
+                // [localPasses] is off when a network arriving is what restarted this. Nothing on the
+                // device changed in the meantime, and the tag pass below costs ~32ms a track for any
+                // song it has no verdict on — which is, by definition, every song that has no tags at
+                // all. Re-reading those on every reconnection would be a minute and a half of disk
+                // each time a train came out of a tunnel, to learn what it learnt last time.
+                if (localPasses) {
+                    // One cursor for the whole volume's file paths, and one listing of the folder,
+                    // rather than a query per song — see [LyricsFiles.audioPath].
+                    files.refresh()
+                    for (track in tracks) {
+                        val key = keyOf(track)
+                        if (verdicts.value.known[key] == true) continue
+                        if (files.has(track)) mark(key, true)
+                    }
 
-                // The tags, asked about only where there is no verdict at all — so once per song,
-                // ever, rather than on every launch. See [LyricsFiles.hasTags] for what that costs
-                // and why the two halves are not asked the same way.
-                for (track in tracks) {
-                    val key = keyOf(track)
-                    if (verdicts.value.known.containsKey(key)) continue
-                    if (files.hasTags(track)) mark(key, true)
+                    // The tags, asked about only where there is no verdict at all — so once per song,
+                    // ever, rather than on every launch. See [LyricsFiles.hasTags] for what that costs
+                    // and why the two halves are not asked the same way.
+                    for (track in tracks) {
+                        val key = keyOf(track)
+                        if (verdicts.value.known.containsKey(key)) continue
+                        if (files.hasTags(track)) mark(key, true)
+                    }
                 }
 
                 if (!settings.settings.value.lyricsEnabled) return@withLock
@@ -245,7 +373,7 @@ class LyricsRepository(
 
     fun forget(track: Track) {
         val key = keyOf(track)
-        index.update { LyricsIndex(it.known - key) }
+        index.update { LyricsIndex(it.known - key, it.noTimings - key) }
         scope.launch(Dispatchers.IO) {
             fileFor(key).delete()
             legacyFileFor(key).delete()
@@ -269,7 +397,7 @@ class LyricsRepository(
         val known = verdicts.value.known[key]
         if (known == available) return
         if (!available && known == true) return
-        index.update { LyricsIndex(it.known + (key to available)) }
+        index.update { it.copy(known = it.known + (key to available)) }
     }
 
     /**
@@ -309,6 +437,9 @@ class LyricsRepository(
     private companion object {
         const val ProbeIntervalMs = 900L
         const val MaxFailures = 3
+
+        /** Raise this whenever the rule behind a "no timings" verdict changes. */
+        const val NoTimingsEpoch = 1
 
         fun keyOf(track: Track): String {
             val artist = GeniusClient.cleanArtist(track.artist).lowercase()

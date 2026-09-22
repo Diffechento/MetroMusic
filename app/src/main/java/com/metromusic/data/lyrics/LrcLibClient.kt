@@ -50,12 +50,19 @@ object LrcLibClient {
     /**
      * The words for one track.
      *
-     * Two requests' worth of strategy, and the order is the point. `/api/get` is an *exact* lookup —
-     * artist, title, album and duration together — and a hit from it is the right recording rather
-     * than a song with the same name. Only when that misses does this fall back to the search
+     * Three requests' worth of strategy at most, and the order is the point.
+     *
+     * `/api/get` is an *exact* lookup — artist, title, album and duration together — and a hit from
+     * it is the right recording rather than a song with the same name. When that misses, the search
      * endpoint, where the answer has to be checked against the duration before it is believed: a
      * three-minute single and a nine-minute live version share a title, and pasting the wrong one
-     * under a track is worse than showing nothing.
+     * under a track is worse than showing nothing. And when *that* turns up nothing timed, the title
+     * on its own with the artist matched here rather than by the service — see the comment at that
+     * step for the spelling problem it exists for.
+     *
+     * Each step is skipped the moment something *timed* is in hand, so a song the first request
+     * answers costs one request. The steps after it are paid for only by songs that have no timings
+     * to find, and [LyricsRepository] remembers those so they are not paid for twice.
      */
     fun lyrics(artist: String, title: String, album: String, durationMs: Long): LyricsAnswer {
         val cleanArtist = GeniusClient.cleanArtist(artist)
@@ -70,8 +77,17 @@ object LrcLibClient {
                 "&album_name=" + encode(album) +
                 "&duration=" + seconds
         )
+        // What the exact lookup found, if it found only *flat* words. It is the right recording, so
+        // it is what we fall back on — but it is not what was asked for, and the same song is
+        // routinely in the database twice, once from a tagger that carried the timings over and once
+        // from one that did not. So a flat exact hit goes on to the search rather than ending here.
+        var untimed: LyricsAnswer.Found? = null
         when (exact) {
-            is Response.Body -> parseOne(exact.text)?.let { return it }
+            is Response.Body -> when (val answer = parseOne(exact.text)) {
+                is LyricsAnswer.Found -> if (answer.synced) return answer else untimed = answer
+                null -> Unit
+                else -> return answer
+            }
             // A 404 here is LRCLIB saying "not with those four fields", which is not the same as
             // "not at all" — the album tag is the field most likely to be wrong in a file, and the
             // duration has to match within a couple of seconds. So it falls through to the search
@@ -80,17 +96,113 @@ object LrcLibClient {
             Response.Failed -> return LyricsAnswer.Unavailable
         }
 
+        // Whether any request got through at all, so that "nothing has this song" is never reported
+        // on the strength of a failure — the distinction the whole of [LyricsAnswer] exists for.
+        var failed = false
+
         val found = get(
             "$Base/search" +
                 "?artist_name=" + encode(cleanArtist) +
                 "&track_name=" + encode(cleanTitle)
         )
-        return when (found) {
-            is Response.Body -> pickFromSearch(found.text, seconds)
-            Response.Missing -> LyricsAnswer.NotFound
-            Response.Failed -> LyricsAnswer.Unavailable
+        when (found) {
+            is Response.Body -> when (val picked = pickFromSearch(found.text, seconds)) {
+                is LyricsAnswer.Found ->
+                    if (picked.synced) return picked else if (untimed == null) untimed = picked
+                LyricsAnswer.Unavailable -> failed = true
+                LyricsAnswer.NotFound -> Unit
+            }
+            Response.Missing -> Unit
+            Response.Failed -> failed = true
         }
+
+        // The last resort: **the title on its own, and the artist matched back by hand.**
+        //
+        // LRCLIB's own search wants the artist name to match, and one act is filed under two
+        // spellings of it all the time. Reported against *DenDerty — Чёрная дыра*: asking for
+        // `artist_name=DenDerty` answers with three records and not one of them is timed, while the
+        // timed one sits under **`Den Derty`**, with a space. Folded to letters and digits those are
+        // one name, and folding is the same thing this app already does to decide that "Blink 182"
+        // and "Blink-182" are one artist.
+        //
+        // A title on its own is a query that answers with twenty other people's songs — "Чёрная
+        // дыра" alone returns Мумий Тролль, Смешарики and KUNTEYNIR — so nothing here is trusted:
+        // the artist, the title *and* the length all have to agree before a record is believed.
+        for (spelling in spellingsOf(cleanTitle)) {
+            when (val loose = get("$Base/search?q=" + encode(spelling))) {
+                is Response.Body ->
+                    pickByHand(loose.text, cleanArtist, cleanTitle, seconds)?.let { picked ->
+                        if (picked.synced) return picked else if (untimed == null) untimed = picked
+                    }
+                Response.Missing -> Unit
+                Response.Failed -> failed = true
+            }
+        }
+
+        // Flat words in hand and a request that never got through: they are worth showing and worth
+        // nothing as a verdict, because the steps that look for *timed* words are exactly the ones
+        // that were lost. Saying so is what stops [LyricsRepository] writing the song off.
+        untimed?.let { return if (failed) it.copy(complete = false) else it }
+        return if (failed) LyricsAnswer.Unavailable else LyricsAnswer.NotFound
     }
+
+    /**
+     * The spellings of a title worth asking about, which is one — or two where **ё** is involved.
+     *
+     * LRCLIB does not treat `е` and `ё` as the same letter and neither do taggers: `q=Чёрная дыра`
+     * and `q=Черная дыра` come back with two entirely different sets of songs. Whichever a file
+     * carries, the other is the one the database may be filed under, so the fallback asks for both.
+     * Titles with neither letter, which is most of them, still cost exactly one request.
+     */
+    private fun spellingsOf(title: String): List<String> {
+        val swapped = buildString(title.length) {
+            for (c in title) append(
+                when (c) {
+                    'ё' -> 'е'
+                    'Ё' -> 'Е'
+                    'е' -> 'ё'
+                    'Е' -> 'Ё'
+                    else -> c
+                }
+            )
+        }
+        return if (swapped == title) listOf(title) else listOf(title, swapped)
+    }
+
+    /**
+     * The best record in a free-text answer that really is *this* recording.
+     *
+     * Everything is checked, because the query that produced it was a title and nothing else. A
+     * record with no length is refused here, unlike in [pickFromSearch]: there the artist and title
+     * had already been matched by the service, and here they are all this has.
+     */
+    private fun pickByHand(
+        body: String,
+        artist: String,
+        title: String,
+        seconds: Int
+    ): LyricsAnswer.Found? {
+        val results = runCatching { json.parseToJsonElement(body) as? JsonArray }.getOrNull()
+            ?: return null
+        val mine = results
+            .mapNotNull { it as? JsonObject }
+            .filter { entry ->
+                val length = entry["duration"]?.jsonPrimitive?.doubleOrNullSafe()?.toInt()
+                fold(entry["artistName"]?.jsonPrimitive?.contentOrNullSafe()) == fold(artist) &&
+                    fold(entry["trackName"]?.jsonPrimitive?.contentOrNullSafe()) == fold(title) &&
+                    length != null && seconds != 0 && abs(length - seconds) <= DurationSlackSeconds
+            }
+        val answers = mine.mapNotNull(::answerFor)
+        return answers.firstOrNull { it.synced } ?: answers.firstOrNull()
+    }
+
+    /**
+     * What two spellings of one name have in common: letters and digits, lowercased, with `ё` read
+     * as `е`. It is [com.metromusic.data.model.fold]'s rule, kept here because this file talks to a
+     * service rather than to the library.
+     */
+    private fun fold(value: String?): String =
+        (value ?: "").lowercase().replace('ё', 'е').filter { it.isLetterOrDigit() }
 
     /**
      * The best of the search results, or [LyricsAnswer.NotFound] if none of them is this recording.

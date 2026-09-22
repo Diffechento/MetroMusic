@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
@@ -107,6 +108,14 @@ fun MetroMusicRoot(
     // the state a restored session comes back in.
     var windowHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
+
+    // The same height, in the form the strip's backdrop wants it: it draws the top band of exactly
+    // what the page draws, so it needs a number on the very first frame too, before the box above
+    // has been measured. The configuration's idea of the window is short by the system bars and is
+    // close enough for one frame of one band.
+    val backdropHeight =
+        if (windowHeightPx > 0) with(density) { windowHeightPx.toDp() }
+        else LocalConfiguration.current.screenHeightDp.dp
 
     // The playing cover, decoded once and held *here* so it outlives the player: the page is removed
     // from the composition while it rests in the strip, so a bitmap remembered inside it is rebuilt
@@ -239,7 +248,7 @@ fun MetroMusicRoot(
             // it the player's full-bleed artwork ends its drop by turning into a black rectangle.
             MetroBottomBar(
                 visible = playerState.hasTrack,
-                background = { MiniPlayerBackdrop(backdropArt) }
+                background = { MiniPlayerBackdrop(backdropArt, backdropHeight) }
             ) {
                 MiniPlayer(state = playerState, rising = rising, onOpen = { playerOpen = true })
             }

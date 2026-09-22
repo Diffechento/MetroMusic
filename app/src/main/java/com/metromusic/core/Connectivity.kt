@@ -31,6 +31,7 @@ class Connectivity(context: Context) {
     private val manager = context.getSystemService(ConnectivityManager::class.java)
 
     private val _online = MutableStateFlow(true)
+    private val _arrivals = MutableStateFlow(0)
 
     /**
      * True while a validated network is up.
@@ -39,6 +40,20 @@ class Connectivity(context: Context) {
      * how it fails, rather than to hold a scrobble back over a callback that has not fired.
      */
     val online: StateFlow<Boolean> = _online.asStateFlow()
+
+    /**
+     * Counts the moments a usable network **arrived**, which is the thing anything holding a failed
+     * request wants to hear about.
+     *
+     * [online] on its own is the wrong shape for that. Keyed on a boolean, work re-runs when the
+     * network *goes* as well as when it comes, and a flapping connection reports `true` again without
+     * the value ever changing. A number that only ever goes up says "something that could not be
+     * asked before can be asked now" exactly once per arrival, which is what a `produceState` key or
+     * a retry wants.
+     *
+     * It does not tick for the network that is already up at startup: nothing has failed yet.
+     */
+    val arrivals: StateFlow<Int> = _arrivals.asStateFlow()
 
     init {
         val callback = object : ConnectivityManager.NetworkCallback() {
@@ -63,7 +78,9 @@ class Connectivity(context: Context) {
             capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         }.getOrDefault(true)
+        val wasOffline = !_online.value
         _online.value = usable
+        if (usable && wasOffline) _arrivals.value++
     }
 
     private companion object {

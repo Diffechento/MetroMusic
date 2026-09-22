@@ -72,6 +72,24 @@ enum class ArtistAlbumOrder {
 }
 
 /**
+ * What the player draws in the square where the cover goes.
+ *
+ * [Cover] is the artwork, which is what the player has always shown. [Lyrics] puts the song's words
+ * there instead, following the music line by line where the words carry timings — and it does *not*
+ * take the artwork off the screen, because the player's whole backdrop is that same cover: the
+ * square stops being a second, smaller copy of it and becomes something else to look at.
+ *
+ * A track with no words to show falls back to [Cover] by itself, so the square is never empty and
+ * nothing has to be switched back for the one song in a library that nobody has written lyrics for.
+ *
+ * Persisted by name, like the sorts and [LyricsSource]: adding a third face later must not silently
+ * change what an older settings file meant.
+ */
+enum class PlayerFace {
+    Cover, Lyrics
+}
+
+/**
  * Which service is asked for the words of a song that has none on the device.
  *
  * The two are different products rather than the same one twice, which is why this is a choice the
@@ -241,6 +259,20 @@ data class Settings(
      * one switch in one place.
      */
     val fullScreen: Boolean = false,
+    /**
+     * What the player shows where the cover goes; see [PlayerFace].
+     *
+     * **Set from the player itself and from nowhere else.** It had a row on the interface page for a
+     * while and it does not belong there: this is a way of looking at what is playing rather than a
+     * preference about the app, it changes with the song, and the song is on the player's screen.
+     * What it still is, is *remembered* — which is why it lives here rather than in a
+     * `remember` that dies with the page.
+     *
+     * Named rather than boolean for the same reason the sorts are: a third face — a visualiser, the
+     * queue — is a plausible thing to want, and a `playerLyrics = true` in everyone's settings file
+     * would be an awkward thing to grow into one.
+     */
+    val playerFaceName: String = PlayerFace.Cover.name,
     /** Home panorama section order; missing names are appended in their declared order. */
     val sectionOrder: List<String> = emptyList(),
     /** How each section is arranged, as an enum name; anything unknown reads as the default. */
@@ -348,15 +380,20 @@ data class Settings(
      */
     val lyricsSourceName: String = LyricsSource.LrcLib.name,
     /**
-     * Write the words fetched from Genius out as a `.lrc` beside the music.
+     * Write the words fetched from the online service out as a `.lrc` beside the music.
      *
      * Off by default, because it is the one lyrics setting that *creates files on the device* — and
      * a switch that quietly scatters a few hundred small files through somebody's music folder is
      * not a default. What it buys is that the words stop being this app's: `.lrc` is the format every
-     * other player reads, and a file in the music folder survives this app being uninstalled.
+     * other player reads, and a file in the music folder survives this app being uninstalled. An
+     * answer from LRCLIB is timed, so the file saved from one is a *synced* `.lrc`; Genius has no
+     * timings to save.
      *
-     * It needs [lyricsFolderUri] on Android 10 and above, where an app cannot make a file of its own
-     * in shared storage without being handed a folder — see `LyricsFiles`.
+     * **It goes beside the track — same folder, same name** (`LyricsFiles.writeBesideTheTrack`), and
+     * that works on a modern phone rather than needing a folder handed over: MediaProvider files
+     * `.lrc` as a *subtitle*, and subtitles are gated on the audio permission along with the media
+     * they belong to. [lyricsFolderUri] is the fallback for a device that refuses, and for somebody
+     * who keeps their lyrics somewhere else on purpose.
      */
     val lyricsSaveLrc: Boolean = false,
     /**
@@ -394,6 +431,10 @@ data class Settings(
     val artistAlbumOrder: ArtistAlbumOrder
         get() = ArtistAlbumOrder.entries.firstOrNull { it.name == artistAlbumOrderName }
             ?: ArtistAlbumOrder.Year
+
+    /** The player's face; an unknown name reads as the cover rather than throwing settings away. */
+    val playerFace: PlayerFace
+        get() = PlayerFace.entries.firstOrNull { it.name == playerFaceName } ?: PlayerFace.Cover
 
     /** The chosen service; an unknown name reads as the default rather than throwing settings away. */
     val lyricsSource: LyricsSource
@@ -433,6 +474,8 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
     fun setCollapseTitle(on: Boolean) = store.update { it.copy(collapseTitle = on) }
 
     fun setFullScreen(on: Boolean) = store.update { it.copy(fullScreen = on) }
+
+    fun setPlayerFace(face: PlayerFace) = store.update { it.copy(playerFaceName = face.name) }
 
     fun setOnlineArtwork(on: Boolean) = store.update { it.copy(onlineArtwork = on) }
 

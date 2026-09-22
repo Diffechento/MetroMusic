@@ -94,7 +94,9 @@ class Services(context: Context) {
 
     val volume: VolumeController by lazy { VolumeController(appContext) }
 
-    val lyrics: LyricsRepository by lazy { LyricsRepository(appContext, scope, settings) }
+    val lyrics: LyricsRepository by lazy {
+        LyricsRepository(appContext, scope, settings, connectivity)
+    }
 
     val scrobbler: Scrobbler by lazy { Scrobbler(appContext, scope, settings, connectivity) }
 

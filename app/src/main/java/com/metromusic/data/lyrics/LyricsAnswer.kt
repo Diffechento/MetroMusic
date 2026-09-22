@@ -14,8 +14,21 @@ import com.metromusic.data.store.LyricsSource
  * apart, and every client returns this rather than a nullable string for exactly that reason.
  */
 sealed interface LyricsAnswer {
-    /** The words. [synced] says whether they carry timestamps, which only LRCLIB can supply. */
-    data class Found(val text: String, val synced: Boolean) : LyricsAnswer
+    /**
+     * The words. [synced] says whether they carry timestamps, which only LRCLIB can supply.
+     *
+     * [complete] is the same distinction one level in, and it exists because a lookup is several
+     * requests: flat words can be in hand while the request that would have found *timed* ones was
+     * the one that failed. Reporting that as a plain answer makes the caller write "this song has no
+     * timings" down for ever on the strength of a tunnel — the very thing [Unavailable] exists to
+     * prevent, reappearing inside a success. False means "this is the best of what got through", and
+     * the caller may show it but must not remember anything about it.
+     */
+    data class Found(
+        val text: String,
+        val synced: Boolean,
+        val complete: Boolean = true
+    ) : LyricsAnswer
 
     /** The service answered, and it does not have this song. Safe to remember. */
     data object NotFound : LyricsAnswer
