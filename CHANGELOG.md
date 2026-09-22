@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Long tracks come back where you left them.** A restored queue has always started its track from
+the top, which is right for a song and loses an hour of a podcast. Settings → playback → resuming
+now takes a length (5 minutes to an hour, off by default): a track at least that long keeps the
+exact moment it was at when the app closed, including being swiped away from recents, and the next
+launch puts it back there, paused. Shorter tracks still start from the beginning.
+
 **Years in FLAC, Ogg, Opus and ID3v2.4 files are read.** Android's media database only reads a
 Vorbis comment called `YEAR` and ignores `DATE`, which is the field the format actually defines and
 the one every tagger writes; it likewise ignores `TDRC`, the ID3v2.4 year. So a FLAC library tagged
@@ -9,12 +15,6 @@ properly had no years at all, and sorting an artist's albums by year put all of 
 unknown". Where the database leaves the year empty, the app now reads it from the file's own tags.
 It reads only the header, never the audio, and remembers what it found, so the price is paid once
 per file.
-
-**Long tracks come back where you left them.** A restored queue has always started its track from
-the top, which is right for a song and loses an hour of a podcast. Settings → playback → resuming
-now takes a length (5 minutes to an hour, off by default): a track at least that long keeps the
-exact moment it was at when the app closed, including being swiped away from recents, and the next
-launch puts it back there, paused. Shorter tracks still start from the beginning.
 
 **Playlists are `.m3u` files now.** They used to be a list of MediaStore ids inside
 `playlists.json`, which nothing but this app could read and which the media database invalidates

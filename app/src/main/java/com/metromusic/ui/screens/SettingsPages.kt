@@ -329,7 +329,10 @@ private fun ThemeSettings() {
     }
 }
 
-/** What the home panorama looks like: which sections, in what order, and the strip's cover. */
+/**
+ * What the home panorama looks like: which sections, in what order, and the strip's cover —
+ * and what the player puts in the square where its artwork goes.
+ */
 @Composable
 private fun InterfaceSettings() {
     val services = LocalServices.current
