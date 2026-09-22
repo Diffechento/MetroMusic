@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Long tracks come back where you left them.** A restored queue has always started its track from
+the top, which is right for a song and loses an hour of a podcast. Settings → playback → resuming
+now takes a length (5 minutes to an hour, off by default): a track at least that long keeps the
+exact moment it was at when the app closed, including being swiped away from recents, and the next
+launch puts it back there, paused. Shorter tracks still start from the beginning.
+
 **Playlists are `.m3u` files now.** They used to be a list of MediaStore ids inside
 `playlists.json`, which nothing but this app could read and which the media database invalidates
 every time it rebuilds itself. A playlist is now a plain `.m3u` in `Music/Playlists` — the one

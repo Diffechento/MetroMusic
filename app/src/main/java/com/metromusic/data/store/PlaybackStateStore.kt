@@ -20,8 +20,12 @@ import java.io.File
  *
  * Two things are deliberately *not* stored. Whether it was playing — restoring the queue puts the
  * strip back with the track you left on it, while resuming playback is something nobody asked the
- * app to do by launching it. And the position within the track: coming back to the middle of a song
- * is not what anyone wants from it, so a restored track starts at its beginning.
+ * app to do by launching it. And, as a rule, the position within the track: coming back to the
+ * middle of a song is not what anyone wants from it, so a restored track starts at its beginning.
+ *
+ * The exception is [positionMs], for tracks long enough that starting over *is* the loss — a
+ * podcast, an audiobook. It is written only for a current track at least
+ * [com.metromusic.data.store.Settings.resumePositionMinutes] long, and 0 otherwise.
  */
 @Serializable
 data class SavedQueue(
@@ -35,7 +39,12 @@ data class SavedQueue(
      * than reading it out of order.
      */
     val unshuffledIds: List<Long>? = null,
-    val repeatMode: Int = 0
+    val repeatMode: Int = 0,
+    /**
+     * Where in the track at [index] playback was, in milliseconds. 0 means "from the top", which is
+     * what every track shorter than the resume threshold gets — see the class comment.
+     */
+    val positionMs: Long = 0L
 ) {
     val isEmpty: Boolean get() = trackIds.isEmpty()
 

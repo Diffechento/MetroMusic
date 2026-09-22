@@ -761,6 +761,7 @@ private fun PlaybackSettings() {
     val settings by services.settings.settings.collectAsStateWithLifecycle()
     val sleepRemaining by services.player.sleepRemainingMs.collectAsStateWithLifecycle()
     var pickingSleep by remember { mutableStateOf(false) }
+    var pickingResume by remember { mutableStateOf(false) }
 
     SettingsPageFrame(stringResource(R.string.settings_playback)) {
         SettingsHeader(stringResource(R.string.playback_loudness))
@@ -795,7 +796,40 @@ private fun PlaybackSettings() {
                 onClick = { services.player.setSleepTimer(settings.sleepTimerMinutes) }
             )
         }
+
+        Spacer(Modifier.height(18.dp))
+        SettingsHeader(stringResource(R.string.playback_resume))
+        ListRow(
+            primary = stringResource(R.string.resume_position),
+            secondary = if (settings.resumePositionMinutes > 0) {
+                stringResource(R.string.resume_position_value, settings.resumePositionMinutes)
+            } else {
+                stringResource(R.string.resume_position_off)
+            },
+            onClick = { pickingResume = true }
+        )
+        Text(
+            text = stringResource(R.string.resume_position_explainer),
+            color = colors.dim,
+            fontFamily = MetroRegular,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
     }
+
+    MetroListBox(
+        visible = pickingResume,
+        title = stringResource(R.string.resume_position),
+        items = ResumeOptions.map { minutes ->
+            if (minutes > 0) stringResource(R.string.resume_position_value, minutes)
+            else stringResource(R.string.sleep_off)
+        },
+        onSelect = { index ->
+            services.settings.setResumePositionMinutes(ResumeOptions[index])
+            pickingResume = false
+        },
+        onDismiss = { pickingResume = false }
+    )
 
     MetroListBox(
         visible = pickingSleep,
@@ -1197,5 +1231,8 @@ private val SleepOptions = listOf(
     SleepOption(R.string.sleep_60, 60),
     SleepOption(R.string.sleep_120, 120)
 )
+
+/** Minutes a track must last before its position is kept; 0 is off. */
+private val ResumeOptions = listOf(0, 5, 10, 15, 20, 30, 45, 60)
 
 private val MinLengthOptions = listOf(0, 10, 20, 30, 60, 90)

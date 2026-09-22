@@ -230,6 +230,14 @@
     <!-- ==== playback and library pages ==== -->
     <string name="playback_loudness">loudness</string>
     <string name="playback_sleep">sleep</string>
+    <string name="playback_resume">resuming</string>
+    <string name="resume_position">remember where I stopped in tracks longer than</string>
+    <string name="resume_position_off">never — every track starts from the top</string>
+    <!-- The threshold in the resume row, e.g. "15 minutes". -->
+    <string name="resume_position_value">%1$d minutes</string>
+    <string name="resume_position_explainer">a song comes back from its beginning, which is what a
+        song is for. a podcast or an audiobook two hours long does not: past this length the app
+        keeps the exact moment you were at, and the next launch picks up from there.</string>
     <string name="playback_normalize">even out the volume between tracks</string>
     <string name="playback_normalize_explainer">uses the replaygain tags your files were given when
         they were ripped or tagged. it can only turn a loud track down, never a quiet one up, and a

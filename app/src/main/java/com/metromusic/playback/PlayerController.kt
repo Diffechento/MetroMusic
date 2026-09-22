@@ -17,6 +17,7 @@ import com.metromusic.data.model.Library
 import com.metromusic.data.model.Track
 import com.metromusic.data.store.PlaybackStateStore
 import com.metromusic.data.store.SavedQueue
+import com.metromusic.data.store.SettingsStore
 import com.metromusic.data.store.StatsStore
 import com.metromusic.widget.NowPlayingWidget
 import kotlinx.coroutines.CoroutineScope
@@ -54,7 +55,8 @@ class PlayerController(
     private val context: Context,
     private val scope: CoroutineScope,
     private val stats: StatsStore,
-    private val savedQueue: PlaybackStateStore
+    private val savedQueue: PlaybackStateStore,
+    private val settings: SettingsStore
 ) {
     private var controller: MediaController? = null
     private val connectMutex = Mutex()
@@ -202,6 +204,9 @@ class PlayerController(
         restoreAttempted = true
         val saved = savedQueue.awaitLoaded()
         if (saved.isEmpty) return
+        // The resume threshold is read below, and read a moment early it is the default — off —
+        // which would quietly send a podcast back to its first second.
+        settings.awaitLoaded()
 
         val tracks = library.resolve(saved.trackIds)
         if (tracks.isEmpty()) return
@@ -209,6 +214,14 @@ class PlayerController(
         // them, and coming back on the wrong song is worse than coming back on the first one.
         val currentId = saved.trackIds.getOrNull(saved.index)
         val startIndex = tracks.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
+        // The saved moment belongs to the saved track, so it is only used if that is the track the
+        // queue comes back on — and only if the track is still long enough under the setting as it
+        // stands now, since turning the setting off is asking for tracks to start from the top.
+        val startTrack = tracks[startIndex]
+        val startPosition = saved.positionMs
+            .takeIf { startTrack.id == currentId && keepsPosition(startTrack.durationMs) }
+            ?.coerceIn(0L, startTrack.durationMs)
+            ?: 0L
 
         command { player ->
             if (player.mediaItemCount > 0) return@command
@@ -223,8 +236,8 @@ class PlayerController(
                 order.sorted() == tracks.map { track -> track.id }.sorted()
             }
             // From the top of the track, not from where it was cut off: nobody wants a song
-            // handed back to them from the middle.
-            player.setMediaItems(tracks.map { it.toMediaItem() }, startIndex, 0L)
+            // handed back to them from the middle. A podcast is the exception — see [keepsPosition].
+            player.setMediaItems(tracks.map { it.toMediaItem() }, startIndex, startPosition)
             player.repeatMode = saved.repeatMode
             // prepare() and *not* play(): buffered, seekable and on the strip, but silent until
             // something is pressed.
@@ -235,9 +248,9 @@ class PlayerController(
     /**
      * Snapshots the queue into [PlaybackStateStore]. Main thread, like every other player read.
      *
-     * Called from [publish], which is enough precisely because the position isn't kept: everything
-     * that changes what would be restored — a new queue, a skip, shuffle, repeat — is an event, and
-     * a track that is merely playing changes none of it.
+     * Called from [publish], which is enough for everything but the position: a new queue, a skip,
+     * shuffle, repeat, a pause and a seek are all events. A long track that merely plays changes
+     * only its position, and that is what [positionSaver] is for.
      */
     private fun remember(player: Player, ids: List<Long>) {
         // An empty player is the state at startup, before the restore has run — saving it there
@@ -255,9 +268,64 @@ class PlayerController(
                 index = player.currentMediaItemIndex.coerceIn(0, ids.lastIndex),
                 shuffle = shuffled,
                 unshuffledIds = unshuffledIds,
-                repeatMode = player.repeatMode
+                repeatMode = player.repeatMode,
+                positionMs = if (keepsPosition(currentDuration(player))) {
+                    player.currentPosition.coerceAtLeast(0L)
+                } else {
+                    0L
+                }
             )
         )
+    }
+
+    /**
+     * Whether a track of [durationMs] comes back where it was left rather than from the top — the
+     * setting for podcasts and audiobooks, off by default.
+     */
+    private fun keepsPosition(durationMs: Long): Boolean {
+        val minutes = settings.settings.value.resumePositionMinutes
+        return minutes > 0 && durationMs >= minutes * 60_000L
+    }
+
+    /**
+     * The current track's length, from the library first.
+     *
+     * The player only knows a duration once it has prepared the item, and a publish arrives before
+     * that — right after a restore, for one. Asking the player alone would read that moment as "not
+     * long enough" and write 0 over the position that was just put back.
+     */
+    private fun currentDuration(player: Player): Long {
+        val id = player.currentMediaItem?.mediaId?.toLongOrNull()
+        return id?.let { trackById?.invoke(it)?.durationMs }?.takeIf { it > 0 }
+            ?: player.duration.coerceAtLeast(0L)
+    }
+
+    private var positionSaver: Job? = null
+
+    /**
+     * While a long track plays, writes its position down every [PositionSaveMs].
+     *
+     * Everything else about the queue is saved by the event that changes it, but a podcast playing
+     * raises no event for an hour, and a process killed from the recents screen gets no chance to
+     * say where it was. So the loss is bounded instead: at most this interval, plus the store's own
+     * debounce. Runs only while something that qualifies is actually playing, so a library of songs
+     * costs nothing.
+     */
+    private fun updatePositionSaver(player: Player) {
+        val wanted = player.isPlaying && keepsPosition(currentDuration(player))
+        if (!wanted) {
+            positionSaver?.cancel()
+            positionSaver = null
+            return
+        }
+        if (positionSaver?.isActive == true) return
+        positionSaver = scope.launch(Dispatchers.Main) {
+            while (true) {
+                delay(PositionSaveMs)
+                val current = controller ?: break
+                remember(current, current.queueTrackIds())
+            }
+        }
     }
 
     /**
@@ -672,6 +740,7 @@ class PlayerController(
         // survives the process, and the list the queue screen draws.
         val ids = player.queueTrackIds()
         remember(player, ids)
+        updatePositionSaver(player)
         publishQueue(player, ids)
         NowPlayingWidget.publish(
             context = context,
@@ -834,6 +903,9 @@ class PlayerController(
          * nothing, which is the truth about it, while the shell still sees *something* playing.
          */
         const val ExternalTrackId = -1L
+
+        /** How often a long track's position is written down while it plays — see [updatePositionSaver]. */
+        const val PositionSaveMs = 10_000L
 
         /** How long the sleep timer takes to fade playback out. */
         const val FadeMs = 5_000L

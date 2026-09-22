@@ -211,6 +211,13 @@ data class Settings(
     val preferKnownArtist: Boolean = false,
     val sleepTimerMinutes: Int = 0,
     /**
+     * Tracks at least this many minutes long come back at the moment they were left, rather than
+     * from the top. 0 is off, which is the default: a restored *song* starting over is deliberate
+     * (see [com.metromusic.data.store.SavedQueue]), and this exists for the podcast or the
+     * audiobook, where losing the place is losing an hour.
+     */
+    val resumePositionMinutes: Int = 0,
+    /**
      * Even out the loudness between tracks, from the ReplayGain tags the files carry.
      *
      * Off by default: it is a change to how loud the music is, made without being asked, and on a
@@ -466,6 +473,9 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
 
     val settings: StateFlow<Settings> = store.state
 
+    /** The settings once the file has been read — see [JsonStore.awaitLoaded]. */
+    suspend fun awaitLoaded(): Settings = store.awaitLoaded()
+
     fun setAccent(argb: Int) = store.update { it.copy(accentArgb = argb) }
 
     fun setDark(dark: Boolean) = store.update { it.copy(dark = dark) }
@@ -579,6 +589,9 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
 
     fun setSleepTimerMinutes(minutes: Int) =
         store.update { it.copy(sleepTimerMinutes = minutes.coerceAtLeast(0)) }
+
+    fun setResumePositionMinutes(minutes: Int) =
+        store.update { it.copy(resumePositionMinutes = minutes.coerceAtLeast(0)) }
 
     fun setEqualizerEnabled(on: Boolean) = store.update { it.copy(equalizerEnabled = on) }
 
