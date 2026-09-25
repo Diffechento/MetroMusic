@@ -5,10 +5,10 @@ coreKtx = "1.15.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.12.01"
-# 1.0.4 has been on Central since 2026-09-14 and is what 1.4 shipped against — a page that is turning
-# no longer answers to the finger, so the cover flying between a list and an album page cannot be
-# chased across the screen by a list scrolled under it. Going back to 1.0.3 (on Central since
-# 2026-08-31, what 1.3 shipped against) is a one-line revert of this number plus the nav-host fix.
+# 1.0.5 has been on Central since 2026-09-25: a panorama header leaning in is a way to its section,
+# and the lyrics icon, the flip tile, the subheading and the empty note moved into the framework from
+# here. Going back to 1.0.4 (on Central since 2026-09-14, what 1.4 shipped against) means reverting
+# this number and putting those four back into the app.
 #
 # Raise this only once the new version is really on Central: `mavenLocal()` comes first in
 # `settings.gradle.kts`, so a number that exists only on this machine builds here and fails for a
