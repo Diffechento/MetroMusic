@@ -21,6 +21,7 @@ import com.metrocompose.ListRow
 import com.metrocompose.MetroBottomInset
 import com.metrocompose.MetroContextMenu
 import com.metrocompose.MetroEdgeScroll
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroListBox
 import com.metrocompose.MetroLongList
 import com.metrocompose.MetroTextBox
@@ -30,7 +31,6 @@ import com.metromusic.core.LocalServices
 import com.metromusic.data.model.Library
 import com.metromusic.data.model.Track
 import com.metromusic.ui.components.CollectionRowWithActions
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.PlaylistPicker
 import com.metromusic.ui.components.rememberCollectionActions
 import com.metromusic.ui.components.TrackActions
@@ -101,7 +101,7 @@ fun ArtistsSection(
     onSearchChange: (String) -> Unit = {}
 ) {
     if (library.artists.isEmpty()) {
-        EmptyNote(stringResource(R.string.empty_no_artists), modifier)
+        MetroEmptyNote(stringResource(R.string.empty_no_artists), modifier)
         return
     }
     val services = LocalServices.current
@@ -158,7 +158,7 @@ fun AlbumsSection(
     onSearchChange: (String) -> Unit = {}
 ) {
     if (library.albums.isEmpty()) {
-        EmptyNote(stringResource(R.string.empty_no_albums), modifier)
+        MetroEmptyNote(stringResource(R.string.empty_no_albums), modifier)
         return
     }
     val services = LocalServices.current
@@ -231,7 +231,7 @@ fun SongsSection(
     onSearchChange: (String) -> Unit = {}
 ) {
     if (library.tracks.isEmpty()) {
-        EmptyNote(stringResource(R.string.empty_no_songs), modifier)
+        MetroEmptyNote(stringResource(R.string.empty_no_songs), modifier)
         return
     }
     val services = LocalServices.current
@@ -286,7 +286,7 @@ fun GenresSection(
     picker: PlaylistPicker? = null
 ) {
     if (library.genres.isEmpty()) {
-        EmptyNote(stringResource(R.string.empty_no_genres), modifier)
+        MetroEmptyNote(stringResource(R.string.empty_no_genres), modifier)
         return
     }
     val services = LocalServices.current

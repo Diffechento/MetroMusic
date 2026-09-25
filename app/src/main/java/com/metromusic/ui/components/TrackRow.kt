@@ -4,7 +4,6 @@ package com.metromusic.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -179,18 +178,5 @@ fun WideTile(
                 overflow = TextOverflow.Ellipsis
             )
         }
-    }
-}
-
-/** Centered message for the "nothing here yet" states. */
-@Composable
-fun EmptyNote(text: String, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp)) {
-        Text(
-            text = text,
-            color = MetroTheme.colors.dim,
-            fontFamily = MetroRegular,
-            fontSize = 18.sp
-        )
     }
 }

@@ -39,6 +39,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.MetroButton
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroPage
 import com.metrocompose.MetroRegular
 import com.metrocompose.MetroSemilight
@@ -49,7 +50,6 @@ import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.media.MetadataWriter
 import com.metromusic.data.media.Tags
-import com.metromusic.ui.components.EmptyNote
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,7 +74,7 @@ fun AlbumEditScreen(albumId: Long, onDone: () -> Unit) {
 
     if (album == null) {
         MetroPage(stringResource(R.string.overline_app), stringResource(R.string.album_title)) {
-            EmptyNote(stringResource(R.string.album_gone))
+            MetroEmptyNote(stringResource(R.string.album_gone))
         }
         return
     }

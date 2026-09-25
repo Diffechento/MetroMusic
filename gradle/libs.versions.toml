@@ -13,7 +13,7 @@ composeBom = "2024.12.01"
 # Raise this only once the new version is really on Central: `mavenLocal()` comes first in
 # `settings.gradle.kts`, so a number that exists only on this machine builds here and fails for a
 # fresh clone, for CI and for F-Droid's builder, with nothing on screen to say so.
-metrocompose = "1.0.4"
+metrocompose = "1.0.5"
 media3 = "1.5.1"
 serialization = "1.7.3"
 coroutines = "1.9.0"

@@ -33,6 +33,7 @@ import com.metrocompose.AppBar
 import com.metrocompose.AppBarButton
 import com.metrocompose.ListRow
 import com.metrocompose.MetroContextMenu
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroPage
 import com.metrocompose.MetroRegular
 import com.metrocompose.MetroTheme
@@ -40,7 +41,6 @@ import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.playlist.PlaylistEntry
 import com.metromusic.ui.Glyphs
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions
 import com.metromusic.ui.components.rememberTrackActions
@@ -77,7 +77,7 @@ fun PlaylistDetailScreen(playlistId: String, onNavigate: (Screen) -> Unit) {
                 if (data.loaded) R.string.playlist_not_found else R.string.row_playlists
             )
         ) {
-            if (data.loaded) EmptyNote(stringResource(R.string.playlist_gone))
+            if (data.loaded) MetroEmptyNote(stringResource(R.string.playlist_gone))
         }
         return
     }
@@ -116,7 +116,7 @@ fun PlaylistDetailScreen(playlistId: String, onNavigate: (Screen) -> Unit) {
             }
 
             if (entries.isEmpty()) {
-                EmptyNote(stringResource(R.string.playlist_empty))
+                MetroEmptyNote(stringResource(R.string.playlist_empty))
                 return@MetroPage
             }
 

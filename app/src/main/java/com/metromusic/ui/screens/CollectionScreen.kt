@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.ListRow
 import com.metrocompose.MetroBottomInset
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroPanorama
 import com.metrocompose.MetroPanoramaSection
 import com.metrocompose.MetroProgressDots
@@ -28,7 +29,6 @@ import com.metromusic.core.LocalServices
 import com.metromusic.data.model.Album
 import com.metromusic.data.store.LibrarySection
 import com.metromusic.ui.components.AppBackdrop
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.PlaylistPickerHost
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.WideTile
@@ -302,7 +302,7 @@ private fun HistorySection(
     onNavigate: (Screen) -> Unit
 ) {
     if (albums.isEmpty()) {
-        EmptyNote(
+        MetroEmptyNote(
             text = stringResource(
                 if (loaded) R.string.empty_history else R.string.empty_history_loading
             ),

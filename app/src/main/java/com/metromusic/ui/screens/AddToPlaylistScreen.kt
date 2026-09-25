@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.AppBar
 import com.metrocompose.AppBarButton
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroPage
 import com.metrocompose.MetroRegular
 import com.metrocompose.MetroTextBox
@@ -37,7 +38,6 @@ import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.model.Track
 import com.metromusic.ui.Glyphs
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.TrackRow
 
 /**
@@ -69,7 +69,7 @@ fun AddToPlaylistScreen(playlistId: String, onDone: () -> Unit) {
             stringResource(R.string.overline_playlist),
             stringResource(R.string.playlist_not_found)
         ) {
-            if (data.loaded) EmptyNote(stringResource(R.string.playlist_gone))
+            if (data.loaded) MetroEmptyNote(stringResource(R.string.playlist_gone))
         }
         return
     }
@@ -134,7 +134,7 @@ fun AddToPlaylistScreen(playlistId: String, onDone: () -> Unit) {
         )
 
         if (shown.isEmpty()) {
-            EmptyNote(stringResource(R.string.playlist_add_empty))
+            MetroEmptyNote(stringResource(R.string.playlist_add_empty))
             return@MetroPage
         }
 

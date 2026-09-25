@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -58,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.metrocompose.MetroCrossfade
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroIcon
 import com.metrocompose.MetroLineIcon
 import com.metrocompose.MetroRegular
@@ -79,7 +78,6 @@ import com.metromusic.ui.components.AlbumArt
 import com.metromusic.ui.components.BackdropAlpha
 import com.metromusic.ui.components.BackdropScrimBottom
 import com.metromusic.ui.components.BackdropScrimTop
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.LyricTickMs
 import com.metromusic.ui.components.PlayerLyrics
 import com.metromusic.ui.components.rememberWordsAvailable
@@ -199,7 +197,7 @@ fun NowPlayingScreen(
 
     if (!state.hasTrack) {
         Box(Modifier.fillMaxSize().background(colors.bg)) {
-            EmptyNote(stringResource(R.string.player_nothing))
+            MetroEmptyNote(stringResource(R.string.player_nothing))
         }
         return
     }
@@ -573,10 +571,13 @@ fun NowPlayingScreen(
                     // greys out only where there is nothing to switch to — a song the index has
                     // already written off, and only while the cover is what is being shown, so the
                     // mode can always be turned off again from wherever you are.
-                    FaceToggle(
+                    TransportButton(
+                        icon = MetroIcon.LyricLines,
                         contentDescription = stringResource(
                             if (wordsChosen) R.string.player_face_cover else R.string.player_face_words
                         ),
+                        iconSize = 23.dp,
+                        touchSize = 52.dp,
                         enabled = wordsChosen || wordsAvailable,
                         active = wordsChosen
                     ) {
@@ -746,72 +747,6 @@ fun NowPlayingScreen(
  * [content] is given the slot it is drawing so that the current one can keep the choreography a track
  * change has when nobody swiped for it, and the neighbours — which are already sliding — can do without.
  */
-/**
- * The button that changes the player's face, and the one icon this app draws for itself.
- *
- * `TransportButton` takes either a [MetroIcon] or a character, and neither would do: the framework
- * has no mark for this and is not this app's to grow for one button, and the character that was here
- * first — a pilcrow — is a typographer's mark for a paragraph rather than an icon, sitting in a row
- * of drawn shapes looking like a stray letter. So the geometry and the tint rules are copied from
- * `TransportButton` (dim when it can do nothing, accent when the words are chosen, foreground
- * otherwise) and the middle is [LyricLinesIcon].
- */
-@Composable
-private fun FaceToggle(
-    contentDescription: String,
-    enabled: Boolean,
-    active: Boolean,
-    onClick: () -> Unit
-) {
-    val colors = MetroTheme.colors
-    val tint = when {
-        !enabled -> colors.dim
-        active -> colors.accent
-        else -> colors.fg
-    }
-    Box(
-        Modifier
-            .size(52.dp)
-            .clickable(enabled = enabled, onClickLabel = contentDescription) { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        LyricLinesIcon(tint, Modifier.size(23.dp))
-    }
-}
-
-/**
- * Lines of words with one of them lit: the thing the button does, drawn rather than named.
- *
- * Four strokes at the weight every other mark on this screen is drawn at, of **unequal length** —
- * which is the whole difference between a page of writing and a menu icon, and three equal bars is
- * exactly what a menu icon is. The second stroke is full width where the others fall short, so what
- * the eye picks out is a line standing proud of the ones around it: the sung line, which is what the
- * face this button turns on is *for*.
- *
- * The lengths are ragged on purpose and in no particular pattern. Set them tidily — long, short,
- * long, short — and it reads as a graph.
- */
-@Composable
-private fun LyricLinesIcon(color: Color, modifier: Modifier = Modifier) {
-    val stroke = with(LocalDensity.current) { 2.dp.toPx() }
-    Canvas(modifier) {
-        val lengths = floatArrayOf(0.72f, 1f, 0.58f, 0.86f)
-        // Inset by half the stroke at both ends so the outer strokes sit *inside* the icon's box
-        // rather than half out of it, which is what makes it the same visual size as its neighbours.
-        val top = stroke / 2f
-        val span = size.height - stroke
-        lengths.forEachIndexed { index, length ->
-            val y = top + span * index / (lengths.size - 1)
-            drawLine(
-                color = color,
-                start = Offset(0f, y),
-                end = Offset(size.width * length, y),
-                strokeWidth = stroke
-            )
-        }
-    }
-}
-
 /**
  * A cover in the face's slot, sitting on the slot's **bottom** edge.
  *

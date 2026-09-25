@@ -14,11 +14,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.AppBar
 import com.metrocompose.AppBarButton
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroPage
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.ui.Glyphs
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.PlaylistPickerHost
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions
@@ -39,7 +39,7 @@ fun GenreDetailScreen(genre: String) {
     Box(Modifier.fillMaxSize()) {
         MetroPage(stringResource(R.string.overline_genre), genre) {
             if (tracks.isEmpty()) {
-                EmptyNote(stringResource(R.string.genre_gone))
+                MetroEmptyNote(stringResource(R.string.genre_gone))
                 return@MetroPage
             }
             AppBar(Modifier.padding(bottom = 8.dp)) {

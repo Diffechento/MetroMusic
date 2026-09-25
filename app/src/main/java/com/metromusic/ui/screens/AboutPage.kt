@@ -1,11 +1,8 @@
 package com.metromusic.ui.screens
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.text.font.FontFamily
+import com.metrocompose.MetroFlipTile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,14 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +33,7 @@ import com.metrocompose.MetroAccents
 import com.metrocompose.MetroLight
 import com.metrocompose.MetroRegular
 import com.metrocompose.MetroSemilight
+import com.metrocompose.MetroSubheader
 import com.metrocompose.MetroTheme
 import com.metromusic.BuildConfig
 import com.metromusic.R
@@ -122,7 +117,7 @@ internal fun AboutSettings() {
         }
 
         Spacer(Modifier.height(26.dp))
-        SettingsHeader(stringResource(R.string.about_tiles))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.about_tiles))
         FlowRow(
             Modifier.padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -160,7 +155,7 @@ internal fun AboutSettings() {
         )
 
         Spacer(Modifier.height(28.dp))
-        SettingsHeader(stringResource(R.string.about_notices))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.about_notices))
         // Not decoration and not optional. Three-clause BSD asks that its copyright notice, its
         // conditions and its disclaimer travel with *binaries* as well as source, and an APK handed to
         // someone is a binary distribution with no README beside it — so the notice has to be reachable
@@ -188,81 +183,52 @@ internal fun AboutSettings() {
 private data class AboutTile(val label: Int, val glyph: String, val count: Int)
 
 /**
- * A tile that flips on tap, presses in under a finger, and repaints itself on the way round.
+ * A tile that flips on tap and repaints itself on the way round.
  *
- * The flip is a rotation about Y with a *finite* camera distance — without one it is an affine
- * squash rather than a turn, which reads as the tile being squeezed. The back face is drawn rotated
- * a further half turn so its number is not mirrored; whether a face is the back is the parity of the
- * accumulated turns, not the current angle, so the text swaps exactly once per tap and at the point
- * where the tile is edge-on and nothing can be read anyway.
+ * The turn itself is the framework's [MetroFlipTile]; what is this page's own is the colour, which
+ * walks on through the twenty accents with each turn, and the two faces — a glyph on the front, a
+ * real count out of the library on the back.
  */
 @Composable
 private fun PokeableTile(tile: AboutTile, seed: Int, onPoke: () -> Unit) {
     var turns by rememberSaveable(tile.label) { mutableIntStateOf(0) }
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-
-    val angle by animateFloatAsState(
-        targetValue = turns * 180f,
-        animationSpec = tween(durationMillis = 420),
-        label = "tile-flip"
-    )
-    // The phone's own tiles sink into the page under a finger rather than lighting up.
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.94f else 1f,
-        animationSpec = tween(durationMillis = 90),
-        label = "tile-press"
-    )
-
-    // Each turn walks on through the twenty accents, starting somewhere different per tile so a
-    // freshly opened page is not six squares of one colour.
+    // Starting somewhere different per tile, so a freshly opened page is not six squares of one
+    // colour.
     val accent = MetroAccents[(seed * 3 + turns) % MetroAccents.size].second
-    val showsCount = turns % 2 != 0
-    val density = LocalDensity.current.density
+    val label = stringResource(tile.label)
 
-    Box(
-        Modifier
-            .size(104.dp)
-            .graphicsLayer {
-                rotationY = angle
-                scaleX = scale
-                scaleY = scale
-                cameraDistance = 16f * density
-            }
-            .background(accent)
-            .clickable(interactionSource = interaction, indication = null) {
-                turns++
-                onPoke()
-            }
-    ) {
-        // One surface carries the counter-turn for the whole face, and everything is positioned inside
-        // it. Turning each piece of text on its own instead leaves the *positions* mirrored — the
-        // number reads correctly while the label crosses to the other corner, which looks like a
-        // layout bug and is really two rotations that do not compose.
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { rotationY = if (showsCount) 180f else 0f }
-                .padding(10.dp)
-        ) {
-            Text(
-                text = if (showsCount) tile.count.toString() else tile.glyph,
-                color = Color.White,
-                fontFamily = if (showsCount) MetroLight else MetroSemilight,
-                fontSize = if (showsCount) 34.sp else 30.sp,
-                modifier = Modifier.align(Alignment.TopStart)
-            )
-            Text(
-                text = stringResource(tile.label),
-                color = Color.White,
-                fontFamily = MetroRegular,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Start,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(bottom = 2.dp, end = 4.dp)
-            )
-        }
+    MetroFlipTile(
+        turns = turns,
+        onClick = {
+            turns++
+            onPoke()
+        },
+        color = accent,
+        front = { TileFace(tile.glyph, MetroSemilight, 30.sp, label) },
+        back = { TileFace(tile.count.toString(), MetroLight, 34.sp, label) }
+    )
+}
+
+@Composable
+private fun TileFace(big: String, family: FontFamily, size: TextUnit, label: String) {
+    Box(Modifier.fillMaxSize().padding(10.dp)) {
+        Text(
+            text = big,
+            color = Color.White,
+            fontFamily = family,
+            fontSize = size,
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+        Text(
+            text = label,
+            color = Color.White,
+            fontFamily = MetroRegular,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Start,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = 2.dp, end = 4.dp)
+        )
     }
 }
 

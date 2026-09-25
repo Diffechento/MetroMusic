@@ -15,14 +15,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.ListRow
 import com.metrocompose.MetroBottomInset
+import com.metrocompose.MetroEmptyNote
+import com.metrocompose.MetroSubheader
 import com.metrocompose.MetroPage
-import com.metrocompose.MetroSemilight
 import com.metrocompose.MetroTextBox
-import com.metrocompose.MetroTheme
 import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.data.model.Album
@@ -30,7 +29,6 @@ import com.metromusic.data.model.Artist
 import com.metromusic.data.model.Library
 import com.metromusic.data.model.Track
 import com.metromusic.data.playlist.Playlist
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions
 import com.metromusic.ui.components.WideTile
@@ -90,8 +88,8 @@ fun SearchScreen(onNavigate: (Screen) -> Unit) {
             )
 
             when {
-                trimmed.isEmpty() -> EmptyNote(stringResource(R.string.search_hint))
-                results.isEmpty -> EmptyNote(stringResource(R.string.search_nothing, trimmed))
+                trimmed.isEmpty() -> MetroEmptyNote(stringResource(R.string.search_hint))
+                results.isEmpty -> MetroEmptyNote(stringResource(R.string.search_nothing, trimmed))
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     if (results.artists.isNotEmpty()) {
                         item(key = "h-artists") {
@@ -205,13 +203,7 @@ private fun ArtistResult(artist: Artist, onNavigate: (Screen) -> Unit) {
  */
 @Composable
 private fun ResultHeader(title: String, count: Int) {
-    Text(
-        text = "$title · $count",
-        color = MetroTheme.colors.subtle,
-        fontFamily = MetroSemilight,
-        fontSize = 24.sp,
-        modifier = Modifier.padding(start = 24.dp, top = 14.dp, bottom = 6.dp)
-    )
+    MetroSubheader("$title · $count", top = 14.dp, bottom = 6.dp)
 }
 
 /**

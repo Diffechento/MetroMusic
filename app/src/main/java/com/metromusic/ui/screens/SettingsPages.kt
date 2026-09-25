@@ -43,8 +43,8 @@ import com.metrocompose.MetroButton
 import com.metrocompose.MetroListBox
 import com.metrocompose.MetroPage
 import com.metrocompose.MetroRegular
-import com.metrocompose.MetroSemilight
 import com.metrocompose.MetroSlider
+import com.metrocompose.MetroSubheader
 import com.metrocompose.MetroTextBox
 import com.metrocompose.MetroTheme
 import com.metrocompose.SettingRow
@@ -100,7 +100,7 @@ private fun GestureSettings() {
     val settings by services.settings.settings.collectAsStateWithLifecycle()
 
     SettingsPageFrame(stringResource(R.string.settings_gestures)) {
-        SettingsHeader(stringResource(R.string.interface_strip))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.interface_strip))
         SettingRow(
             title = stringResource(R.string.gesture_strip_swipe),
             checked = settings.gestureStripSwipe,
@@ -113,7 +113,7 @@ private fun GestureSettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.gesture_player))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.gesture_player))
         SettingRow(
             title = stringResource(R.string.gesture_player_swipe),
             checked = settings.gesturePlayerSwipe,
@@ -131,7 +131,7 @@ private fun GestureSettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.gesture_queue))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.gesture_queue))
         SettingRow(
             title = stringResource(R.string.gesture_queue_down),
             checked = settings.gestureQueueDown,
@@ -144,7 +144,7 @@ private fun GestureSettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.gesture_lists))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.gesture_lists))
         SettingRow(
             title = stringResource(R.string.gesture_edge_scroll),
             checked = settings.gestureEdgeScroll,
@@ -205,7 +205,7 @@ private fun HiddenSettings() {
         )
 
         if (hidden.artists.isNotEmpty()) {
-            SettingsHeader(stringResource(R.string.section_artists))
+            MetroSubheader(top = 0.dp, text = stringResource(R.string.section_artists))
             hidden.artists.sorted().forEach { artist ->
                 ListRow(
                     primary = artist,
@@ -217,7 +217,7 @@ private fun HiddenSettings() {
         }
 
         if (hidden.albums.isNotEmpty()) {
-            SettingsHeader(stringResource(R.string.section_albums))
+            MetroSubheader(top = 0.dp, text = stringResource(R.string.section_albums))
             hidden.albums.sorted().forEach { key ->
                 val (artist, title) = Hidden.readAlbumKey(key)
                 ListRow(
@@ -254,7 +254,7 @@ private fun ThemeSettings() {
     val settings by services.settings.settings.collectAsStateWithLifecycle()
 
     SettingsPageFrame(stringResource(R.string.settings_theme)) {
-        SettingsHeader(stringResource(R.string.theme_accent))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.theme_accent))
         FlowRow(
             Modifier.padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -271,7 +271,7 @@ private fun ThemeSettings() {
         }
 
         Spacer(Modifier.height(22.dp))
-        SettingsHeader(stringResource(R.string.theme_background))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.theme_background))
         FlowRow(
             Modifier.padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -341,7 +341,7 @@ private fun InterfaceSettings() {
     var pickingArtistAlbums by remember { mutableStateOf(false) }
 
     SettingsPageFrame(stringResource(R.string.settings_interface)) {
-        SettingsHeader(stringResource(R.string.interface_sections))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.interface_sections))
         Text(
             text = stringResource(R.string.interface_sections_explainer),
             color = colors.dim,
@@ -384,7 +384,7 @@ private fun InterfaceSettings() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.interface_screen))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.interface_screen))
         SettingRow(
             title = stringResource(R.string.interface_full_screen),
             checked = settings.fullScreen,
@@ -399,7 +399,7 @@ private fun InterfaceSettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.interface_strip))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.interface_strip))
         SettingRow(
             title = stringResource(R.string.interface_strip_artwork),
             checked = settings.stripArtwork,
@@ -414,7 +414,7 @@ private fun InterfaceSettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.interface_lists))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.interface_lists))
         SettingRow(
             title = stringResource(R.string.interface_letter_tiles),
             checked = settings.letterTiles,
@@ -524,7 +524,7 @@ private fun EqualizerSettings() {
         )
 
         Spacer(Modifier.height(10.dp))
-        SettingsHeader(stringResource(R.string.equalizer_bands))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.equalizer_bands))
         val range = (capabilities.maxLevel - capabilities.minLevel).coerceAtLeast(1)
         capabilities.bandFrequencies.forEachIndexed { index, frequency ->
             val level = bands.getOrElse(index) { 0 }
@@ -570,7 +570,7 @@ private fun EqualizerSettings() {
         }
 
         Spacer(Modifier.height(22.dp))
-        SettingsHeader(stringResource(R.string.equalizer_bass))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.equalizer_bass))
         Column(Modifier.padding(horizontal = 24.dp)) {
             Text(
                 text = stringResource(R.string.percent, settings.bassBoost / 10),
@@ -674,7 +674,7 @@ private fun LastFmSettings() {
         // switching it on is what starts the first reconciliation, which is a union of both sides.
         if (signedIn) {
             Spacer(Modifier.height(14.dp))
-            SettingsHeader(stringResource(R.string.lastfm_loves))
+            MetroSubheader(top = 0.dp, text = stringResource(R.string.lastfm_loves))
             SettingRow(
                 title = stringResource(R.string.lastfm_sync_loves),
                 checked = settings.syncLoves,
@@ -722,7 +722,7 @@ private fun LastFmSettings() {
 
         if (!configured || showingKeyFields) {
             Spacer(Modifier.height(22.dp))
-            SettingsHeader(stringResource(R.string.lastfm_api_key))
+            MetroSubheader(top = 0.dp, text = stringResource(R.string.lastfm_api_key))
             Text(
                 text = stringResource(R.string.lastfm_key_explainer),
                 color = colors.dim,
@@ -767,7 +767,7 @@ private fun PlaybackSettings() {
     var pickingResume by remember { mutableStateOf(false) }
 
     SettingsPageFrame(stringResource(R.string.settings_playback)) {
-        SettingsHeader(stringResource(R.string.playback_loudness))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.playback_loudness))
         SettingRow(
             title = stringResource(R.string.playback_normalize),
             checked = settings.volumeNormalization,
@@ -782,7 +782,7 @@ private fun PlaybackSettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.playback_sleep))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.playback_sleep))
         ListRow(
             primary = stringResource(R.string.sleep_timer),
             secondary = if (sleepRemaining > 0) {
@@ -801,7 +801,7 @@ private fun PlaybackSettings() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.playback_resume))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.playback_resume))
         ListRow(
             primary = stringResource(R.string.resume_position),
             secondary = if (settings.resumePositionMinutes > 0) {
@@ -892,7 +892,7 @@ private fun LibrarySettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.section_artists))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.section_artists))
         SettingRow(
             title = stringResource(R.string.library_split_artists),
             checked = settings.splitArtistCredits,
@@ -959,7 +959,7 @@ private fun LibrarySettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.section_genres))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.section_genres))
         SettingRow(
             title = stringResource(R.string.library_fix_genres),
             checked = settings.fixGenreDoubling,
@@ -974,7 +974,7 @@ private fun LibrarySettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.artwork_heading))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.artwork_heading))
         SettingRow(
             title = stringResource(R.string.artwork_online),
             checked = settings.onlineArtwork,
@@ -989,7 +989,7 @@ private fun LibrarySettings() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.playlists_heading))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.playlists_heading))
         // The system's own folder picker, as for the lyrics folder below — and for the same reason:
         // it is the only way an app is handed a directory it can both read and write from Android 10
         // onwards, and the grant has to be taken as persistable to outlive the process.
@@ -1028,7 +1028,7 @@ private fun LibrarySettings() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsHeader(stringResource(R.string.lyrics_heading))
+        MetroSubheader(top = 0.dp, text = stringResource(R.string.lyrics_heading))
         SettingRow(
             title = stringResource(R.string.lyrics_lookup),
             checked = settings.lyricsEnabled,
@@ -1145,17 +1145,6 @@ internal fun SettingsPageFrame(title: String, content: @Composable () -> Unit) {
             content()
         }
     }
-}
-
-@Composable
-internal fun SettingsHeader(text: String) {
-    Text(
-        text = text,
-        color = MetroTheme.colors.subtle,
-        fontFamily = MetroSemilight,
-        fontSize = 24.sp,
-        modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
-    )
 }
 
 @Composable

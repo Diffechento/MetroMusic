@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+**A section's header is a way to it.** The panorama could only be crossed by swiping, although the
+next section's header was already leaning in from the right edge. Tapping that header now turns the
+panorama to its section, the same movement a swipe ends in. Tapping the header of the section you
+are on still opens its search box. This is MangoTile 1.0.5.
+
+**The sung line changes over on its word.** In timed lyrics the next line used to take over a little
+before it was sung. The handover started a whole half-second early, and most of its visible change
+happens in the first third, so the eye saw the switch about 400ms ahead of the voice. Only a quarter
+of the handover now runs ahead of the line, which puts the middle of the change on the first word.
+
 **Long tracks come back where you left them.** A restored queue has always started its track from
 the top, which is right for a song and loses an hour of a podcast. Settings → playback → resuming
 now takes a length (5 minutes to an hour, off by default): a track at least that long keeps the

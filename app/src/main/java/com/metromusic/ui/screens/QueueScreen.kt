@@ -37,6 +37,7 @@ import com.metrocompose.AppBar
 import com.metrocompose.AppBarButton
 import com.metrocompose.Metro
 import com.metrocompose.MetroBottomInset
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroInputBox
 import com.metrocompose.MetroLight
 import com.metrocompose.MetroRegular
@@ -54,7 +55,6 @@ import com.metromusic.core.LocalServices
 import com.metromusic.playback.TrackFace
 import com.metromusic.ui.Glyphs
 import com.metromusic.ui.components.AlbumArt
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.formatTrackCount
 
 /**
@@ -152,7 +152,7 @@ fun QueueScreen(rising: MetroRisingPageState, onClose: () -> Unit) {
             }
 
             if (entries.isEmpty()) {
-                EmptyNote(stringResource(R.string.queue_empty))
+                MetroEmptyNote(stringResource(R.string.queue_empty))
                 return@Column
             }
 

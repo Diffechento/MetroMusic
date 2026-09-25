@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
@@ -14,11 +13,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroPage
-import com.metrocompose.MetroSemilight
-import com.metrocompose.MetroTheme
+import com.metrocompose.MetroSubheader
 import com.metrocompose.metroContinuum
 import com.metromusic.R
 import com.metromusic.core.LocalServices
@@ -26,7 +24,6 @@ import com.metromusic.data.model.Album
 import com.metromusic.data.store.ArtistAlbumOrder
 import com.metromusic.ui.components.CollectionRowWithActions
 import com.metromusic.ui.components.PlaylistPickerHost
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions
 import com.metromusic.ui.components.WideTile
@@ -56,7 +53,7 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
 
     if (name == null) {
         MetroPage(stringResource(R.string.overline_app), stringResource(R.string.artist_title)) {
-            EmptyNote(stringResource(R.string.artist_gone))
+            MetroEmptyNote(stringResource(R.string.artist_gone))
         }
         return
     }
@@ -68,7 +65,7 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
         MetroPage(stringResource(R.string.overline_artist), name) {
             LazyColumn(Modifier.fillMaxSize()) {
                 if (albums.isNotEmpty()) {
-                    item { SectionHeader(stringResource(R.string.section_albums)) }
+                    item { MetroSubheader(stringResource(R.string.section_albums)) }
                     items(albums, key = { "album-${it.id}" }) { album ->
                         // The same menu these rows have in the albums section. An album row that
                         // answers a long press in one list and ignores it in another is the kind of
@@ -104,7 +101,7 @@ fun ArtistDetailScreen(artistId: Long, onNavigate: (Screen) -> Unit) {
                     item { Spacer(Modifier.height(18.dp)) }
                 }
 
-                item { SectionHeader(stringResource(R.string.section_songs)) }
+                item { MetroSubheader(stringResource(R.string.section_songs)) }
                 items(tracks, key = { "track-${it.id}" }) { track ->
                     TrackRowWithActions(
                         track = track,
@@ -147,15 +144,4 @@ private fun artistAlbumComparator(order: ArtistAlbumOrder): Comparator<Album> {
         ArtistAlbumOrder.Year -> undatedLast.thenByDescending { it.year }.then(byTitle)
         ArtistAlbumOrder.YearOldest -> undatedLast.thenBy { it.year }.then(byTitle)
     }
-}
-
-@Composable
-internal fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        color = MetroTheme.colors.subtle,
-        fontFamily = MetroSemilight,
-        fontSize = 24.sp,
-        modifier = Modifier.padding(start = 24.dp, top = 8.dp, bottom = 8.dp)
-    )
 }

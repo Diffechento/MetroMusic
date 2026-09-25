@@ -21,6 +21,7 @@ import com.metrocompose.AppBar
 import com.metrocompose.AppBarButton
 import com.metrocompose.ListRow
 import com.metrocompose.MetroContextMenu
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroInputBox
 import com.metrocompose.MetroMessageBox
 import com.metrocompose.MetroPage
@@ -29,7 +30,6 @@ import com.metromusic.core.LocalServices
 import com.metromusic.data.model.Library
 import com.metromusic.data.playlist.Playlist
 import com.metromusic.ui.Glyphs
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.formatTrackCount
 import com.metromusic.ui.nav.Screen
 
@@ -100,7 +100,7 @@ fun PlaylistsScreen(onNavigate: (Screen) -> Unit) {
                 }
 
                 if (data.items.isEmpty() && data.loaded) {
-                    item { EmptyNote(stringResource(R.string.playlists_empty)) }
+                    item { MetroEmptyNote(stringResource(R.string.playlists_empty)) }
                 }
 
                 items(data.items, key = { it.id }) { playlist ->

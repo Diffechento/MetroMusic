@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrocompose.AppBar
 import com.metrocompose.AppBarButton
+import com.metrocompose.MetroEmptyNote
 import com.metrocompose.MetroPage
 import com.metrocompose.metroCollapseOnScroll
 import com.metrocompose.metroCollapsingHeader
@@ -34,7 +35,6 @@ import com.metromusic.R
 import com.metromusic.core.LocalServices
 import com.metromusic.ui.Glyphs
 import com.metromusic.ui.components.AlbumArt
-import com.metromusic.ui.components.EmptyNote
 import com.metromusic.ui.components.PlaylistPickerHost
 import com.metromusic.ui.components.TrackActionsHost
 import com.metromusic.ui.components.TrackRowWithActions
@@ -61,7 +61,7 @@ fun AlbumDetailScreen(albumId: Long, onNavigate: (Screen) -> Unit) {
     val album = library.album(albumId)
     if (album == null) {
         MetroPage(stringResource(R.string.overline_app), stringResource(R.string.album_title)) {
-            EmptyNote(stringResource(R.string.album_gone))
+            MetroEmptyNote(stringResource(R.string.album_gone))
         }
         return
     }
