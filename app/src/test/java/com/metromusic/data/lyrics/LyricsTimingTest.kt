@@ -84,6 +84,49 @@ class LyricsTimingTest {
     }
 
     @Test
+    fun `only the share asked for runs ahead of the line, and the handover keeps its length`() {
+        val lyrics = lyricsOf(0L, 10_000L, 20_000L)
+        // A quarter of 560ms ahead: 140ms before the second line, not 560.
+        assertEquals(0, lyrics.leadingAt(9_859L, 560L, 0.25f).index)
+        assertEquals(1, lyrics.leadingAt(9_860L, 560L, 0.25f).index)
+        assertEquals(560L, lyrics.leadingAt(9_860L, 560L, 0.25f).handoverMs)
+    }
+
+    @Test
+    fun `a handover that runs past its line is over before the next one starts`() {
+        // A long run-up into 10s and then a line 200ms later: the window onto 10s is cut to half the
+        // gap *after* it too, so it cannot still be growing when 10.2s takes over.
+        val lyrics = lyricsOf(0L, 10_000L, 10_200L, 30_000L)
+        var at: Long? = 0L
+        var previousEnd = Long.MIN_VALUE
+        while (at != null) {
+            val leading = lyrics.leadingAt(at, 560L, 0.25f)
+            if (leading.index >= 0) {
+                assertTrue("handover at $at overlaps the one before", at >= previousEnd)
+                previousEnd = at + leading.handoverMs
+            }
+            at = leading.nextAtMs
+        }
+        assertEquals(100L, lyrics.leadingAt(10_000L, 560L, 0.25f).handoverMs)
+    }
+
+    @Test
+    fun `boundaries stay strictly increasing and every line is lit at a quarter ahead`() {
+        val lyrics = lyricsOf(0L, 300L, 700L, 5_000L, 5_100L, 20_000L)
+        val lit = mutableListOf(lyrics.leadingAt(0L, 560L, 0.25f).index)
+        var previous = Long.MIN_VALUE
+        var at = lyrics.leadingAt(0L, 560L, 0.25f).nextAtMs
+        while (at != null) {
+            assertTrue("boundary went backwards at $at", at > previous)
+            previous = at
+            val leading = lyrics.leadingAt(at, 560L, 0.25f)
+            lit += leading.index
+            at = leading.nextAtMs
+        }
+        assertEquals(listOf(0, 1, 2, 3, 4, 5), lit)
+    }
+
+    @Test
     fun `a set of words with no timings lights nothing at all`() {
         val lyrics = Lyrics(
             lines = listOf(LyricLine(null, "a"), LyricLine(null, "b")),

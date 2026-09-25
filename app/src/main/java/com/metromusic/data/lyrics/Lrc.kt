@@ -81,40 +81,60 @@ data class Lyrics(
      * value comes back as [LeadingLine.handoverMs] so the growth and the scroll can take exactly as
      * long as the lead they were given — a fixed duration against a clamped lead would finish late
      * again, which is the whole thing being fixed.
+     *
+     * [aheadShare] is how much of that handover is spent *before* the timestamp, and it is not 1.
+     * The handover runs on an ease-out curve that is two thirds done a third of the way in, so a
+     * change started a whole handover early is *seen* to happen almost all of it early — the line
+     * visibly took over ~400ms before the voice, which is what was reported. Starting a quarter of
+     * the way ahead puts the half-way point of the visible change on the first word, and the long
+     * glide home that follows is the part nobody reads as timing.
      */
-    fun leadingAt(positionMs: Long, leadMs: Long): LeadingLine {
+    fun leadingAt(positionMs: Long, leadMs: Long, aheadShare: Float = 1f): LeadingLine {
         if (timed.isEmpty()) return LeadingLine(-1, leadMs, null)
-        val entry = leadingEntryAt(positionMs, leadMs)
+        val entry = leadingEntryAt(positionMs, leadMs, aheadShare)
         val next = entry + 1
-        val nextAt = if (next < timed.size) boundaryOf(next, leadMs) else null
+        val nextAt = if (next < timed.size) boundaryOf(next, leadMs, aheadShare) else null
         if (entry < 0) return LeadingLine(-1, leadMs, nextAt)
         return LeadingLine(
             index = timed[entry].first,
-            handoverMs = timed[entry].second - boundaryOf(entry, leadMs),
+            handoverMs = windowOf(entry, leadMs),
             nextAtMs = nextAt
         )
     }
 
     /**
-     * When the emphasis should move on to [entry] — before its own first word, by the lead.
-     *
-     * Strictly increasing, which is what makes the search below sound: the clamp to half the gap
-     * puts every boundary past the previous line's start.
+     * How long the handover onto [entry] takes: the lead, or half the gap on either side of the line
+     * if that is less. The gap *after* matters because the handover now runs past the timestamp, and
+     * a long run-up into a line followed quickly by the next would otherwise still be growing it
+     * when the next one starts.
      */
-    private fun boundaryOf(entry: Int, leadMs: Long): Long {
+    private fun windowOf(entry: Int, leadMs: Long): Long {
         val start = timed[entry].second
         val previous = if (entry == 0) 0L else timed[entry - 1].second
-        return start - minOf(leadMs, (start - previous) / 2)
+        val following = timed.getOrNull(entry + 1)?.second ?: Long.MAX_VALUE
+        return minOf(leadMs, (start - previous) / 2, (following - start) / 2)
     }
 
+    /**
+     * When the emphasis should move on to [entry] — before its own first word, by [aheadShare] of
+     * its window.
+     *
+     * Strictly increasing, which is what makes the search below sound: the window is at most half
+     * the gap, so every boundary is past the previous line's start. And a handover that runs past its
+     * timestamp is still over before the next one begins — at a quarter ahead it ends at most 3/8 of
+     * the following gap in, and the next boundary is at least 7/8 of it.
+     */
+    private fun boundaryOf(entry: Int, leadMs: Long, aheadShare: Float): Long =
+        timed[entry].second - (windowOf(entry, leadMs) * aheadShare).toLong()
+
     /** The last entry whose boundary has been passed, or -1 before the first. */
-    private fun leadingEntryAt(positionMs: Long, leadMs: Long): Int {
+    private fun leadingEntryAt(positionMs: Long, leadMs: Long, aheadShare: Float): Int {
         var low = 0
         var high = timed.size - 1
         var found = -1
         while (low <= high) {
             val mid = (low + high) / 2
-            if (boundaryOf(mid, leadMs) <= positionMs) {
+            if (boundaryOf(mid, leadMs, aheadShare) <= positionMs) {
                 found = mid
                 low = mid + 1
             } else {

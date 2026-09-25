@@ -96,9 +96,9 @@ private val Travel = 22.dp
 const val LyricGrowMillis = 440
 
 /**
- * The longest a handover is allowed to take, and equally the furthest ahead of the voice it may
- * start — because those are the same number: the change begins this long before the line's first
- * word and *lands* on it.
+ * The longest a handover is allowed to take. It used to be equally how far ahead of the voice it
+ * started, landing exactly on the first word — which on an ease-out curve means being *seen* to
+ * change almost all of it early. How much of it runs ahead is [LyricAheadShare] now.
  *
  * **A line that only begins growing when it is sung is at its full size a third of a second late**,
  * so the emphasis spends the whole song a beat behind the music. The timings are right there and say
@@ -114,6 +114,18 @@ const val LyricGrowMillis = 440
  * line of a song is a smaller event than that, however long the instrumental break before it was.
  */
 const val LyricLeadMillis = 560L
+
+/**
+ * How much of a handover happens *before* the line's timestamp — a quarter, not all of it.
+ *
+ * Starting the whole [LyricLeadMillis] early was reported as the line switching a little too soon,
+ * and the curve says why: [MetroSlideInEasing] is 43% done a fifth of the way in and 65% a third of
+ * the way in, so the colour and the size had visibly changed over ~400ms before the voice, and all
+ * that was left to land on the word was the glide. A quarter ahead puts the half-way point of what
+ * the eye sees on the first word; the long settle that follows it is not something anybody reads as
+ * timing.
+ */
+const val LyricAheadShare = 0.25f
 
 /**
  * Which line is lit right now, moved on **at the moment itself** rather than at whatever poll
@@ -154,7 +166,7 @@ fun rememberLeadingLine(lyrics: Lyrics): LeadingLine {
                     // whose successor falls between two polls — and for keeping the emphasis moving
                     // if the poll were ever the slower of the two.
                     while (true) {
-                        val now = lyrics.leadingAt(at, LyricLeadMillis)
+                        val now = lyrics.leadingAt(at, LyricLeadMillis, LyricAheadShare)
                         leading = now
                         val next = now.nextAtMs
                         if (!isPlaying || next == null) return@collectLatest
