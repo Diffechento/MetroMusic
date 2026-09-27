@@ -155,6 +155,14 @@ fun MetroMusicRoot(
         onOpenChange = { queueOpen = it }
     )
 
+    // A page reached from the player's artist or album line is a step *out of* the player, so Back
+    // from it goes back into the player rather than to whatever was under it. This is the depth of
+    // the stack that page sits at: Back there pops it and raises the player again. Pages pushed on
+    // top of it unwind as usual and arrive back at it; anything that takes the stack below it, or
+    // opening the player some other way, means that step is over and the marker goes.
+    var returnToPlayerAt by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(nav.size) { if (nav.size < returnToPlayerAt) returnToPlayerAt = 0 }
+    LaunchedEffect(playerOpen) { if (playerOpen) returnToPlayerAt = 0 }
 
     // An intent that reached an activity already on screen and asked for the player: a file opened
     // from a file manager, the home-screen tile. The activity counts them and the page still belongs
@@ -291,7 +299,14 @@ fun MetroMusicRoot(
                     rising = rising,
                     queue = queueRising,
                     backdrop = backdropArt,
-                    onOpenQueue = { queueOpen = true }
+                    onOpenQueue = { queueOpen = true },
+                    // The page is pushed under the player as it drops, so it is already there when
+                    // the player is gone — and not pushed a second time if it is already on top.
+                    onNavigate = { screen ->
+                        playerOpen = false
+                        if (nav.current != screen) nav.push(screen)
+                        returnToPlayerAt = nav.size
+                    }
                 )
             }
 
@@ -409,6 +424,13 @@ fun MetroMusicRoot(
 
     // Composed after the nav host, so while the player is open this takes Back first and the
     // back stack underneath keeps its place.
+    // After the nav host's own handler, so this one wins on the page the player led to.
+    BackHandler(enabled = !playerOpen && returnToPlayerAt > 0 && nav.size == returnToPlayerAt) {
+        returnToPlayerAt = 0
+        nav.pop()
+        playerOpen = true
+    }
+
     BackHandler(enabled = playerOpen) { playerOpen = false }
 
     // And after that one, so Back closes the queue and leaves the player it was over. The two are a

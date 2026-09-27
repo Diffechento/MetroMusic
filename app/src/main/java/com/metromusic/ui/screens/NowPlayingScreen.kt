@@ -84,6 +84,7 @@ import com.metromusic.ui.components.rememberWordsAvailable
 import com.metromusic.ui.components.rememberPlayerWords
 import com.metromusic.ui.components.rememberAlbumArt
 import com.metromusic.ui.formatDuration
+import com.metromusic.ui.nav.Screen
 
 /**
  * Everything in the column that is not the cover, measured: the padding at both ends, the artist
@@ -187,7 +188,8 @@ fun NowPlayingScreen(
     rising: MetroRisingPageState,
     queue: MetroRisingPageState,
     backdrop: Bitmap?,
-    onOpenQueue: () -> Unit
+    onOpenQueue: () -> Unit,
+    onNavigate: (Screen) -> Unit
 ) {
     val services = LocalServices.current
     val colors = MetroTheme.colors
@@ -203,6 +205,14 @@ fun NowPlayingScreen(
     }
 
     val trackId = state.trackId ?: -1L
+
+    // Where the artist and the album lines lead. Asked of the library rather than of the player's
+    // state, because the library is what the pages are built from: a file opened from another app,
+    // or an artist who has been hidden, has no page to go to, and its line is then just a line.
+    val library by services.library.library.collectAsStateWithLifecycle()
+    val track = library.track(trackId)
+    val artistTarget = track?.artistId?.takeIf { library.tracksOfArtist(it).isNotEmpty() }
+    val albumTarget = track?.albumId?.takeIf { library.album(it) != null }
 
     // What goes in the square: the cover, or the song's words following the music in its place.
     //
@@ -414,8 +424,10 @@ fun NowPlayingScreen(
             ) { artist, slot ->
                 val size = ArtistSize
                 if (slot == 0) {
-                    key(slideEpoch) {
-                        MetroSwap(target = artist, delayMillis = TextLead) { FaceLine(it, size, colors.fg) }
+                    FaceLink(artistTarget?.let { { onNavigate(Screen.ArtistDetail(it)) } }) {
+                        key(slideEpoch) {
+                            MetroSwap(target = artist, delayMillis = TextLead) { FaceLine(it, size, colors.fg) }
+                        }
                     }
                 } else {
                     FaceLine(artist, size, colors.fg)
@@ -430,9 +442,11 @@ fun NowPlayingScreen(
             ) { album, slot ->
                 val size = AlbumSize
                 if (slot == 0) {
-                    key(slideEpoch) {
-                        MetroSwap(target = album, delayMillis = TextLead + TextStagger) {
-                            FaceLine(it, size, colors.subtle)
+                    FaceLink(albumTarget?.let { { onNavigate(Screen.AlbumDetail(it)) } }) {
+                        key(slideEpoch) {
+                            MetroSwap(target = album, delayMillis = TextLead + TextStagger) {
+                                FaceLine(it, size, colors.subtle)
+                            }
                         }
                     }
                 } else {
@@ -775,6 +789,16 @@ private fun FaceCover(
             modifier = modifier
         )
     }
+}
+
+/**
+ * The artist or album line of the current track as a way to its page. Only the words are the
+ * target, not the width of the screen beside them, and with nothing to go to the line is inert.
+ * A drag started on it still crosses the slop and belongs to the swipe or the dismiss around it.
+ */
+@Composable
+private fun FaceLink(onClick: (() -> Unit)?, content: @Composable () -> Unit) {
+    Box(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier) { content() }
 }
 
 /** One line of the face, so the three slots of a [PagedFace] cannot drift apart in style. */
