@@ -1,11 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.5
+
+Built on `io.github.diffechento:metro:1.0.5`.
 
 **The player's artist and album lead to their pages.** Tapping the artist's name above the cover
 opens that artist's page, and tapping the album opens the album. The player drops away as the page
-comes in, the same way Back would take it down, and Back from that page brings the player back up. A file opened from another app, or an artist you
-have hidden, has no page to open, so on those the line does nothing.
+comes in, the same way Back would take it down, and Back from that page brings the player back up.
+A file opened from another app, or an artist you have hidden, has no page to open, so on those the
+line does nothing.
 
 **A section's header is a way to it.** The panorama could only be crossed by swiping, although the
 next section's header was already leaning in from the right edge. Tapping that header now turns the

@@ -54,13 +54,13 @@ android {
         applicationId = "com.metromusic"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.4.1"
+        versionCode = 8
+        versionName = "1.5"
 
         // The date this version was released, shown on the about page. A literal beside the version
         // rather than the moment of the build: `Date()` here would change on every configure, so no
         // two builds of the same source would agree and Gradle could never call the task up to date.
-        buildConfigField("String", "RELEASE_DATE", "\"14 september 2026\"")
+        buildConfigField("String", "RELEASE_DATE", "\"27 september 2026\"")
 
         buildConfigField(
             "String",
