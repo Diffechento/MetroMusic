@@ -91,10 +91,14 @@ class LibraryRepository(
         artwork.albumNames = { id ->
             val current = library.value
             current.album(id)?.let { album ->
+                val tracks = current.tracksOf(album)
+                val sample = tracks.firstOrNull()
+                    ?.takeIf { first -> tracks.all { it.artistId == first.artistId } }
                 CoverQuery(
                     artist = album.artist,
                     album = album.title,
-                    sampleTitle = current.tracksOf(album).firstOrNull()?.title
+                    sampleTitle = sample?.title,
+                    sampleArtist = sample?.artist
                 )
             }
         }

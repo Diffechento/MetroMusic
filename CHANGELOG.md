@@ -15,6 +15,11 @@ online lookup put somebody else's cover on it. The app now reads the picture out
 when Android will not, and if there is none, it uses a `cover`, `folder` or `front` image in the
 album's folder.
 
+**A compilation is no longer given one of its singles' covers.** When Last.fm did not know an
+album, the lookup asked about one of its tracks, using the album's artist. For a compilation that
+asked about "Various Artists", which matched some other record. The track's own artist is used now,
+and an album whose tracks have different artists is not asked about through a track at all.
+
 ## 1.5
 
 Built on `io.github.diffechento:metro:1.0.5`.

@@ -21,8 +21,19 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** What an album is called, which is all a cover lookup has to go on. */
-data class CoverQuery(val artist: String, val album: String, val sampleTitle: String?)
+/**
+ * What an album is called, which is all a cover lookup has to go on.
+ *
+ * [sampleTitle] and [sampleArtist] are one of its tracks, asked about when the album itself is not
+ * found. Both are null for an album whose tracks have more than one artist: a compilation's track
+ * is on its own single as well, and that single's cover is not the compilation's.
+ */
+data class CoverQuery(
+    val artist: String,
+    val album: String,
+    val sampleTitle: String?,
+    val sampleArtist: String? = null
+)
 
 /**
  * Covers for the albums whose files carry none, from Last.fm.
@@ -107,7 +118,10 @@ class OnlineArtwork(
             val byAlbum = client.albumArt(query.artist, query.album)
             val urls = when {
                 !byAlbum.isNullOrEmpty() -> byAlbum
-                query.sampleTitle != null -> client.trackAlbumArt(query.artist, query.sampleTitle)
+                // The track's own artist, not the album's: asked as "Various Artists", Last.fm's
+                // autocorrect answers with whichever compilation it thinks the title is on.
+                query.sampleTitle != null && query.sampleArtist != null ->
+                    client.trackAlbumArt(query.sampleArtist, query.sampleTitle)
                 else -> byAlbum
             }
             when {
