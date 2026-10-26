@@ -11,6 +11,7 @@ import android.util.LruCache
 import android.util.Size
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jaudiotagger.audio.AudioFileIO
 import java.io.File
 import java.io.IOException
 import java.util.Collections
@@ -61,6 +62,12 @@ class ArtworkLoader(context: Context) {
      */
     var mediaAlbumId: ((Long) -> Long?)? = null
 
+    /**
+     * A track's file on disk, for the two local passes the store cannot do for us — see
+     * [decodeFromFile]. Filled in by the composition root from [AudioPaths].
+     */
+    var audioPath: ((Long) -> String?)? = null
+
     /** Cached synchronously if present — lets a scrolling list draw without a frame of blank. */
     fun peek(albumId: Long, sizePx: Int): Bitmap? = cache.get(key(albumId, bucket(sizePx)))
 
@@ -106,11 +113,69 @@ class ArtworkLoader(context: Context) {
 
     private fun decode(albumId: Long, trackId: Long, size: Int): Bitmap? {
         val storeId = mediaAlbumId?.invoke(albumId) ?: albumId
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val fromStore = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             decodeViaThumbnail(trackId, size) ?: decodeViaAlbumArtUri(storeId, size)
         } else {
             decodeViaAlbumArtUri(storeId, size)
         }
+        return fromStore ?: decodeFromFile(trackId, size)
+    }
+
+    /**
+     * What the store would not hand over, read by us: the picture inside the file, then a picture
+     * beside it.
+     *
+     * The store's thumbnailer refuses a JPEG that is cut short — `Input was incomplete`, for a cover
+     * missing nothing but its end marker, which is how rips that went through some taggers carry
+     * theirs — while `BitmapFactory` draws what is there. So a file with art the store calls
+     * unreadable used to read as having none, and the online lookup then put somebody else's cover
+     * on it. And a folder's `front.jpg` is the cover a ripper kept when it did not embed one.
+     *
+     * Only reached for albums both store passes gave up on, and once per album per process
+     * (`misses`), so the cost of reading tags (~30ms) is paid by almost nobody.
+     */
+    private fun decodeFromFile(trackId: Long, size: Int): Bitmap? {
+        val path = audioPath?.invoke(trackId) ?: return null
+        val file = File(path)
+        return decodeEmbedded(file, size) ?: decodeBeside(file, size)
+    }
+
+    private fun decodeEmbedded(file: File, size: Int): Bitmap? = try {
+        if (!file.canRead()) {
+            null
+        } else {
+            val bytes = AudioFileIO.read(file).tag?.firstArtwork?.binaryData
+            if (bytes == null || bytes.isEmpty()) null else decodeBytes(bytes, size)
+        }
+    } catch (e: Exception) {
+        null
+    } catch (e: OutOfMemoryError) {
+        null
+    }
+
+    /**
+     * A cover kept next to the tracks. Asked for by name rather than by listing the folder: from
+     * Android 13 a listing only shows the media types the app may read, and the names are the
+     * conventions every ripper and every desktop player shares.
+     */
+    private fun decodeBeside(file: File, size: Int): Bitmap? {
+        val folder = file.parentFile ?: return null
+        for (name in FolderCoverNames) {
+            val candidate = File(folder, name)
+            if (!runCatching { candidate.canRead() }.getOrDefault(false)) continue
+            decodeFile(candidate, size)?.let { return it }
+        }
+        return null
+    }
+
+    private fun decodeBytes(bytes: ByteArray, size: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, size)
+        }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     }
 
     /**
@@ -190,5 +255,10 @@ class ArtworkLoader(context: Context) {
         val AlbumArtUri: Uri = Uri.parse("content://media/external/audio/albumart")
         val Buckets = intArrayOf(128, 256, 512, 1024)
         const val MaxCacheBytes = 12L * 1024 * 1024
+
+        /** The filesystem is case-sensitive and rippers are not, hence both spellings. */
+        val FolderCoverNames = listOf("cover", "folder", "front", "albumart", "album")
+            .flatMap { listOf(it, it.replaceFirstChar(Char::uppercaseChar)) }
+            .flatMap { listOf("$it.jpg", "$it.jpeg", "$it.png") }
     }
 }

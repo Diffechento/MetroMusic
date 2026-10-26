@@ -9,6 +9,12 @@ artist is written as the album artist. The artist field is filled in only when e
 has the same artist; on a compilation it starts empty, and leaving it empty keeps each track's own
 artist.
 
+**Covers Android cannot read are read by the app.** Some rips carry a cover whose JPEG is cut short.
+Desktop players show it, but Android's thumbnailer refuses it, so the album looked coverless and the
+online lookup put somebody else's cover on it. The app now reads the picture out of the file itself
+when Android will not, and if there is none, it uses a `cover`, `folder` or `front` image in the
+album's folder.
+
 ## 1.5
 
 Built on `io.github.diffechento:metro:1.0.5`.

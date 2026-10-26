@@ -76,7 +76,10 @@ class Services(context: Context) {
      * so it cannot be a constructor argument in either direction.
      */
     val artwork: ArtworkLoader by lazy {
-        ArtworkLoader(appContext).also { it.online = onlineArtwork }
+        ArtworkLoader(appContext).also {
+            it.online = onlineArtwork
+            it.audioPath = paths::pathOf
+        }
     }
 
     val hidden: HiddenStore by lazy { HiddenStore(appContext, scope) }
