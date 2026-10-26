@@ -20,6 +20,15 @@ album, the lookup asked about one of its tracks, using the album's artist. For a
 asked about "Various Artists", which matched some other record. The track's own artist is used now,
 and an album whose tracks have different artists is not asked about through a track at all.
 
+**Signing in to Last.fm says when the shared secret is wrong** ([#10]). Last.fm hands out a sign-in
+token whatever the secret is, so a mistyped one let you log in and allow access, and then the page
+just stayed open: the app took Last.fm's "invalid signature" for "not allowed yet". It now checks
+the secret before showing the login page and says plainly that it is wrong. With a right one, the
+page closes as soon as you allow access instead of up to three seconds later, pressing *done* after
+allowing still signs you in, and it no longer gives up waiting after two minutes.
+
+[#10]: https://github.com/Diffechento/MetroMusic/issues/10
+
 ## 1.5
 
 Built on `io.github.diffechento:metro:1.0.5`.

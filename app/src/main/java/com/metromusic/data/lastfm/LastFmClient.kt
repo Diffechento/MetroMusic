@@ -47,21 +47,53 @@ class LastFmClient(private val apiKey: String?, private val apiSecret: String?) 
     /**
      * Step two: exchange an authorised token for a session key that does not expire.
      *
-     * Returns null while the user has not authorised the token yet, which is what makes it safe to
-     * call this on a timer with the sign-in page open.
+     * Answers [SessionAnswer.Pending] while the user has not authorised the token yet, which is
+     * what makes it safe to call this on a timer with the sign-in page open.
+     *
+     * **This is the first call that proves the secret.** `auth.getToken` hands out a token whatever
+     * the signature says — checked against the live API with a deliberately wrong one — so a
+     * mistyped secret gets the user all the way through Last.fm's login page and then fails here,
+     * with error 13, on every poll. That is [SessionAnswer.WrongSecret], and it has to be told
+     * apart from pending or the sign-in page waits for ever for something that cannot happen.
      */
-    fun session(token: String): Session? {
-        val body = call(
+    fun session(token: String): SessionAnswer {
+        val body = when (val answer = call(
             mapOf("method" to "auth.getSession", "token" to token),
             signed = true,
             post = false
-        ).bodyOrNull ?: return null
+        )) {
+            is Answer.Body -> answer.text
+            is Answer.Failed -> return when (answer.code) {
+                TokenUnauthorised -> SessionAnswer.Pending
+                InvalidSignature -> SessionAnswer.WrongSecret
+                TokenExpired -> SessionAnswer.Expired
+                else -> SessionAnswer.Unreachable
+            }
+            Answer.Absent -> return SessionAnswer.Unreachable
+        }
         val session = runCatching {
             Json.parseToJsonElement(body).jsonObject["session"]?.jsonObject
-        }.getOrNull() ?: return null
-        val name = session["name"]?.jsonPrimitive?.content ?: return null
-        val key = session["key"]?.jsonPrimitive?.content ?: return null
-        return Session(name, key)
+        }.getOrNull() ?: return SessionAnswer.Unreachable
+        val name = session["name"]?.jsonPrimitive?.content ?: return SessionAnswer.Unreachable
+        val key = session["key"]?.jsonPrimitive?.content ?: return SessionAnswer.Unreachable
+        return SessionAnswer.Granted(Session(name, key))
+    }
+
+    /** What [session] can learn about a token, in the shapes the sign-in page acts on. */
+    sealed interface SessionAnswer {
+        data class Granted(val session: Session) : SessionAnswer
+
+        /** Not authorised yet (error 14): ask again shortly. */
+        data object Pending : SessionAnswer
+
+        /** "Invalid method signature" (error 13): the shared secret is not this key's. */
+        data object WrongSecret : SessionAnswer
+
+        /** The token is no longer good (error 15): a new sign-in has to start. */
+        data object Expired : SessionAnswer
+
+        /** No network, or an answer that says nothing about the token: ask again. */
+        data object Unreachable : SessionAnswer
     }
 
     fun updateNowPlaying(sessionKey: String, scrobble: PendingScrobble): Boolean =
@@ -381,6 +413,11 @@ class LastFmClient(private val apiKey: String?, private val apiSecret: String?) 
 
         /** Authentication failed, invalid session key, token problems — sign in again. */
         val Unauthorised = setOf(4, 9, 14, 15)
+
+        /** `auth.getSession`'s three answers that are about the token or the signature. */
+        const val InvalidSignature = 13
+        const val TokenUnauthorised = 14
+        const val TokenExpired = 15
 
         /** Last.fm's own error number, if the body carries one. */
         fun errorCode(body: String): Int? = runCatching {

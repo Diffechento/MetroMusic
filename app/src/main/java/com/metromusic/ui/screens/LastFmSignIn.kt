@@ -1,5 +1,6 @@
 package com.metromusic.ui.screens
 
+import android.os.SystemClock
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
@@ -35,8 +36,9 @@ import com.metromusic.data.lastfm.LastFmClient
 import com.metromusic.data.lastfm.lastFmKey
 import com.metromusic.data.lastfm.lastFmSecret
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The Last.fm sign-in: their own login page in a web view, and a quiet loop waiting for the token it
@@ -49,7 +51,12 @@ import kotlinx.coroutines.withContext
  *
  * Polling rather than watching the web view's URL: Last.fm's confirmation page is a page like any
  * other, its address has changed before, and a redirect is easy to miss on a slow connection.
- * Asking the API whether the token is live yet is the question we actually care about.
+ * Asking the API whether the token is live yet is the question we actually care about. A page
+ * finishing loading only makes the next question come sooner.
+ *
+ * Reported as issue #10: the page said "application authenticated" and nothing happened, because
+ * a wrong shared secret is invisible until `auth.getSession` — Last.fm gives out the token anyway —
+ * and that answer was being read as "not yet" for two minutes. See [LastFmClient.session].
  */
 @Composable
 fun LastFmSignIn(onDone: () -> Unit) {
@@ -65,29 +72,65 @@ fun LastFmSignIn(onDone: () -> Unit) {
     val noAnswer = stringResource(R.string.lastfm_no_answer)
     val authorize = stringResource(R.string.lastfm_authorize)
     val gaveUp = stringResource(R.string.lastfm_gave_up)
+    val wrongSecret = stringResource(R.string.lastfm_wrong_secret)
+    val checking = stringResource(R.string.lastfm_checking)
     var status by remember { mutableStateOf(asking) }
 
-    LaunchedEffect(client) {
-        val token = withContext(Dispatchers.IO) { client.requestToken() }
-        if (token == null) {
-            status = noAnswer
-            return@LaunchedEffect
-        }
-        url = client.authorizeUrl(token)
-        status = authorize
+    // Cuts a wait between two polls short: a page finishing loading in the web view (which is
+    // what pressing "allow" produces) and the done button both mean "ask now", not in 3s.
+    val nudges = remember { Channel<Unit>(Channel.CONFLATED) }
+    var waiting by remember { mutableStateOf(false) }
+    var closing by remember { mutableStateOf(false) }
 
-        repeat(PollAttempts) {
-            delay(PollIntervalMs)
-            val session = withContext(Dispatchers.IO) { client.session(token) }
-            if (session != null) {
-                services.settings.setLastfmSession(session.user, session.key)
-                // Anything that piled up while signed out can go now.
-                services.scrobbler.flush()
-                onDone()
+    LaunchedEffect(client) {
+        waiting = true
+        try {
+            val token = withContext(Dispatchers.IO) { client.requestToken() }
+            if (token == null) {
+                status = noAnswer
                 return@LaunchedEffect
             }
+            // The token answers whatever the secret is, so the first poll goes out *before* the
+            // page does: a wrong secret is said here, not after somebody has typed a password.
+            val deadline = SystemClock.elapsedRealtime() + TokenLifetimeMs
+            while (true) {
+                when (val answer = withContext(Dispatchers.IO) { client.session(token) }) {
+                    is LastFmClient.SessionAnswer.Granted -> {
+                        services.settings.setLastfmSession(answer.session.user, answer.session.key)
+                        // Anything that piled up while signed out can go now.
+                        services.scrobbler.flush()
+                        onDone()
+                        return@LaunchedEffect
+                    }
+                    LastFmClient.SessionAnswer.WrongSecret -> {
+                        url = null
+                        status = wrongSecret
+                        return@LaunchedEffect
+                    }
+                    LastFmClient.SessionAnswer.Expired -> {
+                        status = gaveUp
+                        return@LaunchedEffect
+                    }
+                    LastFmClient.SessionAnswer.Pending,
+                    LastFmClient.SessionAnswer.Unreachable -> Unit
+                }
+                if (closing) {
+                    onDone()
+                    return@LaunchedEffect
+                }
+                if (url == null) {
+                    url = client.authorizeUrl(token)
+                    status = authorize
+                }
+                if (SystemClock.elapsedRealtime() > deadline) {
+                    status = gaveUp
+                    return@LaunchedEffect
+                }
+                withTimeoutOrNull(PollIntervalMs) { nudges.receive() }
+            }
+        } finally {
+            waiting = false
         }
-        status = gaveUp
     }
 
     Popup(properties = PopupProperties(focusable = true), onDismissRequest = onDone) {
@@ -118,7 +161,11 @@ fun LastFmSignIn(onDone: () -> Unit) {
                         // Not `apply { settings… }`: `settings` here would resolve to this
                         // screen's own settings object, not the web view's.
                         val web = WebView(context)
-                        web.webViewClient = WebViewClient()
+                        web.webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView, address: String) {
+                                nudges.trySend(Unit)
+                            }
+                        }
                         // Last.fm's login form does not submit without it.
                         web.settings.javaScriptEnabled = true
                         web.settings.domStorageEnabled = true
@@ -139,11 +186,23 @@ fun LastFmSignIn(onDone: () -> Unit) {
                 Modifier.fillMaxWidth().padding(20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                MetroButton(stringResource(R.string.action_done), onClick = onDone)
+                // One last question before closing: somebody who pressed "allow" and then "done"
+                // straight away has signed in, and must not land back on "not signed in".
+                MetroButton(stringResource(R.string.action_done)) {
+                    if (waiting && url != null && !closing) {
+                        closing = true
+                        status = checking
+                        nudges.trySend(Unit)
+                    } else {
+                        onDone()
+                    }
+                }
             }
         }
     }
 }
 
 private const val PollIntervalMs = 3_000L
-private const val PollAttempts = 40
+
+/** Last.fm's request tokens are good for an hour; asking after that only ever answers "expired". */
+private const val TokenLifetimeMs = 55 * 60_000L

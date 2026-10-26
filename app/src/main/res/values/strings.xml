@@ -226,6 +226,10 @@
         network.</string>
     <string name="lastfm_authorize">sign in and allow access</string>
     <string name="lastfm_gave_up">gave up waiting. close this and try again.</string>
+    <string name="lastfm_wrong_secret">last.fm does not accept this shared secret. it is the
+        second code on your api account page, not the api key — paste it again, save, and sign in
+        again.</string>
+    <string name="lastfm_checking">checking with last.fm…</string>
 
     <!-- ==== playback and library pages ==== -->
     <string name="playback_loudness">loudness</string>
