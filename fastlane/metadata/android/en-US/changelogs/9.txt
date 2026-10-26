@@ -1,0 +1,1 @@
+Music on a USB drive, an SD card or any folder: settings → library → folders, with All Files Access as an option. Last.fm sign-in says when the secret is wrong and closes as soon as access is allowed. The F-Droid build has Last.fm built in. Editing an album keeps each track's artist. Covers Android cannot read are read by the app; compilations no longer get a single's cover.
