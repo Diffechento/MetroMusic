@@ -23,6 +23,14 @@
     <uses-permission android:name="android.permission.MANAGE_MEDIA" />
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
 
+    <!-- "All files access", API 30+. Optional, and off until the user grants it from the library
+         page. With it a library folder - a USB drive, an SD card - is read by path rather than
+         through the folder picker's grant, the way foobar2000 reads its media library folders:
+         faster, and with a real path for tag editing and .lrc files. Everything works without it. -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
     <!-- The playback notification. Only prompted for on API 33+. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

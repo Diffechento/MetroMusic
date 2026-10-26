@@ -68,10 +68,25 @@ data class Track(
     val trackNo: Int,
     val year: Int,
     val dateAdded: Long,
-    val genre: String?
+    val genre: String?,
+    /**
+     * The document this track was read from, for a track that came out of a folder the user picked
+     * rather than out of MediaStore — a USB drive, or a folder the system does not index. Null for
+     * every track the store knows, which is nearly all of them; see
+     * [com.metromusic.data.media.FolderScanner].
+     *
+     * Such a track has an [id] of its own making ([folderTrackIdOf]) and no row in the media
+     * database, so anything that would ask the store about it has to ask this instead.
+     */
+    val source: Uri? = null,
+    /** A `cover.jpg` or the like beside a [source] track, found while its folder was listed. */
+    val folderCover: Uri? = null
 ) {
     val uri: Uri
-        get() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+        get() = source ?: ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+
+    /** True for a track read out of a picked folder rather than out of the media database. */
+    val fromFolder: Boolean get() = source != null
 
     /** Track number without the disc prefix, for display. */
     val displayTrackNo: Int get() = if (trackNo > 1000) trackNo % 1000 else trackNo

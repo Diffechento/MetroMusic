@@ -120,6 +120,13 @@ data class Settings(
     /** Files shorter than this are treated as ringtones and hidden from the library. */
     val minTrackSeconds: Int = 30,
     /**
+     * The library folders: music read by the app itself rather than out of MediaStore — a USB drive,
+     * an SD card the system does not index, any folder at all. Each is a document tree uri the folder
+     * picker granted, or a path, for a drive added while All Files Access was on. See
+     * [com.metromusic.data.media.FolderScanner].
+     */
+    val musicFolders: List<String> = emptyList(),
+    /**
      * Treat genre tags that differ only in case or edge punctuation as one genre.
      *
      * On by default: "Electro", "electro" and "electro." in one library is a defect in the tags, not
@@ -631,6 +638,13 @@ class SettingsStore(context: Context, scope: CoroutineScope) {
 
     fun setPlaylistFolder(uri: String?) =
         store.update { it.copy(playlistFolderUri = uri?.takeIf(String::isNotBlank)) }
+
+    fun addMusicFolder(entry: String) = store.update {
+        if (entry in it.musicFolders) it else it.copy(musicFolders = it.musicFolders + entry)
+    }
+
+    fun removeMusicFolder(entry: String) =
+        store.update { it.copy(musicFolders = it.musicFolders - entry) }
 
     suspend fun flush() = store.flush()
 }

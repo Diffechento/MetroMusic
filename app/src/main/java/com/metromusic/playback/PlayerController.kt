@@ -878,8 +878,10 @@ class PlayerController(
                 .setArtist(artist)
                 .setAlbumTitle(album)
                 // The store's own id, not the library's: this URI is answered by MediaStore's legacy
-                // albumart table, which has never heard of a tag-derived album id.
-                .setArtworkUri(albumArtUri(mediaAlbumId))
+                // albumart table, which has never heard of a tag-derived album id. A library
+                // folder's track has no row there, so it offers the cover beside it, if any; a
+                // picture inside the file reaches the notification from the stream anyway.
+                .setArtworkUri(if (fromFolder) folderCover else albumArtUri(mediaAlbumId))
                 .setIsBrowsable(false)
                 .setIsPlayable(true)
                 .build()

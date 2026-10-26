@@ -28,8 +28,11 @@ import java.io.InputStream
 object TrackDuration {
 
     /** Milliseconds, or 0 when the file cannot be measured — same meaning as MediaStore's own 0. */
-    fun measure(context: Context, trackId: Long): Long {
-        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId)
+    fun measure(context: Context, trackId: Long): Long =
+        measure(context, ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId))
+
+    /** The same, for a file in a library folder that the store has no row for. */
+    fun measure(context: Context, uri: Uri): Long {
         return try {
             context.contentResolver.openInputStream(uri)?.use { readMp4DurationMs(it) } ?: 0L
         } catch (e: Exception) {

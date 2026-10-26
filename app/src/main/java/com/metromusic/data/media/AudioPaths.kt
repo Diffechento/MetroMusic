@@ -29,11 +29,34 @@ class AudioPaths(private val context: Context) {
         /** Lower-cased "album-folder/file.mp3" — what survives a move to another device. */
         val byTail: Map<String, Long>,
         /** Lower-cased file name alone, the last resort. */
-        val byName: Map<String, Long>
+        val byName: Map<String, Long>,
+        /** Lower-cased paths of the store's own rows, without the library folders' files. */
+        val inStore: Set<String>
     )
 
     @Volatile
     private var index: Index? = null
+
+    /**
+     * The paths of the tracks read out of the library folders — see [FolderScanner]. The store has no
+     * rows for them, and without these a `.lrc` beside a song on a USB drive or a playlist line
+     * naming it would have nothing to be matched against.
+     */
+    @Volatile
+    private var folderPaths: Map<Long, String> = emptyMap()
+
+    /** Replaces the library folders' paths. Called once per scan. */
+    fun setFolderPaths(paths: Map<Long, String>) {
+        folderPaths = paths
+        index = null
+    }
+
+    /**
+     * Whether MediaStore itself has a row for the file at [path] — asked by the folder scan, so a
+     * folder the store also indexes does not list every song in it twice. Reads the store afresh
+     * after [refresh].
+     */
+    fun isInStore(path: String): Boolean = normalise(path) in current().inStore
 
     /** Drops what was read, so the next question reads it again. Called once per scan. */
     fun refresh() {
@@ -41,7 +64,10 @@ class AudioPaths(private val context: Context) {
     }
 
     fun pathOf(id: Long): String? =
-        current().byId[id]?.takeIf { it.isNotBlank() } ?: queryPath(id)
+        current().byId[id]?.takeIf { it.isNotBlank() }
+            // A library folder's track that has no path (a document of some other provider) is
+            // not a store row either, and asking the store about its id would only cost a query.
+            ?: if (id in folderPaths || (id and FolderBit) != 0L) null else queryPath(id)
 
     /**
      * The track a playlist line points at, matched from the most specific reading to the least.
@@ -70,6 +96,7 @@ class AudioPaths(private val context: Context) {
         val byPath = mutableMapOf<String, Long>()
         val byTail = mutableMapOf<String, Long>()
         val byName = mutableMapOf<String, Long>()
+        val inStore = HashSet<String>()
         runCatching {
             context.contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -84,6 +111,7 @@ class AudioPaths(private val context: Context) {
                     byId[id] = path
                     val key = normalise(path)
                     byPath[key] = id
+                    inStore += key
                     // `putIfAbsent` for the vaguer keys: where two files answer to one of them the
                     // first row wins rather than the last, so the answer at least does not depend on
                     // the order MediaStore happened to hand out.
@@ -92,7 +120,16 @@ class AudioPaths(private val context: Context) {
                 }
             }
         }.onFailure { Log.w(Tag, "Cannot read the file paths", it) }
-        return Index(byId, byPath, byTail, byName)
+        // After the store's rows and never over them: where a folder and the store both have a file,
+        // the store's row is the track (the folder scan leaves such files out in the first place).
+        for ((id, path) in folderPaths) {
+            byId[id] = path
+            val key = normalise(path)
+            byPath.putIfAbsent(key, id)
+            byTail.putIfAbsent(tailOf(key), id)
+            byName.putIfAbsent(key.substringAfterLast('/'), id)
+        }
+        return Index(byId, byPath, byTail, byName, inStore)
     }
 
     @Suppress("DEPRECATION")
@@ -104,6 +141,9 @@ class AudioPaths(private val context: Context) {
 
     private companion object {
         const val Tag = "AudioPaths"
+
+        /** See [com.metromusic.data.model.folderTrackIdOf]. */
+        const val FolderBit = 1L shl 61
 
         /** A path as a key: one separator, no trailing slash, case folded. */
         fun normalise(path: String): String =

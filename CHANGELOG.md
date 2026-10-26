@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+**Music on a USB drive, an SD card or any folder** ([#9]). Android does not list every drive in its
+media library, so music on a USB stick on an OTG cable was invisible here. Settings → library has a
+*folders* list now: add a folder with the system's folder picker, or a connected drive in one tap,
+and the app reads it itself. Unplugging a drive takes its songs out of the library and plugging it
+back in brings them back, with their play counts and their place in the queue. Songs the phone
+already lists are not added twice. *All files access* is optional: with it, drives are read
+directly, which is faster and lets tag editing and `.lrc` files beside the songs work there too.
+
+[#9]: https://github.com/Diffechento/MetroMusic/issues/9
+
 **Editing an album no longer rewrites every track's artist.** The editor had one artist field and
 wrote it into both the artist and the album artist of every track, so setting "Various Artists" on
 a compilation made every song on it a song by "Various Artists". There are two fields now. The album

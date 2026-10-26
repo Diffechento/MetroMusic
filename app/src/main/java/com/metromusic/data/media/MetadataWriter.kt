@@ -210,6 +210,9 @@ class MetadataWriter(private val context: Context) {
     }
 
     private fun consentFor(uris: List<Uri>, error: SecurityException): IntentSender? = when {
+        // The dialog is MediaStore's and only knows its own rows. A library folder's file is written
+        // on the folder's own grant or by path, and a refusal there has no dialog to answer it.
+        uris.any { it.authority != MediaStore.AUTHORITY } -> null
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
             MediaStore.createWriteRequest(resolver, uris).intentSender
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->

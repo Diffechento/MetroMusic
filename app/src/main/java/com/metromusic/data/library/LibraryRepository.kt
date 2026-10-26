@@ -1,12 +1,23 @@
 package com.metromusic.data.library
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.database.ContentObserver
+import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
 import android.provider.MediaStore
+import android.util.Log
+import androidx.core.content.ContextCompat
 import com.metromusic.data.media.ArtworkLoader
+import com.metromusic.data.media.AudioPaths
 import com.metromusic.data.media.CoverQuery
+import com.metromusic.data.media.FolderScanner
 import com.metromusic.data.media.MediaStoreScanner
 import com.metromusic.data.model.Library
 import com.metromusic.data.model.hiding
@@ -39,6 +50,8 @@ import kotlinx.coroutines.launch
 class LibraryRepository(
     private val context: Context,
     private val scanner: MediaStoreScanner,
+    private val folderScanner: FolderScanner,
+    private val paths: AudioPaths,
     private val settings: SettingsStore,
     private val hidden: HiddenStore,
     private val genres: GenreStore,
@@ -81,6 +94,10 @@ class LibraryRepository(
     private val _report = MutableStateFlow(MediaStoreScanner.Report())
     val report: StateFlow<MediaStoreScanner.Report> = _report.asStateFlow()
 
+    /** How each library folder fared on the last scan — see [FolderScanner]. */
+    private val _folders = MutableStateFlow<List<FolderScanner.Folder>>(emptyList())
+    val folders: StateFlow<List<FolderScanner.Folder>> = _folders.asStateFlow()
+
     private var scanJob: Job? = null
     private var started = false
 
@@ -111,10 +128,37 @@ class LibraryRepository(
                 current.tracksOf(album).firstOrNull()?.mediaAlbumId
             }
         }
+        // A library folder's track has no row in the store to ask for a cover, so the loader reads
+        // its file instead. The scanned library rather than the visible one: a cover is still a
+        // cover while its artist is hidden.
+        artwork.folderTrack = { id -> _library.value.track(id)?.takeIf { it.fromFolder } }
     }
 
     private val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) = rescan(debounce = true)
+    }
+
+    /**
+     * A drive arriving or leaving. MediaStore says nothing about a volume it does not index, which
+     * is the whole reason the library folders exist, so the volumes are watched directly — through
+     * the storage callback from Android 11, which is what foobar2000 moved to for external disks,
+     * and through the mount broadcasts below it.
+     */
+    private fun onVolumeChanged() {
+        if (settings.settings.value.musicFolders.isNotEmpty()) rescan(debounce = true)
+    }
+
+    private val volumeCallback: Any? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            object : StorageManager.StorageVolumeCallback() {
+                override fun onStateChanged(volume: StorageVolume) = onVolumeChanged()
+            }
+        } else {
+            null
+        }
+
+    private val mountReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = onVolumeChanged()
     }
 
     /**
@@ -130,6 +174,29 @@ class LibraryRepository(
             /* notifyForDescendants = */ true,
             observer
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                context.getSystemService(StorageManager::class.java).registerStorageVolumeCallback(
+                    ContextCompat.getMainExecutor(context),
+                    volumeCallback as StorageManager.StorageVolumeCallback
+                )
+            }.onFailure { Log.w(Tag, "No storage callback", it) }
+        } else {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_MEDIA_MOUNTED)
+                addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+                addAction(Intent.ACTION_MEDIA_REMOVED)
+                addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+                addAction(Intent.ACTION_MEDIA_EJECT)
+                addDataScheme("file")
+            }
+            ContextCompat.registerReceiver(
+                context,
+                mountReceiver,
+                filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        }
 
         // Every one of these is read *during* the scan — the duration filter, how a credit is split
         // into artists, whether the album artist tag is believed, whether it is the only thing
@@ -150,13 +217,20 @@ class LibraryRepository(
             _scanning.value = true
             try {
                 val values = settings.settings.value
+                // The store's paths afresh first: they are what keeps a folder the store also
+                // indexes from listing its songs twice.
+                paths.refresh()
+                val fromFolders = folderScanner.scan(values.musicFolders, paths::isInStore)
+                paths.setFolderPaths(fromFolders.paths)
+                _folders.value = fromFolders.folders
                 val scanned = scanner.scan(
                     minDurationMs = values.minTrackSeconds * 1000L,
                     splitCredits = values.splitArtistCredits,
                     useAlbumArtist = values.useAlbumArtist,
                     albumArtistOnly = values.artistsFromAlbumArtist,
                     preferKnownArtist = values.preferKnownArtist,
-                    fixArtistDoubling = values.fixArtistDoubling
+                    fixArtistDoubling = values.fixArtistDoubling,
+                    extra = fromFolders.tracks
                 )
                 // Album ids can be reused after a media rescan; stale covers would be wrong.
                 if (scanned.albums != _library.value.albums) artwork.clear()
@@ -177,13 +251,62 @@ class LibraryRepository(
         }
     }
 
+    /**
+     * Adds a folder the system's picker handed over. The grant has to be taken as persistable or it
+     * lasts until the process dies — and a USB drive's tree survives being unplugged, so the same
+     * grant reads the same drive the next time it is plugged in.
+     */
+    fun addFolder(tree: Uri) {
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                tree,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }.recoverCatching {
+            // Some providers grant reading only; that is still a library folder.
+            context.contentResolver.takePersistableUriPermission(
+                tree,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }.onFailure { Log.w(Tag, "Cannot hold on to $tree", it) }
+        settings.addMusicFolder(tree.toString())
+    }
+
+    /** Adds a folder by path — a drive found with All Files Access on, which needs no grant. */
+    fun addFolder(path: String) = settings.addMusicFolder(path)
+
+    fun removeFolder(entry: String) {
+        settings.removeMusicFolder(entry)
+        if (entry.startsWith("/")) return
+        val values = settings.settings.value
+        // The same tree can be the playlists' or the lyrics' folder too, and those still need it.
+        if (entry == values.playlistFolderUri || entry == values.lyricsFolderUri) return
+        runCatching {
+            context.contentResolver.releasePersistableUriPermission(
+                Uri.parse(entry),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+    }
+
     fun dispose() {
         if (!started) return
         context.contentResolver.unregisterContentObserver(observer)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                context.getSystemService(StorageManager::class.java).unregisterStorageVolumeCallback(
+                    volumeCallback as StorageManager.StorageVolumeCallback
+                )
+            }
+        } else {
+            runCatching { context.unregisterReceiver(mountReceiver) }
+        }
         started = false
     }
 
     private companion object {
+        const val Tag = "LibraryRepository"
+
         /** MediaStore fires a burst of notifications during a sweep; wait for it to settle. */
         const val DebounceMs = 1500L
     }
@@ -202,7 +325,8 @@ private data class ScanInputs(
     val useAlbumArtist: Boolean,
     val artistsFromAlbumArtist: Boolean,
     val preferKnownArtist: Boolean,
-    val fixArtistDoubling: Boolean
+    val fixArtistDoubling: Boolean,
+    val musicFolders: List<String>
 ) {
     constructor(settings: Settings) : this(
         settings.minTrackSeconds,
@@ -210,6 +334,7 @@ private data class ScanInputs(
         settings.useAlbumArtist,
         settings.artistsFromAlbumArtist,
         settings.preferKnownArtist,
-        settings.fixArtistDoubling
+        settings.fixArtistDoubling,
+        settings.musicFolders
     )
 }

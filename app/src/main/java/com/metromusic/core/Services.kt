@@ -8,6 +8,7 @@ import com.metromusic.data.library.LibraryRepository
 import com.metromusic.data.lyrics.LyricsRepository
 import com.metromusic.data.media.ArtworkLoader
 import com.metromusic.data.media.AudioPaths
+import com.metromusic.data.media.FolderScanner
 import com.metromusic.data.media.MediaStoreScanner
 import com.metromusic.data.media.OnlineArtwork
 import com.metromusic.data.store.GenreStore
@@ -90,6 +91,8 @@ class Services(context: Context) {
         LibraryRepository(
             context = appContext,
             scanner = MediaStoreScanner(appContext),
+            folderScanner = FolderScanner(appContext),
+            paths = paths,
             settings = settings,
             hidden = hidden,
             genres = genres,

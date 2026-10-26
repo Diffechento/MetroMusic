@@ -135,6 +135,32 @@ fun albumIdOf(title: String, albumArtist: String?): Long {
 }
 
 /**
+ * The id a track read out of a library folder plays and is remembered under: a hash of where the
+ * file is, since there is no media database row to take one from.
+ *
+ * [location] is the file's path wherever one can be worked out — which for the system's own storage
+ * provider is always — and the provider and document id otherwise. The path rather than the uri,
+ * because one file is reachable through every tree above it and through the filesystem as well, and
+ * a track that changed id when All Files Access was granted would lose its place in the queue and
+ * its play count. A USB drive's path carries its volume id (`/storage/1A2B-3C4D/…`), so the same
+ * drive plugged in again hands back the same ids.
+ *
+ * Bit 61 is set and bit 62 clear: MediaStore's ids are row numbers and never get near it, and bit 62
+ * is [albumIdOf]'s.
+ */
+fun folderTrackIdOf(location: String): Long {
+    var hash = FnvOffset
+    for (char in location) {
+        hash = hash xor char.code.toLong()
+        hash *= FnvPrime
+    }
+    return (hash and FolderTrackMask) or FolderTrackBit
+}
+
+private const val FolderTrackBit = 1L shl 61
+private const val FolderTrackMask = FolderTrackBit - 1
+
+/**
  * Case, whitespace and how the letters are *encoded* are not part of an artist's identity.
  *
  * The normalisation is the part that is easy to leave out and impossible to see afterwards. One of

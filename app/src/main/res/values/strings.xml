@@ -165,6 +165,31 @@
         way.</string>
     <string name="library_scan_report">the system knows about %1$d audio files here; %2$d are marked
         as something other than music and %3$d are shorter than the minimum above.</string>
+    <string name="library_scan_folders">%1$d more come from the folders below.</string>
+    <string name="folders_heading">folders</string>
+    <string name="folders_explainer">music the phone does not list by itself — a usb drive, an sd
+        card, any folder at all. the app reads these on its own and keeps them up to date when a drive
+        comes and goes; songs the phone already lists are not added twice.</string>
+    <string name="folders_add">add a folder</string>
+    <string name="folders_add_hint">a usb drive, an sd card, or a folder on the phone</string>
+    <string name="folders_add_drive">add %1$s</string>
+    <string name="folders_drive_hint">connected — tap to add the whole drive</string>
+    <string name="folders_drive_hint_picker">connected — tap to choose it, or a folder on it</string>
+    <string name="folders_looking">looking…</string>
+    <string name="folders_ready">%1$s</string>
+    <string name="folders_ready_by_path">%1$s · read directly</string>
+    <string name="folders_unavailable">not connected</string>
+    <string name="folders_no_access">no access any more — remove it and add it again</string>
+    <string name="folders_no_access_path">needs all files access, which is off — turn it back on below,
+        or remove this and add the drive again</string>
+    <string name="folders_remove">remove from the library</string>
+    <string name="folders_full_access">all files access</string>
+    <string name="folders_on">on</string>
+    <string name="folders_off">off</string>
+    <string name="folders_full_access_explainer">optional. with it, drives and folders are read
+        directly: scanning is faster, and editing tags and finding .lrc files and covers beside the
+        songs work there too. without it they are read through android\'s folder access, which needs
+        nothing more than picking the folder.</string>
     <string name="interface_lists">lists</string>
     <string name="interface_collapse_title">roll the title away when scrolling</string>
     <string name="interface_collapse_explainer">the big title — and on an album page its cover and

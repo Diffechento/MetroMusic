@@ -4,11 +4,13 @@ import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.LruCache
 import android.util.Size
+import com.metromusic.data.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
@@ -24,7 +26,7 @@ import java.util.Collections
  * keep it bounded — never decode larger than the view that asked, and cap the cache by
  * allocated bytes rather than by entry count.
  */
-class ArtworkLoader(context: Context) {
+class ArtworkLoader(private val context: Context) {
 
     private val resolver = context.contentResolver
 
@@ -67,6 +69,13 @@ class ArtworkLoader(context: Context) {
      * [decodeFromFile]. Filled in by the composition root from [AudioPaths].
      */
     var audioPath: ((Long) -> String?)? = null
+
+    /**
+     * The track behind an id when it came out of a library folder rather than out of MediaStore —
+     * see [com.metromusic.data.media.FolderScanner]. The store has no row for it to make a
+     * thumbnail from, so its cover is read from the file and the folder, and nothing else is asked.
+     */
+    var folderTrack: ((Long) -> Track?)? = null
 
     /** Cached synchronously if present — lets a scrolling list draw without a frame of blank. */
     fun peek(albumId: Long, sizePx: Int): Bitmap? = cache.get(key(albumId, bucket(sizePx)))
@@ -112,6 +121,7 @@ class ArtworkLoader(context: Context) {
     }
 
     private fun decode(albumId: Long, trackId: Long, size: Int): Bitmap? {
+        folderTrack?.invoke(trackId)?.let { return decodeFolderTrack(it, trackId, size) }
         val storeId = mediaAlbumId?.invoke(albumId) ?: albumId
         val fromStore = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             decodeViaThumbnail(trackId, size) ?: decodeViaAlbumArtUri(storeId, size)
@@ -138,6 +148,28 @@ class ArtworkLoader(context: Context) {
         val path = audioPath?.invoke(trackId) ?: return null
         val file = File(path)
         return decodeEmbedded(file, size) ?: decodeBeside(file, size)
+    }
+
+    /**
+     * A library folder's track: by path where it has one, which is the same two passes any other
+     * file gets, and otherwise through its document — the picture in the tags, then the cover the
+     * folder listing found beside it.
+     */
+    private fun decodeFolderTrack(track: Track, trackId: Long, size: Int): Bitmap? {
+        if (track.source?.scheme == "file") return decodeFromFile(trackId, size)
+        val source = track.source ?: return null
+        val retriever = MediaMetadataRetriever()
+        val embedded = try {
+            retriever.setDataSource(context, source)
+            retriever.embeddedPicture?.let { decodeBytes(it, size) }
+        } catch (e: Exception) {
+            null
+        } catch (e: OutOfMemoryError) {
+            null
+        } finally {
+            runCatching { retriever.release() }
+        }
+        return embedded ?: track.folderCover?.let { decodeUri(it, size) }
     }
 
     private fun decodeEmbedded(file: File, size: Int): Bitmap? = try {
@@ -195,8 +227,11 @@ class ArtworkLoader(context: Context) {
      * The legacy album-art table. Still the only option below API 29, and a useful fallback
      * above it for files whose thumbnail generation fails.
      */
-    private fun decodeViaAlbumArtUri(albumId: Long, size: Int): Bitmap? {
-        val uri = ContentUris.withAppendedId(AlbumArtUri, albumId)
+    private fun decodeViaAlbumArtUri(albumId: Long, size: Int): Bitmap? =
+        decodeUri(ContentUris.withAppendedId(AlbumArtUri, albumId), size)
+
+    /** Any picture a resolver can open, in the same two passes and to the same ceiling. */
+    private fun decodeUri(uri: Uri, size: Int): Bitmap? {
         return try {
             // Pass one: read the dimensions only, so we can pick a sample size.
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

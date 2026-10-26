@@ -2,6 +2,7 @@ package com.metromusic.data.media
 
 import android.content.ContentUris
 import android.content.Context
+import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -120,9 +121,15 @@ object TrackYear {
     }
 
     /** The year, or 0 when the file does not say — the same meaning as MediaStore's own 0. */
-    private fun read(context: Context, trackId: Long, mime: String): Int {
+    private fun read(context: Context, trackId: Long, mime: String): Int =
+        yearOf(context, ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId), mime)
+
+    /**
+     * The same reading for a file the store does not know — one in a library folder, by its document
+     * or `file://` uri. No cache here: the folder scanner keeps every tag it reads, years included.
+     */
+    fun yearOf(context: Context, uri: Uri, mime: String): Int {
         val read = reader(mime) ?: return 0
-        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId)
         return try {
             context.contentResolver.openInputStream(uri)?.use { stream ->
                 read(BufferedInputStream(stream, 8 * 1024))

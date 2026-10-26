@@ -890,6 +890,17 @@ private fun LibrarySettings() {
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
+        if (report.fromFolders > 0) {
+            Text(
+                text = stringResource(R.string.library_scan_folders, report.fromFolders),
+                color = colors.dim,
+                fontFamily = MetroRegular,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+        }
+
+        LibraryFoldersSection()
 
         Spacer(Modifier.height(18.dp))
         MetroSubheader(top = 0.dp, text = stringResource(R.string.section_artists))
