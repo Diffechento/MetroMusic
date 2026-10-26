@@ -377,7 +377,9 @@
     <!-- ==== album metadata ==== -->
     <string name="album_edit">edit album</string>
     <string name="album_edit_title">album</string>
-    <string name="album_edit_artist">artist</string>
+    <string name="album_edit_artist">artist, on every track</string>
+    <string name="album_edit_artist_mixed">each track has its own — left as it is</string>
+    <string name="album_edit_album_artist">album artist</string>
     <string name="album_edit_year">year</string>
     <string name="album_edit_genre">genre</string>
     <string name="album_edit_saving">saving…</string>

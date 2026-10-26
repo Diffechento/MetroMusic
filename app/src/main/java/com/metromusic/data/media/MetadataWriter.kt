@@ -21,10 +21,15 @@ data class Tags(
     val artist: String? = null,
     val album: String? = null,
     val year: String? = null,
-    val genre: String? = null
+    val genre: String? = null,
+    /**
+     * Kept apart from [artist] on purpose. Writing one value into both used to turn every track of a
+     * compilation into a track *by* "Various Artists" the moment the album artist was set.
+     */
+    val albumArtist: String? = null
 ) {
     val isEmpty: Boolean
-        get() = listOf(title, artist, album, year, genre).all { it == null }
+        get() = listOf(title, artist, album, year, genre, albumArtist).all { it == null }
 }
 
 /**
@@ -116,12 +121,8 @@ class MetadataWriter(private val context: Context) {
             val audio = AudioFileIO.read(temp)
             val tag = audio.tagOrCreateAndSetDefault
             tags.title?.let { tag.put(FieldKey.TITLE, it) }
-            tags.artist?.let {
-                tag.put(FieldKey.ARTIST, it)
-                // Album artist too: a compilation edited by album would otherwise keep grouping by
-                // whatever the old artist was in players that read that field first.
-                tag.put(FieldKey.ALBUM_ARTIST, it)
-            }
+            tags.artist?.let { tag.put(FieldKey.ARTIST, it) }
+            tags.albumArtist?.let { tag.put(FieldKey.ALBUM_ARTIST, it) }
             tags.album?.let { tag.put(FieldKey.ALBUM, it) }
             tags.year?.let { tag.put(FieldKey.YEAR, it) }
             tags.genre?.let { tag.put(FieldKey.GENRE, it) }

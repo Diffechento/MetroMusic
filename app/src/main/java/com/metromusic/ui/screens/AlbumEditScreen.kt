@@ -82,8 +82,21 @@ fun AlbumEditScreen(albumId: Long, onDone: () -> Unit) {
     val tracks = remember(library, albumId) { library.tracksOf(album) }
     val writer = remember { MetadataWriter(services.appContext) }
 
+    // Two fields, because they are two different things: the album artist says whose record it is,
+    // the artist says who plays each track. One field written into both is what turned every track of
+    // a compilation into a track by "Various Artists". The artist is only offered as one value when
+    // every track already agrees on it — on a compilation it starts empty, and empty leaves each
+    // track's own credit alone.
+    val sharedArtist = remember(tracks) {
+        tracks.firstOrNull()?.artist?.takeIf { first -> tracks.all { it.artist == first } }
+    }
+    val currentAlbumArtist = remember(tracks) {
+        tracks.mapNotNull { it.albumArtist?.takeIf(String::isNotBlank) }
+            .groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+    }
     var title by remember(album.id) { mutableStateOf(album.title) }
-    var artist by remember(album.id) { mutableStateOf(album.artist) }
+    var artist by remember(album.id) { mutableStateOf(sharedArtist.orEmpty()) }
+    var albumArtist by remember(album.id) { mutableStateOf(currentAlbumArtist.orEmpty()) }
     var year by remember(album.id) {
         mutableStateOf(album.year.takeIf { it > 0 }?.toString().orEmpty())
     }
@@ -139,7 +152,8 @@ fun AlbumEditScreen(albumId: Long, onDone: () -> Unit) {
     // field should not be rewritten into the file, and a blank year should not blank the tag.
     fun tags(): Tags = Tags(
         album = title.trim().takeIf { it != album.title },
-        artist = artist.trim().takeIf { it != album.artist },
+        artist = artist.trim().takeIf { it.isNotEmpty() && it != sharedArtist },
+        albumArtist = albumArtist.trim().takeIf { it.isNotEmpty() && it != currentAlbumArtist },
         year = year.trim().takeIf { it.isNotEmpty() && it != album.year.toString() },
         genre = genre.trim().takeIf {
             it.isNotEmpty() && it != tracks.firstNotNullOfOrNull { track -> track.genre }
@@ -202,7 +216,20 @@ fun AlbumEditScreen(albumId: Long, onDone: () -> Unit) {
                 .padding(horizontal = 24.dp)
         ) {
             Field(stringResource(R.string.album_edit_title)) { MetroTextBox(title, { title = it }) }
-            Field(stringResource(R.string.album_edit_artist)) { MetroTextBox(artist, { artist = it }) }
+            Field(stringResource(R.string.album_edit_album_artist)) {
+                MetroTextBox(albumArtist, { albumArtist = it })
+            }
+            Field(stringResource(R.string.album_edit_artist)) {
+                MetroTextBox(
+                    value = artist,
+                    onValueChange = { artist = it },
+                    placeholder = if (sharedArtist == null) {
+                        stringResource(R.string.album_edit_artist_mixed)
+                    } else {
+                        ""
+                    }
+                )
+            }
             Field(stringResource(R.string.album_edit_year)) { MetroTextBox(year, { year = it }) }
             // The genre the library already knows about, offered as you type. Genres are free text in
             // every tagger there is, and this is the field where that costs something: "Electro" typed

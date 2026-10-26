@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+**Editing an album no longer rewrites every track's artist.** The editor had one artist field and
+wrote it into both the artist and the album artist of every track, so setting "Various Artists" on
+a compilation made every song on it a song by "Various Artists". There are two fields now. The album
+artist is written as the album artist. The artist field is filled in only when every track already
+has the same artist; on a compilation it starts empty, and leaving it empty keeps each track's own
+artist.
+
 ## 1.5
 
 Built on `io.github.diffechento:metro:1.0.5`.
