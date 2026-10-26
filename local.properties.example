@@ -4,14 +4,10 @@
 # Where your Android SDK is. Android Studio writes this line for you on first sync.
 sdk.dir=/path/to/Android/Sdk
 
-# Last.fm application credentials, read at build time into BuildConfig
-# (see app/build.gradle.kts). Get a pair at https://www.last.fm/api/account/create
+# Your own Last.fm application credentials, if you want them instead of the ones the project
+# ships in lastfm.properties. Read at build time into BuildConfig (see app/build.gradle.kts); left
+# empty, the committed pair is used. Get a pair at https://www.last.fm/api/account/create
 #
-# These identify *the application*, not the listener, which is why they are not in the
-# repository: a key committed to a public repo is a key anyone can spend your rate limit on.
-#
-# A build without them is not broken. Scrobbling and the online album-art lookup are the only
-# things that use them, and both then behave as if switched off — the Last.fm settings page asks
-# for a key instead, and a key typed in there wins over these anyway.
+# A key typed into the app's Last.fm settings page wins over both.
 LASTFM_API_KEY=
 LASTFM_API_SECRET=

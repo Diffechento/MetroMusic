@@ -78,10 +78,10 @@ The framework comes from Maven Central, so a clone builds as it stands:
 ./gradlew :app:assembleDebug
 ```
 
-**Last.fm credentials are optional.** Copy `local.properties.example` to `local.properties` and fill
-in `LASTFM_API_KEY` / `LASTFM_API_SECRET` if you want scrobbling and cover lookup; without them the app
-builds and runs and asks for a key on its own Last.fm page. Get a pair at
-<https://www.last.fm/api/account/create>. Nothing else needs a key.
+**Last.fm credentials come with the source.** `lastfm.properties` holds the application's own key, so
+every build — F-Droid's included — scrobbles and finds covers. To use a pair of your own (get one at
+<https://www.last.fm/api/account/create>), put `LASTFM_API_KEY` / `LASTFM_API_SECRET` in
+`local.properties`, which wins. Nothing else needs a key.
 
 **Release builds** are signed with the debug key unless a `keystore.properties` sits in the project
 root (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`) — installable for sideloading either

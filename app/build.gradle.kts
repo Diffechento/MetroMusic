@@ -31,20 +31,26 @@ val releaseKeystore = Properties().apply {
 // died in the Kotlin compiler. Keep the assignment below a single token.
 val releaseSigningConfigName = if (releaseKeystore.isNotEmpty()) "release" else "debug"
 
-// Last.fm credentials, read from the untracked `local.properties`:
+// Last.fm credentials: the untracked `local.properties` first, then the committed `lastfm.properties`.
 //
 //   LASTFM_API_KEY=...
 //   LASTFM_API_SECRET=...
 //
-// These identify *the application*, not the user, so they cannot be committed — and a build without
-// them is not broken: the Last.fm page then asks for a key, and everything else in the app carries on
-// as if the feature were switched off.
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
+// They identify *the application*, not the user. The committed pair is there for F-Droid, which
+// builds from this source and writes a `local.properties` with `sdk.dir` alone, so without it their
+// build had no key and asked every listener for one. A build with neither file is still not broken:
+// the Last.fm page then asks for a key, and the rest of the app carries on as if it were switched off.
+fun propertiesOf(name: String) = Properties().apply {
+    val file = rootProject.file(name)
     if (file.exists()) file.inputStream().use(::load)
 }
 
-fun localProperty(name: String): String = localProperties.getProperty(name).orEmpty()
+val localProperties = propertiesOf("local.properties")
+val lastFmProperties = propertiesOf("lastfm.properties")
+
+fun localProperty(name: String): String =
+    localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+        ?: lastFmProperties.getProperty(name).orEmpty()
 
 android {
     namespace = "com.metromusic"

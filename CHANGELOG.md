@@ -37,6 +37,11 @@ the secret before showing the login page and says plainly that it is wrong. With
 page closes as soon as you allow access instead of up to three seconds later, pressing *done* after
 allowing still signs you in, and it no longer gives up waiting after two minutes.
 
+**The F-Droid build has Last.fm too.** The application's key used to live only on the build machine,
+so F-Droid, which builds from the source, shipped without one and asked every listener for a key of
+their own. It is in the repository now (`lastfm.properties`), so scrobbling and cover lookup work in
+every build; a key of your own still wins, in `local.properties` or on the Last.fm page.
+
 [#10]: https://github.com/Diffechento/MetroMusic/issues/10
 
 ## 1.5
