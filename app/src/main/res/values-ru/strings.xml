@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MetroMusic</string>
+    <string name="playback_channel">Сейчас играет</string>
+
+    <!-- ==== chrome shared by several pages ==== -->
+    <string name="overline_app">METROMUSIC</string>
+    <string name="overline_settings">НАСТРОЙКИ</string>
+    <string name="overline_artist">ИСПОЛНИТЕЛЬ</string>
+    <string name="overline_genre">ЖАНР</string>
+    <string name="overline_playlist">ПЛЕЙЛИСТ</string>
+    <string name="overline_lyrics">ТЕКСТ</string>
+    <string name="action_play">играть</string>
+    <string name="action_shuffle">вперемешку</string>
+    <string name="action_pause">пауза</string>
+    <string name="action_previous">назад</string>
+    <string name="action_next">далее</string>
+    <string name="action_play_next">следующим</string>
+    <string name="action_artist">исполнитель</string>
+    <string name="action_delete">удалить</string>
+    <string name="action_rename">переименовать</string>
+    <string name="action_new">новый</string>
+    <string name="action_done">готово</string>
+    <string name="action_save">сохранить</string>
+    <string name="label_name">имя</string>
+    <string name="unknown">неизвестно</string>
+
+    <!-- ==== home panorama ==== -->
+    <string name="collection_title">коллекция</string>
+    <string name="section_artists">исполнители</string>
+    <string name="section_albums">альбомы</string>
+    <string name="section_songs">песни</string>
+    <string name="section_genres">жанры</string>
+    <string name="section_more">ещё</string>
+    <string name="section_history">история</string>
+    <string name="section_settings">настройки</string>
+    <string name="row_playlists">плейлисты</string>
+    <string name="row_rescan">обновить</string>
+    <string name="row_rescan_hint">найти новую музыку</string>
+    <string name="empty_no_artists">исполнителей нет</string>
+    <string name="empty_no_albums">альбомов нет</string>
+    <string name="empty_no_songs">песни на устройстве не найдены</string>
+    <string name="empty_no_genres">тегов жанров нет</string>
+    <string name="empty_history">история пуста</string>
+    <string name="empty_history_loading">чтение медиатеки…</string>
+
+    <!-- ==== settings index ==== -->
+    <string name="settings_theme">тема</string>
+    <string name="settings_theme_hint">акцент, фон, обложки</string>
+    <string name="settings_interface">интерфейс</string>
+    <string name="settings_interface_hint">порядок разделов</string>
+    <string name="settings_equalizer">эквалайзер</string>
+    <string name="settings_equalizer_hint">полосы, пресеты, бас</string>
+    <string name="settings_lastfm">last.fm</string>
+    <string name="settings_lastfm_hint">транслировать то, что играет</string>
+    <string name="settings_playback">воспроизведение</string>
+    <string name="settings_playback_hint">громкость, таймер сна</string>
+    <string name="settings_library">медиатека</string>
+    <string name="settings_library_hint">что считать музыкой</string>
+    <string name="settings_hidden">скрытое</string>
+    <string name="settings_hidden_hint">скрытые авторы и альбомы</string>
+    <string name="hidden_empty">ничего не скрыто.</string>
+    <string name="hidden_explainer">скрытые авторы и альбомы не видны в списках.
+        нажмите, чтобы вернуть.</string>
+    <string name="hidden_tap_to_show">нажмите для возврата</string>
+    <string name="hidden_show_all">показать всё</string>
+    <string name="settings_about">о приложении</string>
+    <string name="settings_credit">MetroMusic — на базе MangoTile</string>
+
+    <!-- ==== last.fm loves ==== -->
+    <string name="lastfm_loves">любимые треки</string>
+    <string name="lastfm_sync_loves">синхронизация с избранным</string>
+    <string name="lastfm_loves_queue_hint">нажмите для отправки</string>
+    <string name="lastfm_loves_sync_now">синхронизировать</string>
+    <string name="lastfm_loves_never">не синхронизировалось</string>
+    <string name="lastfm_loves_last">синхронизировано %1$s</string>
+    <string name="lastfm_loves_scratch">синхронизировать заново</string>
+    <string name="lastfm_loves_scratch_hint">сбросить связи и объединить заново</string>
+    <string name="lastfm_loves_explainer">избранное здесь и любимое на last.fm связаны в обе стороны:
+        лайк здесь отметит трек там, а удаление на сайте уберёт его из избранного. совпадение идёт
+        по имени и названию, поэтому различия в тегах создают дубли. первая синхронизация сохранит
+        данные с обеих сторон.</string>
+    <plurals name="loves_waiting">
+        <item quantity="one">%1$d лайк ждёт отправки</item>
+        <item quantity="few">%1$d лайка ждут отправки</item>
+        <item quantity="many">%1$d лайков ждут отправки</item>
+        <item quantity="other">%1$d лайков ждут отправки</item>
+    </plurals>
+
+    <!-- ==== about page ==== -->
+    <string name="about_version">версия %1$s (сборка %2$d)</string>
+    <string name="about_copyright">© 2026 Diffechento</string>
+    <string name="about_licence">GNU General Public License v3 · база MangoTile (MIT)</string>
+    <string name="about_tiles">плитки</string>
+    <string name="about_pokes_none">нажмите на любую.</string>
+    <plurals name="about_pokes">
+        <item quantity="one">%1$d нажатие</item>
+        <item quantity="few">%1$d нажатия</item>
+        <item quantity="many">%1$d нажатий</item>
+        <item quantity="other">%1$d нажатий</item>
+    </plurals>
+    <string name="about_pokes_few">им всё равно.</string>
+    <string name="about_pokes_some">телефон бы одобрил.</string>
+    <string name="about_pokes_many">вы нашли самую бесполезную часть плеера.</string>
+    <string name="about_pokes_plenty">столько внимания не получала ни одна плитка.</string>
+    <string name="about_tile_songs">песни</string>
+    <string name="about_tile_albums">альбомы</string>
+    <string name="about_tile_artists">исполнители</string>
+    <string name="about_tile_favourites">избранное</string>
+    <string name="about_tile_plays">прослушивания</string>
+    <string name="about_tile_playlists">плейлисты</string>
+    <string name="about_explainer">каждая плитка показывает реальные цифры из медиатеки, прямо как
+        живые плитки. нажмите, чтобы перевернуть.</string>
+    <string name="about_notices">лицензии</string>
+    <string name="about_notices_body">Декодирование Apple Lossless: Copyright © Peter McQuillan; ALAC
+        decoder Copyright © 2005 David Hammerton. BSD 3-clause — распространяется в исходном и бинарном
+        виде с уведомлением об авторских правах и отказом от ответственности в LICENSE.txt.
+
+MangoTile
+        (MIT) © Diffechento, со шрифтом Selawik © 2015 Microsoft Corporation по лицензии SIL Open Font
+        License 1.1. jaudiotagger (LGPL-2.1) © Paul Taylor. AndroidX, Compose, Media3 и kotlinx
+        (Apache-2.0) © The Android Open Source Project и JetBrains.
+
+Не связано с Microsoft, Last.fm
+        или Genius.</string>
+    <string name="about_source">свободное ПО по лицензии GNU General Public License v3. исходный код
+        и полные тексты лицензий доступны на github.com/Diffechento/MetroMusic</string>
+
+    <!-- ==== theme page ==== -->
+    <string name="theme_accent">акцент</string>
+    <string name="theme_background">фон</string>
+    <string name="theme_background_default">использовать фон темы</string>
+    <string name="theme_background_default_in_use">активен</string>
+    <string name="theme_background_default_hint">нажмите для возврата</string>
+    <string name="theme_follow_device">как в системе</string>
+    <string name="theme_dark">тёмная</string>
+    <string name="theme_light">светлая</string>
+    <string name="theme_tap_to_switch">нажмите для смены</string>
+    <string name="theme_artwork_background">обложка на фоне панорамы</string>
+    <string name="theme_explainer">акцент красит плитки, заголовки и переключатели; фон служит
+        подложкой для панорамы и всех страниц.</string>
+
+    <!-- ==== interface page ==== -->
+    <string name="interface_sections">разделы</string>
+    <string name="interface_sections_explainer">порядок при смахивании. панорама зациклена: последний
+        раздел находится в одном свайпе влево от первого.</string>
+    <string name="interface_move_up">▲</string>
+    <string name="interface_move_down">▼</string>
+    <string name="interface_screen">экран</string>
+    <string name="interface_full_screen">полный экран</string>
+    <string name="interface_full_screen_explainer">строка состояния скрывается, страницы идут до
+        верхнего края. потяните сверху вниз, чтобы на пару секунд показать часы.</string>
+    <string name="interface_strip">мини-плеер</string>
+    <string name="interface_strip_artwork">показывать обложку</string>
+    <string name="interface_strip_explainer">смахните полосу вбок для смены трека.</string>
+    <string name="library_scan_report">система видит %1$d аудиофайлов; %2$d не являются музыкой, а %3$d
+        короче заданного минимума.</string>
+    <string name="library_scan_folders">ещё %1$d добавлено из папок ниже.</string>
+    <string name="folders_heading">папки</string>
+    <string name="folders_explainer">музыка, которую система не видит сама: флешки, SD-карты и любые
+        папки. плеер следит за их подключением; уже учтённые системой треки не дублируются.</string>
+    <string name="folders_add">добавить папку</string>
+    <string name="folders_add_hint">флешка, SD-карта или папка в памяти</string>
+    <string name="folders_add_drive">добавить %1$s</string>
+    <string name="folders_drive_hint">подключено — нажмите для добавления</string>
+    <string name="folders_drive_hint_picker">подключено — нажмите для выбора папки</string>
+    <string name="folders_looking">поиск…</string>
+    <string name="folders_ready">%1$s</string>
+    <string name="folders_ready_by_path">%1$s · прямое чтение</string>
+    <string name="folders_unavailable">не подключено</string>
+    <string name="folders_no_access">доступ утрачен — удалите и добавьте снова</string>
+    <string name="folders_no_access_path">нужен доступ ко всем файлам — включите ниже или добавьте
+        накопитель заново</string>
+    <string name="folders_remove">удалить из медиатеки</string>
+    <string name="folders_full_access">доступ ко всем файлам</string>
+    <string name="folders_on">вкл</string>
+    <string name="folders_off">выкл</string>
+    <string name="folders_full_access_explainer">необязательно. ускоряет сканирование, позволяет
+        править теги и искать .lrc и обложки рядом с файлами. без него используется стандартный
+        доступ к папкам Android.</string>
+    <string name="interface_lists">списки</string>
+    <string name="interface_collapse_title">сворачивать заголовок при прокрутке</string>
+    <string name="interface_collapse_explainer">крупный заголовок — а в альбоме обложка и кнопки —
+        уступают место списку при прокрутке и возвращаются при свайпе вниз в самом начале.</string>
+    <string name="interface_letter_tiles">акцентный квадрат у букв групп</string>
+    <string name="interface_artist_albums">альбомы на странице автора</string>
+    <string name="interface_artist_albums_year">сначала новые</string>
+    <string name="interface_artist_albums_year_oldest">сначала старые</string>
+    <string name="interface_artist_albums_name">по имени</string>
+    <string name="interface_artist_albums_explainer">дискография обычно читается по хронологии — от
+        новых или от старых. вариант «по имени» сортирует по алфавиту. альбомы без года всегда
+        идут в конце.</string>
+    <string name="library_split_artists">разделять авторов в тегах</string>
+    <string name="library_split_artists_explainer">трек «автор feat. гость» или «автор, другой»
+        попадёт к каждому из них, не создавая отдельный раздел. отключите, если в названии группы
+        есть запятая или амперсанд.</string>
+    <string name="artwork_heading">обложки</string>
+    <string name="artwork_online">искать недостающие обложки</string>
+    <string name="artwork_online_explainer">если в файле нет обложки, плеер запросит её на last.fm и
+        сохранит. передаются только имя автора и название альбома один раз.</string>
+
+    <string name="equalizer_none">эквалайзер не поддерживается устройством.</string>
+    <string name="equalizer_preset">пресет</string>
+    <string name="equalizer_preset_custom">свой</string>
+    <string name="equalizer_bands">полосы</string>
+    <string name="equalizer_flat">ровно</string>
+    <string name="equalizer_bass">усиление баса</string>
+    <string name="equalizer_hz">%1$d Гц</string>
+    <string name="equalizer_khz">%1$s кГц</string>
+    <string name="equalizer_db">%1$s дБ</string>
+    <string name="percent">%1$d%%</string>
+
+    <string name="lastfm_scrobble">трансляция</string>
+    <string name="lastfm_signed_out">выход выполнен</string>
+    <string name="lastfm_signed_in_as">вход: %1$s</string>
+    <string name="lastfm_login">войти</string>
+    <string name="lastfm_logout">выйти</string>
+    <string name="lastfm_needs_key">сначала нужен ключ API</string>
+    <string name="lastfm_tap_sign_out">нажмите для выхода</string>
+    <string name="lastfm_tap_sign_in">нажмите для входа</string>
+    <string name="lastfm_queue_hint">сохранено в памяти, отправится при сети — нажать для отправки</string>
+    <string name="lastfm_api_key">ключ api</string>
+    <string name="lastfm_api_secret">общий секрет</string>
+    <string name="lastfm_key_explainer">ключ API определяет приложение, а не вас. создайте его на
+        last.fm/api/account/create и вставьте сюда или в local.properties перед сборкой.</string>
+    <string name="lastfm_asking">запрос токена у last.fm…</string>
+    <string name="lastfm_no_answer">last.fm не отвечает. проверьте ключ API и сеть.</string>
+    <string name="lastfm_authorize">войти и разрешить доступ</string>
+    <string name="lastfm_gave_up">время ожидания истекло. закройте и повторите.</string>
+    <string name="lastfm_wrong_secret">last.fm отклонил общий секрет. это второй код на странице API,
+        не ключ API — вставьте заново, сохраните и войдите снова.</string>
+    <string name="lastfm_checking">проверка на last.fm…</string>
+
+    <string name="playback_loudness">громкость</string>
+    <string name="playback_sleep">таймер сна</string>
+    <string name="playback_resume">возобновление</string>
+    <string name="resume_position">запоминать позицию в треках длиннее</string>
+    <string name="resume_position_off">никогда — все треки с начала</string>
+    <string name="resume_position_value">%1$d мин</string>
+    <string name="resume_position_explainer">песни всегда начинаются заново. но для двухчасового
+        подкаста или аудиокниги приложение запомнит место остановки и продолжит с него.</string>
+    <string name="playback_normalize">выравнивать громкость треков</string>
+    <string name="playback_normalize_explainer">использует теги ReplayGain из файлов. делает громкие
+        треки тише, но не усиливает тихие; файлы без тегов играют как есть.</string>
+    <string name="library_album_artist">учитывать тег исполнителя альбома</string>
+    <string name="library_album_artist_explainer">альбом записывается на общего автора, а не на автора
+        первого трека — это держит сборники вместе. отключите, если риппер записал в тег лишнее.
+        требуется Android 11.</string>
+    <string name="library_artists_album_artist">авторы из тега альбома</string>
+    <string name="library_artists_album_artist_explainer">каждый трек идёт одному автору — первому из
+        тега исполнителя альбома, чтобы гости не плодили пустые разделы. оставьте разделение авторов
+        включённым выше. включает учёт тега альбома.</string>
+    <string name="library_prefer_known_artist">отдавать фиты более известному автору</string>
+    <string name="library_prefer_known_artist_explainer">если указано несколько авторов, трек попадёт
+        к тому, чьих записей у вас больше, а не к первому в списке. включает две настройки выше.</string>
+    <string name="library_fix_artists">исправлять дубли авторов</string>
+    <string name="library_fix_artists_explainer">объединяет «Blink 182», «Blink-182» и «Blink‐182»,
+        оставляя самый частый вариант написания. пробел и дефис — разница в тегах, а не в группе.</string>
+    <string name="sleep_timer">таймер сна</string>
+    <string name="sleep_off">выкл</string>
+    <string name="sleep_left">осталось %1$s</string>
+    <string name="sleep_restart">запустить таймер снова</string>
+    <string name="sleep_15">15 минут</string>
+    <string name="sleep_30">30 минут</string>
+    <string name="sleep_45">45 минут</string>
+    <string name="sleep_60">1 час</string>
+    <string name="sleep_120">2 часа</string>
+    <string name="minutes">%1$d мин</string>
+    <string name="library_min_length">игнорировать файлы короче</string>
+    <string name="seconds">%1$d сек</string>
+    <string name="library_scanning">сканирование…</string>
+    <string name="lyrics_heading">тексты</string>
+    <string name="lyrics_lookup">искать тексты</string>
+    <string name="lyrics_explainer">сначала берутся файлы .lrc или .txt рядом с треком, затем теги
+        внутри файла, а при отсутствии — поиск в сети. наличие проверяется в фоне один раз.</string>
+    <string name="lyrics_service">искать на</string>
+    <string name="lyrics_service_lrclib">lrclib — с таймингами</string>
+    <string name="lyrics_service_genius">genius — только текст</string>
+    <string name="lyrics_service_explainer">lrclib хранит .lrc файлы с привязкой ко времени. у genius
+        больше редких и неанглоязычных релизов, но без таймингов. аккаунт не нужен.</string>
+    <string name="lyrics_folder">папка для текстов</string>
+    <string name="lyrics_folder_none">не задана — файлы рядом с треком видны и так</string>
+    <string name="lyrics_folder_explainer">нужно, только если вы храните .lrc отдельно от музыки или
+        система не даёт доступ к папке с треком.</string>
+    <string name="lyrics_folder_clear">забыть эту папку</string>
+    <string name="lyrics_save_lrc">сохранять тексты в .lrc</string>
+    <string name="lyrics_save_lrc_explainer">сохраняет найденный текст в .lrc рядом с песней — его
+        поймёт любой плеер. файлы с lrclib сохраняются с таймингами, с genius — без.</string>
+
+    <string name="queued_heading">ДОБАВЛЕНО В ОЧЕРЕДЬ</string>
+
+    <string name="queue_overline">СЕЙЧАС ИГРАЕТ</string>
+    <string name="queue_title">очередь</string>
+    <string name="queue_remove">убрать</string>
+    <string name="queue_empty">очередь пуста.</string>
+    <string name="queue_open">показать очередь</string>
+    <string name="queue_save">сохранить как плейлист</string>
+
+    <string name="menu_play_next">играть следующим</string>
+    <string name="menu_favorite_add">в избранное</string>
+    <string name="menu_favorite_remove">убрать из избранного</string>
+    <string name="menu_add_to_playlist">в плейлист</string>
+    <string name="menu_show_lyrics">показать текст</string>
+    <string name="menu_remove_from_playlist">убрать из плейлиста</string>
+    <string name="menu_hide">скрыть</string>
+    <string name="menu_edit">изменить</string>
+    <string name="menu_merge_genre">объединить с…</string>
+    <string name="search_placeholder">поиск</string>
+
+    <string name="search_title">поиск</string>
+    <string name="search_everywhere">авторы, альбомы, песни, жанры, плейлисты</string>
+    <string name="search_hint">введите запрос для поиска по всей медиатеке.</string>
+    <string name="search_nothing">по запросу «%1$s» ничего не найдено.</string>
+    <string name="press_back_again">нажмите «назад» ещё раз для выхода</string>
+    <string name="action_cancel">отмена</string>
+
+    <string name="sort_name">имя</string>
+    <string name="sort_date_added">дата добавления</string>
+    <string name="sort_duration">длительность</string>
+    <string name="sort_plays">прослушивания</string>
+    <string name="sort_artist">исполнитель</string>
+    <string name="sort_year">год</string>
+    <string name="sort_song_count">песни</string>
+    <string name="sort_album_count">альбомы</string>
+    <string name="sort_group_added_unknown">дата неизвестна</string>
+    <string name="sort_group_under_2min">до 2 мин</string>
+    <string name="sort_group_2_to_5min">2–5 мин</string>
+    <string name="sort_group_5_to_10min">5–10 мин</string>
+    <string name="sort_group_over_10min">более 10 мин</string>
+    <string name="sort_group_plays_never">не слушали</string>
+    <string name="sort_group_plays_few">1–4 раза</string>
+    <string name="sort_group_plays_some">5–9 раз</string>
+    <string name="sort_group_plays_many">10+ раз</string>
+    <string name="sort_group_year_unknown">год неизвестен</string>
+    <string name="sort_group_songs_handful">1–4 песни</string>
+    <string name="sort_group_songs_few">5–9 песен</string>
+    <string name="sort_group_songs_some">10–19 песен</string>
+    <string name="sort_group_songs_many">20+ песен</string>
+    <string name="sort_group_albums_one">1 альбом</string>
+    <string name="sort_group_albums_few">2–3 альбома</string>
+    <string name="sort_group_albums_some">4–9 альбомов</string>
+    <string name="sort_group_albums_many">10+ альбомов</string>
+    <string name="sort_group_artist_plays_few">1–9 раз</string>
+    <string name="sort_group_artist_plays_some">10–49 раз</string>
+    <string name="sort_group_artist_plays_many">50+ раз</string>
+
+    <string name="album_edit">изменить альбом</string>
+    <string name="album_edit_title">альбом</string>
+    <string name="album_edit_artist">исполнитель для всех треков</string>
+    <string name="album_edit_artist_mixed">у каждого трека свой — оставлено как есть</string>
+    <string name="album_edit_album_artist">исполнитель альбома</string>
+    <string name="album_edit_year">год</string>
+    <string name="album_edit_genre">жанр</string>
+    <string name="album_edit_saving">сохранение…</string>
+    <string name="album_edit_manage">разрешить один раз для всех</string>
+    <string name="album_edit_manage_explainer">Android запрашивает доступ для каждого нового альбома.
+        с Android 12 можно дать общее разрешение в настройках системы — кнопка откроет их. система
+        спросит доступ к «фото и видео» (так она называет медиафайлы), затем включите тумблер.</string>
+    <string name="album_edit_explainer">теги записываются прямо в файлы, поэтому изменения увидят
+        все плееры. Android спросит разрешение перед первой правкой файлов.</string>
+    <string name="album_edit_no_consent">система запретила запись в эти файлы.</string>
+
+    <string name="settings_gestures">жесты</string>
+    <string name="settings_gestures_hint">действия по свайпам</string>
+    <string name="gesture_strip_swipe">свайп вбок меняет трек</string>
+    <string name="gesture_strip_up">свайп вверх открывает плеер</string>
+    <string name="gesture_player">плеер</string>
+    <string name="gesture_player_swipe">свайп вбок меняет трек</string>
+    <string name="gesture_player_down">свайп вниз сворачивает плеер</string>
+    <string name="gesture_player_up">свайп вверх открывает очередь</string>
+    <string name="gesture_queue">очередь</string>
+    <string name="gesture_queue_down">свайп вниз закрывает очередь</string>
+    <string name="gesture_queue_remove">свайп вбок убирает трек</string>
+    <string name="gesture_lists">списки</string>
+    <string name="gesture_edge_scroll">быстрая прокрутка у левого края</string>
+    <string name="gesture_edge_scroll_explainer">полоса слева в списках авторов, альбомов, песен и
+        жанров: потяните её для быстрой навигации по буквам. появляется в длинных списках.</string>
+    <string name="gesture_explainer">обычные нажатия работают всегда. отключите жест, если он
+        срабатывает случайно.</string>
+
+    <string name="playlists_heading">плейлисты</string>
+    <string name="playlist_folder">папка плейлистов</string>
+    <string name="playlist_folder_explainer">плейлисты хранятся в обычных файлах .m3u, понятных
+        другим плеерам и ПК. по умолчанию это Music/Playlists; укажите другую папку при желании.</string>
+    <string name="playlist_folder_clear">папка по умолчанию</string>
+    <string name="playlist_folder_private">личная папка приложения — другие программы её не видят.
+        общая папка Music недоступна.</string>
+
+    <string name="library_fix_genres">исправлять дубли жанров</string>
+    <string name="library_fix_genres_explainer">объединяет «Electro», «electro» и «electro.», оставляя
+        самый частый вариант. удерживайте жанр для ручного объединения.</string>
+    <string name="menu_favorite">в избранное</string>
+    <string name="menu_unfavorite">из избранного</string>
+    <string name="playlist_new_option">новый плейлист…</string>
+    <string name="playlist_new_title">новый плейлист</string>
+
+    <string name="player_face_words">показать текст</string>
+    <string name="player_face_cover">показать обложку</string>
+    <string name="player_nothing">ничего не играет</string>
+    <string name="player_shuffle_on">вперемешку</string>
+    <string name="player_repeat_off">без повтора</string>
+    <string name="player_repeat_all">повтор всех</string>
+    <string name="player_repeat_one">повтор одного</string>
+    <string name="volume">громкость</string>
+
+    <string name="lyrics_none">текст не найден.</string>
+    <string name="lyrics_source">текст с genius</string>
+    <string name="lyrics_source_lrclib">текст с lrclib</string>
+    <string name="lyrics_source_file">из %1$s</string>
+    <string name="lyrics_source_tag">из тегов %1$s</string>
+    <string name="lyrics_source_file_unnamed">из файла на устройстве</string>
+
+    <string name="album_title">альбом</string>
+    <string name="album_gone">альбом удалён с устройства</string>
+    <string name="album_unknown_year">год неизвестен</string>
+    <string name="artist_title">исполнитель</string>
+    <string name="artist_gone">исполнитель удалён с устройства</string>
+    <string name="genre_gone">треков с этим жанром больше нет</string>
+    <string name="playlist_not_found">не найдено</string>
+    <string name="playlist_gone">плейлист был удалён</string>
+    <string name="playlist_empty">пока пусто — нажмите «добавить треки» или удерживайте любой
+        альбом, автора или песню</string>
+    <string name="playlists_empty">плейлистов нет — нажмите + чтобы создать</string>
+    <string name="playlists_favorites">избранное</string>
+    <string name="playlist_rename_title">переименовать плейлист</string>
+    <string name="playlist_delete_title">удалить плейлист?</string>
+    <string name="playlist_delete_message">«%1$s» будет удалён. сами песни останутся на устройстве.</string>
+    <string name="playlist_reorder">≡</string>
+    <string name="playlist_entry_missing">нет в медиатеке</string>
+    <plurals name="playlist_missing">
+        <item quantity="one">%1$d отсутствует</item>
+        <item quantity="few">%1$d отсутствуют</item>
+        <item quantity="many">%1$d отсутствуют</item>
+        <item quantity="other">%1$d отсутствуют</item>
+    </plurals>
+    <string name="playlist_read_only">нужно разрешение</string>
+    <string name="playlist_import">импорт</string>
+    <string name="playlist_export">экспорт</string>
+    <string name="playlist_add_songs">добавить треки</string>
+    <string name="playlist_add_to_short">плейлист</string>
+    <string name="playlist_add_title">добавить треки</string>
+    <string name="playlist_add_empty">ничего не найдено</string>
+    <string name="playlist_select_all">все</string>
+    <string name="playlist_select_none">сбросить</string>
+    <plurals name="playlist_selected">
+        <item quantity="one">выбран %1$d</item>
+        <item quantity="few">выбрано %1$d</item>
+        <item quantity="many">выбрано %1$d</item>
+        <item quantity="other">выбрано %1$d</item>
+    </plurals>
+    <string name="playlist_add_done">добавить</string>
+    <string name="playlist_problem_save">не удалось сохранить файл плейлиста</string>
+    <string name="playlist_problem_import">не удалось прочитать плейлист</string>
+    <string name="playlist_problem_export">не удалось записать файл</string>
+
+    <string name="permission_title">нет доступа</string>
+    <string name="permission_body">MetroMusic проигрывает музыку с устройства, поэтому нужен доступ
+        к аудиофайлам. данные никуда не отправляются.</string>
+    <string name="permission_button">разрешить</string>
+    <string name="permission_manual">Если окно не появляется, выдайте доступ в Настройки → Приложения →
+        MetroMusic → Разрешения.</string>
+
+    <string name="tile_label">metromusic</string>
+
+    <plurals name="songs">
+        <item quantity="one">%1$d песня</item>
+        <item quantity="few">%1$d песни</item>
+        <item quantity="many">%1$d песен</item>
+        <item quantity="other">%1$d песен</item>
+    </plurals>
+    <plurals name="albums">
+        <item quantity="one">%1$d альбом</item>
+        <item quantity="few">%1$d альбома</item>
+        <item quantity="many">%1$d альбомов</item>
+        <item quantity="other">%1$d альбомов</item>
+    </plurals>
+    <plurals name="artists">
+        <item quantity="one">%1$d исполнитель</item>
+        <item quantity="few">%1$d исполнителя</item>
+        <item quantity="many">%1$d исполнителей</item>
+        <item quantity="other">%1$d исполнителей</item>
+    </plurals>
+    <plurals name="scrobbles_waiting">
+        <item quantity="one">%1$d ждёт отправки</item>
+        <item quantity="few">%1$d ждут отправки</item>
+        <item quantity="many">%1$d ждут отправки</item>
+        <item quantity="other">%1$d ждут отправки</item>
+    </plurals>
+</resources>
